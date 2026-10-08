@@ -1,5 +1,510 @@
 {
   "version": 4,
-  "step": "discovery",
-  "owner": "active-orchestrator"
+  "step": "registry",
+  "owner": "active-orchestrator",
+  "discovery": {
+    "created_by": "discovery-research",
+    "sources": [
+      "https://www.dentalcore.app/",
+      "https://web.dentaltec.com.ar/",
+      "https://www.softwaredentalink.com/",
+      "https://agendapro.com/ar/dental/software-odontologico",
+      "https://odonthia.com/",
+      "https://www.simplesdental.com/",
+      "https://www.clinicorp.com/"
+    ],
+    "competitors": [
+      {
+        "name": "DentalCore",
+        "notes_file": "discovery/analisis-competitivo.md"
+      },
+      {
+        "name": "DentalTec",
+        "notes_file": "discovery/analisis-competitivo.md"
+      },
+      {
+        "name": "Dentalink",
+        "notes_file": "discovery/analisis-competitivo.md"
+      },
+      {
+        "name": "AgendaPro",
+        "notes_file": "discovery/analisis-competitivo.md"
+      },
+      {
+        "name": "Odonthia",
+        "notes_file": "discovery/analisis-competitivo.md"
+      }
+    ],
+    "problema": "Un consultorio odontologico de 2 a 5 profesionales pierde turnos por ausencias, confirma todo a mano por WhatsApp y telefono, y da sobreturnos sin control que complican la atencion al paciente.",
+    "usuarios": [
+      "Administrador/dueno: configura agendas, profesionales y reglas, y mide ausencias",
+      "Recepcion: da, mueve y confirma turnos, y autoriza sobreturnos con aviso al profesional",
+      "Profesional: ve su agenda del dia con el estado de cada turno",
+      "Paciente: reserva, confirma, cancela o reprograma por su cuenta",
+      "Administrativo: facturacion, cobro a obras sociales, documentacion, contratos y liquidaciones (solo rol y permisos en la v1)"
+    ],
+    "casos_de_uso": [
+      "Como paciente, quiero reservar, confirmar, cancelar o reprogramar mi turno por mi cuenta, para no depender de que me atiendan el telefono",
+      "Como recepcion, quiero que el sistema confirme los turnos automaticamente, para no hacerlo a mano (en la v1: correo automatico y WhatsApp preparado por el sistema y enviado por recepcion con un clic)",
+      "Como recepcion, quiero que no se puedan superponer turnos de un profesional o de un box, y que los sobreturnos solo se den con autorizacion, para evitar el desorden en la atencion",
+      "Como profesional, quiero ver mi agenda del dia con el estado de cada turno, para saber a quien esperar",
+      "Como administrador, quiero ver cuantos turnos se pierden por ausencias, para medir si el problema mejora"
+    ],
+    "funcionalidades_necesarias": [
+      "Agenda por profesional (un box fijo por profesional), con duracion segun la prestacion y bloqueos",
+      "Horario semanal propio por profesional, con excepciones por fecha (feriados, vacaciones, ausencias) que bloquean la agenda",
+      "Catalogo inicial editable de prestaciones comunes, con duraciones sugeridas",
+      "Prevencion de solapamientos y sobreturnos solo con autorizacion",
+      "Reserva online por enlace publico, con confirmar, cancelar y reprogramar por el paciente",
+      "Confirmacion y recordatorios por correo automatico y por WhatsApp con mensaje preparado enviado por recepcion con un clic",
+      "Estados del turno: pendiente, confirmado, ausente, atendido y cancelado",
+      "Cinco roles con permisos, incluido Administrativo (solo permisos en la v1)",
+      "Ficha minima de paciente: nombre y apellido, telefono, correo, DNI, obra social como dato y notas; la reserva online pide esos mismos datos",
+      "Indicador de ausentismo para el administrador"
+    ],
+    "funcionalidades_opcionales": [
+      "Auditoria y consentimiento de datos conforme a la Ley 25.326 (feature planificada, diferida de la v1)",
+      "Lista de espera con relleno automatico de huecos por cancelacion",
+      "Sena o pago por Mercado Pago al reservar",
+      "Recall automatico de controles periodicos",
+      "Conversacion bidireccional por la API oficial de WhatsApp Business, incluido el envio automatico de confirmaciones",
+      "Facturacion ARCA, cobro y liquidacion con obras sociales, contratos y documentacion",
+      "Odontograma, periodontograma, presupuestos y planes de tratamiento",
+      "Importacion desde planilla o Google Calendar"
+    ],
+    "reglas_de_negocio": [
+      "El sistema pide confirmacion 48 horas antes del turno y manda un recordatorio 24 horas antes; un turno que sigue sin confirmar se libera solo 12 horas antes; cada consultorio puede cambiar a modo manual, donde queda marcado como sin confirmar y recepcion decide",
+      "El paciente puede cancelar o reprogramar por su cuenta hasta 24 horas antes del turno; pasado ese plazo debe llamar al consultorio",
+      "Un profesional no puede tener dos turnos superpuestos; cada profesional tiene un box fijo, asi que alcanza con validar por profesional",
+      "Los sobreturnos los da recepcion con aviso o aprobacion del profesional afectado, y queda registrado quien los autorizo"
+    ],
+    "integraciones": [
+      "Correo electronico automatico para confirmaciones y recordatorios, enviado por SMTP desde una cuenta de correo existente (por ejemplo Gmail con contrasena de aplicacion)",
+      "WhatsApp semimanual: el sistema arma el mensaje y recepcion lo envia con un clic; sin API oficial en la v1",
+      "Sin integraciones con ARCA, obras sociales ni Mercado Pago en la v1"
+    ],
+    "restricciones": [
+      "Entrega del MVP completo el 2026-10-12 (la fecha original era 2026-10-03 y se movio)",
+      "Backend: Python, FastAPI, JWT, SQLAlchemy, PostgreSQL, Redis para funcionalidades asincronicas, Docker y Docker Compose",
+      "Frontend: React, TypeScript y Vite",
+      "Presupuesto cero: solo servicios gratuitos o con plan gratuito; el enlace publico de reserva se aloja en un plan gratuito de hosting en la nube"
+    ],
+    "riesgos": [
+      "Plazo: el MVP completo con backend, frontend, autenticacion y recordatorios debe entrar en siete dias desde el 2026-10-05, y la fecha ya se movio una vez",
+      "Supuesto sin probar: que el paciente lea el correo de confirmacion; si no, la liberacion automatica le quita un turno que pensaba usar",
+      "WhatsApp semimanual: depende de que recepcion envie cada mensaje",
+      "Ley 25.326 diferida: desde la v1 se guardan datos personales de pacientes",
+      "Hosting y correo gratuitos: limites de envio y disponibilidad; el correo por SMTP de una cuenta existente tiene tope diario y puede caer en spam, y el enlace publico necesita un hosting en la nube accesible desde internet",
+      "Mercado analizado por marketing: casi nada de lo de los proveedores argentinos esta verificado en uso"
+    ],
+    "preguntas_abiertas": [],
+    "analysis_file": "discovery/analisis-competitivo.md",
+    "sources_fetched_at": "2026-10-02",
+    "decisiones_resueltas": {
+      "hosting_enlace_publico": "plan gratuito de hosting en la nube",
+      "correo": "SMTP de cuenta existente (Gmail con contrasena de aplicacion)",
+      "datos_reserva": "nombre y apellido, telefono, correo, DNI, obra social",
+      "boxes": "un box fijo por profesional",
+      "horarios": "semanal por profesional mas excepciones por fecha",
+      "prestaciones": "catalogo inicial editable con duraciones sugeridas",
+      "plazos": "confirmacion 48 h, recordatorio 24 h, liberacion 12 h antes",
+      "planilla_actual": "importacion diferida, sin fecha"
+    },
+    "updated_at": "2026-10-05"
+  },
+  "kb": {
+    "created_by": "kb-creator",
+    "source": "interactive",
+    "discovery": {
+      "problem": "Un consultorio odontologico de 2 a 5 profesionales pierde turnos por ausencias, confirma todo a mano por WhatsApp y telefono, y da sobreturnos sin control que complican la atencion al paciente",
+      "system_type": "web_app",
+      "domain": "salud: gestion de turnos y agenda de consultorios odontologicos",
+      "scale": "team",
+      "stack": "FastAPI + SQLAlchemy + PostgreSQL + Redis + JWT + Docker Compose (backend); React + TypeScript + Vite (frontend)",
+      "needs_infra": true
+    },
+    "files": [
+      "knowledge-base/01_vision_y_objetivos.md",
+      "knowledge-base/02_descripcion_general.md",
+      "knowledge-base/03_actores_y_roles.md",
+      "knowledge-base/04_modelo_de_datos.md",
+      "knowledge-base/05_reglas_de_negocio.md",
+      "knowledge-base/06_funcionalidades.md",
+      "knowledge-base/07_flujos_principales.md",
+      "knowledge-base/08_arquitectura_propuesta.md",
+      "knowledge-base/09_decisiones_y_supuestos.md",
+      "knowledge-base/10_preguntas_abiertas.md",
+      "knowledge-base/11_politicas_de_acceso_abac.md",
+      "knowledge-base/12_devops_y_despliegue.md",
+      "knowledge-base/README.md"
+    ]
+  },
+  "roadmap": {
+    "created_by": "roadmap-generator",
+    "source": "CHANGES.md",
+    "changes_file": "CHANGES.md",
+    "changes": [
+      "C-01",
+      "C-02",
+      "C-03",
+      "C-04",
+      "C-05",
+      "C-06",
+      "C-07",
+      "C-08",
+      "C-09",
+      "C-10",
+      "C-11",
+      "C-12",
+      "C-13",
+      "C-14",
+      "C-15",
+      "C-16",
+      "C-17",
+      "C-18",
+      "C-19",
+      "C-20"
+    ]
+  },
+  "skills": {
+    "created_by": "find-skill",
+    "recommended": [
+      {
+        "name": "fastapi-templates",
+        "source": "wshobson/agents",
+        "installs": "25.2K",
+        "install_cmd": "npx skills add wshobson/agents@fastapi-templates",
+        "covers": "FastAPI structure, async, dependency injection",
+        "changes": [
+          "C-01",
+          "C-02",
+          "C-03",
+          "C-07"
+        ]
+      },
+      {
+        "name": "fastapi-python",
+        "source": "mindrally/skills",
+        "installs": "13.5K",
+        "install_cmd": "npx skills add mindrally/skills@fastapi-python",
+        "covers": "FastAPI idioms",
+        "changes": [
+          "C-01",
+          "C-03"
+        ]
+      },
+      {
+        "name": "fastapi-expert",
+        "source": "jeffallan/claude-skills",
+        "installs": "5.8K",
+        "install_cmd": "npx skills add jeffallan/claude-skills@fastapi-expert",
+        "covers": "FastAPI + JWT auth",
+        "changes": [
+          "C-03",
+          "C-04"
+        ]
+      },
+      {
+        "name": "async-python-patterns",
+        "source": "wshobson/agents",
+        "installs": "17.2K",
+        "install_cmd": "npx skills add wshobson/agents@async-python-patterns",
+        "covers": "asyncio patterns",
+        "changes": [
+          "C-07",
+          "C-15"
+        ]
+      },
+      {
+        "name": "python-testing-patterns",
+        "source": "wshobson/agents",
+        "installs": "34.4K",
+        "install_cmd": "npx skills add wshobson/agents@python-testing-patterns",
+        "covers": "pytest, fixtures, mocking (strict TDD)",
+        "changes": [
+          "all backend"
+        ]
+      },
+      {
+        "name": "tdd",
+        "source": "mattpocock/skills",
+        "installs": "1M",
+        "install_cmd": "npx skills add mattpocock/skills@tdd",
+        "covers": "red-green-refactor workflow",
+        "changes": [
+          "all"
+        ]
+      },
+      {
+        "name": "test-driven-development",
+        "source": "addyosmani/agent-skills",
+        "installs": "46.1K",
+        "install_cmd": "npx skills add addyosmani/agent-skills@test-driven-development",
+        "covers": "TDD discipline",
+        "changes": [
+          "all"
+        ]
+      },
+      {
+        "name": "sqlalchemy-orm",
+        "source": "bobmatnyc/claude-mpm-skills",
+        "installs": "873",
+        "install_cmd": "npx skills add bobmatnyc/claude-mpm-skills@sqlalchemy-orm",
+        "covers": "SQLAlchemy ORM (low installs, caution)",
+        "changes": [
+          "C-02"
+        ]
+      },
+      {
+        "name": "database-migrations",
+        "source": "affaan-m/ecc",
+        "installs": "10.6K",
+        "install_cmd": "npx skills add affaan-m/ecc@database-migrations",
+        "covers": "migration practices (Alembic-generic)",
+        "changes": [
+          "C-02"
+        ]
+      },
+      {
+        "name": "database-migration",
+        "source": "wshobson/agents",
+        "installs": "17K",
+        "install_cmd": "npx skills add wshobson/agents@database-migration",
+        "covers": "migration practices (generic)",
+        "changes": [
+          "C-02"
+        ]
+      },
+      {
+        "name": "supabase-postgres-best-practices",
+        "source": "supabase/agent-skills",
+        "installs": "431.4K",
+        "install_cmd": "npx skills add supabase/agent-skills@supabase-postgres-best-practices",
+        "covers": "PostgreSQL indexing, constraints, performance",
+        "changes": [
+          "C-02",
+          "C-07",
+          "C-09"
+        ]
+      },
+      {
+        "name": "postgresql-table-design",
+        "source": "wshobson/agents",
+        "installs": "26.7K",
+        "install_cmd": "npx skills add wshobson/agents@postgresql-table-design",
+        "covers": "PostgreSQL schema design",
+        "changes": [
+          "C-02"
+        ]
+      },
+      {
+        "name": "python-background-jobs",
+        "source": "wshobson/agents",
+        "installs": "10.6K",
+        "install_cmd": "npx skills add wshobson/agents@python-background-jobs",
+        "covers": "workers, queues, scheduled jobs",
+        "changes": [
+          "C-15",
+          "C-16"
+        ]
+      },
+      {
+        "name": "auth-implementation-patterns",
+        "source": "wshobson/agents",
+        "installs": "17.4K",
+        "install_cmd": "npx skills add wshobson/agents@auth-implementation-patterns",
+        "covers": "JWT, RBAC/ABAC patterns",
+        "changes": [
+          "C-03",
+          "C-04"
+        ]
+      },
+      {
+        "name": "security-and-hardening",
+        "source": "addyosmani/agent-skills",
+        "installs": "51.7K",
+        "install_cmd": "npx skills add addyosmani/agent-skills@security-and-hardening",
+        "covers": "OWASP hardening",
+        "changes": [
+          "C-03",
+          "C-04",
+          "C-20"
+        ]
+      },
+      {
+        "name": "docker-patterns",
+        "source": "affaan-m/ecc",
+        "installs": "12.7K",
+        "install_cmd": "npx skills add affaan-m/ecc@docker-patterns",
+        "covers": "Docker/Compose patterns",
+        "changes": [
+          "C-01",
+          "C-20"
+        ]
+      },
+      {
+        "name": "multi-stage-dockerfile",
+        "source": "github/awesome-copilot",
+        "installs": "28.3K",
+        "install_cmd": "npx skills add github/awesome-copilot@multi-stage-dockerfile",
+        "covers": "Dockerfile optimization",
+        "changes": [
+          "C-20"
+        ]
+      },
+      {
+        "name": "vercel-react-best-practices",
+        "source": "vercel-labs/agent-skills",
+        "installs": "772.8K",
+        "install_cmd": "npx skills add vercel-labs/agent-skills@vercel-react-best-practices",
+        "covers": "React performance/best practices",
+        "changes": [
+          "C-11",
+          "C-12",
+          "C-13",
+          "C-14",
+          "C-18"
+        ]
+      },
+      {
+        "name": "vercel-composition-patterns",
+        "source": "vercel-labs/agent-skills",
+        "installs": "375.1K",
+        "install_cmd": "npx skills add vercel-labs/agent-skills@vercel-composition-patterns",
+        "covers": "React component composition",
+        "changes": [
+          "C-11",
+          "C-13"
+        ]
+      },
+      {
+        "name": "typescript-advanced-types",
+        "source": "wshobson/agents",
+        "installs": "83.6K",
+        "install_cmd": "npx skills add wshobson/agents@typescript-advanced-types",
+        "covers": "TypeScript types",
+        "changes": [
+          "C-11",
+          "C-12",
+          "C-13",
+          "C-14",
+          "C-18"
+        ]
+      },
+      {
+        "name": "vite",
+        "source": "antfu/skills",
+        "installs": "37.5K",
+        "install_cmd": "npx skills add antfu/skills@vite",
+        "covers": "Vite config",
+        "changes": [
+          "C-11"
+        ]
+      },
+      {
+        "name": "vitest",
+        "source": "antfu/skills",
+        "installs": "39.4K",
+        "install_cmd": "npx skills add antfu/skills@vitest",
+        "covers": "Vitest frontend unit tests",
+        "changes": [
+          "C-11",
+          "C-14"
+        ]
+      },
+      {
+        "name": "react-testing",
+        "source": "affaan-m/ecc",
+        "installs": "5.2K",
+        "install_cmd": "npx skills add affaan-m/ecc@react-testing",
+        "covers": "React Testing Library",
+        "changes": [
+          "C-13",
+          "C-14"
+        ]
+      },
+      {
+        "name": "playwright-best-practices",
+        "source": "currents-dev/playwright-best-practices-skill",
+        "installs": "90.3K",
+        "install_cmd": "npx skills add currents-dev/playwright-best-practices-skill@playwright-best-practices",
+        "covers": "E2E tests",
+        "changes": [
+          "C-14",
+          "C-20"
+        ]
+      },
+      {
+        "name": "accessibility",
+        "source": "addyosmani/web-quality-skills",
+        "installs": "58.8K",
+        "install_cmd": "npx skills add addyosmani/web-quality-skills@accessibility",
+        "covers": "WCAG for public booking page",
+        "changes": [
+          "C-14"
+        ]
+      },
+      {
+        "name": "wcag-audit-patterns",
+        "source": "wshobson/agents",
+        "installs": "12K",
+        "install_cmd": "npx skills add wshobson/agents@wcag-audit-patterns",
+        "covers": "WCAG audits",
+        "changes": [
+          "C-14"
+        ]
+      },
+      {
+        "name": "web-design-guidelines",
+        "source": "vercel-labs/agent-skills",
+        "installs": "702.5K",
+        "install_cmd": "npx skills add vercel-labs/agent-skills@web-design-guidelines",
+        "covers": "UI/a11y review",
+        "changes": [
+          "C-14"
+        ]
+      }
+    ],
+    "installed": [
+      "fastapi/fastapi@fastapi",
+      "bm629/agent-skills@sqlalchemy",
+      "bm629/agent-skills@alembic",
+      "bm629/agent-skills@sql-job-queue",
+      "wshobson/agents@python-testing-patterns",
+      "mattpocock/skills@tdd",
+      "docker/skills@docker-compose-patterns",
+      "vercel-labs/agent-skills@vercel-react-best-practices",
+      "antfu/skills@vitest",
+      "affaan-m/ecc@react-testing",
+      "supabase/agent-skills@supabase-postgres-best-practices",
+      "wshobson/agents@postgresql-table-design",
+      "openai/skills@security-best-practices",
+      "docker/skills@docker-build-strategies",
+      "addyosmani/web-quality-skills@accessibility",
+      "dotneet/claude-code-marketplace@typescript-react-reviewer"
+    ],
+    "notes": [
+      "fastapi: ignore its rule preferring SQLModel over SQLAlchemy (SKILL.md:284, references/other-tools.md:68-70); project stack is SQLAlchemy 2.x async with asyncpg",
+      "sqlalchemy: main path is sync/psycopg; project uses asyncpg (keep expire_on_commit=False; behind PgBouncer set prepared_statement_cache_size=0 or use NullPool)",
+      "alembic: ignore the SQLite step and render_as_batch=True; it does not cover EXCLUDE: create the exclusion constraint by hand after CREATE EXTENSION btree_gist",
+      "python-testing-patterns: examples use in-memory SQLite and freezegun; project tests run against real PostgreSQL and inject the clock via the Reloj port",
+      "tdd (mattpocock): CONFLICTS with Strict TDD (says refactoring is not part of the loop, asks to confirm seams with the user); the Strict TDD cycle of the orchestrator wins. User chose to keep it installed",
+      "sql-job-queue: 378 lines for a different queue design; use only the at-least-once idempotency step as a reference for the C-15 sweep",
+      "vercel-react-best-practices: 19 of 70 rules are Next.js/server-component specific; ignore server-* rules (Vite SPA)",
+      "supabase-postgres-best-practices: ignore RLS rules using auth.uid(); advisory lock rule teaches session locks: on Neon pooler use pg_try_advisory_xact_lock or the direct connection",
+      "postgresql-table-design: does not say btree_gist is required for scalar = in GiST exclusion constraints",
+      "security-best-practices: prefers SameSite=Lax, which interacts with open question Q-28 (refresh cookie across domains)",
+      "accessibility: examples use lang=en; the UI language is es-AR",
+      "No mature skills for: EXCLUDE/btree_gist/23P01, ABAC with pure policy functions, timezone/injected clock, aiosmtplib, PyJWT+pwdlib, Ley 25.326, availability calculation: use the Context7 MCP and knowledge-base/11",
+      "Candidates for project-specific skills: turnos-abac (from KB 11), postgres-turnos, optionally pg-test-harness"
+    ],
+    "evaluation_file": "discovery/evaluacion-skills.md"
+  },
+  "registry": {
+    "created_by": "skill-registry",
+    "file": ".atl/skill-registry.md",
+    "skills_count": 30,
+    "project_skills_count": 16,
+    "updated_at": "2026-10-08"
+  }
 }
