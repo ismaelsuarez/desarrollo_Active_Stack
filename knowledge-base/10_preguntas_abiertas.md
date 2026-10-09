@@ -8,7 +8,7 @@ Columnas: **Bloquea** indica qué parte del trabajo no puede cerrarse sin la res
 
 ### IN-01 — Alcance de la v1 frente al plazo
 **Documento A dice**: el alcance incluye ocho funcionalidades más la cuenta de paciente (registro, verificación de correo, ingreso, recuperación de contraseña) ([01](01_vision_y_objetivos.md), [06](06_funcionalidades.md)).
-**Documento B dice**: el MVP completo debe entregarse el 2026-10-12, siete días después de la fecha de esta base de conocimiento, y la fecha original ya se movió una vez (`discovery/discovery.md`, riesgos).
+**Documento B dice**: el MVP completo debe entregarse el 2026-10-19, diez días después de la actualización del 2026-10-09, y la fecha original ya se movió dos veces (`discovery/discovery.md`, riesgos).
 **Impacto**: si no se llega, no hay criterio acordado de qué se recorta.
 **Resolución propuesta**: acordar el orden de recorte (ver pregunta Q-01 siguiente) antes de iniciar los changes.
 
@@ -28,7 +28,7 @@ Columnas: **Bloquea** indica qué parte del trabajo no puede cerrarse sin la res
 
 | ID | Prioridad | Pregunta | Bloquea | Decisor |
 |----|-----------|----------|---------|---------|
-| Q-01 | Alta | Si el plazo del 2026-10-12 no alcanza, ¿qué funcionalidades de la v1 se recortan primero y en qué orden (por ejemplo, indicador de ausentismo, WhatsApp preparado, recuperación de contraseña)? | Planificación de los changes (IN-01) | Product Owner |
+| Q-01 | Alta | Si el plazo del 2026-10-19 no alcanza, ¿qué funcionalidades de la v1 se recortan primero y en qué orden (por ejemplo, indicador de ausentismo, WhatsApp preparado, recuperación de contraseña)? | Planificación de los changes (IN-01) | Product Owner |
 | Q-02 | Resuelta (2026-10-06) | ~~¿Qué proveedor gratuito de hosting se usa? Debe admitir procesos persistentes (API y worker), PostgreSQL y Redis (o una alternativa), HTTPS y salida SMTP, y no dormirse por inactividad.~~ Resuelta en cuanto a la arquitectura: ese conjunto de requisitos es inalcanzable en un plan gratuito sin tarjeta entre lo verificado; se adopta la arquitectura base de DD-13 (frontend en Cloudflare Pages, API con barrido en proceso, PostgreSQL en Neon, disparador externo). Ver DD-13, DD-10, SU-01 y SU-26 en [09](09_decisiones_y_supuestos.md) y [12](12_devops_y_despliegue.md). Lo que sigue abierto del proveedor se desglosa en Q-23 a Q-29. | Nada (resuelta) | Equipo técnico |
 | Q-03 | Alta | ¿Qué ocurre con un turno creado o reprogramado cuando ya pasó el hito de 48 h, 24 h o 12 h (por ejemplo, una reserva para dentro de 10 horas)? ¿Se libera, queda "sin confirmar" o se considera confirmado de entrada? (RN-29, SU-11) | Cálculo de hitos y liberación | Product Owner con Recepción |
 | Q-04 | Alta | ¿Un sobreturno requiere la aprobación del profesional afectado (puede vetarlo) o alcanza con avisarle? (RN-40, SU-17) | Flujo de sobreturnos | Administrador y profesionales |

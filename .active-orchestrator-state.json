@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "step": "registry",
+  "step": "done",
   "owner": "active-orchestrator",
   "discovery": {
     "created_by": "discovery-research",
@@ -84,13 +84,13 @@
       "Sin integraciones con ARCA, obras sociales ni Mercado Pago en la v1"
     ],
     "restricciones": [
-      "Entrega del MVP completo el 2026-10-12 (la fecha original era 2026-10-03 y se movio)",
+      "Entrega del MVP completo el 2026-10-19 (la fecha original era 2026-10-03; se movio a 2026-10-12 y despues a 2026-10-19)",
       "Backend: Python, FastAPI, JWT, SQLAlchemy, PostgreSQL, Redis para funcionalidades asincronicas, Docker y Docker Compose",
       "Frontend: React, TypeScript y Vite",
       "Presupuesto cero: solo servicios gratuitos o con plan gratuito; el enlace publico de reserva se aloja en un plan gratuito de hosting en la nube"
     ],
     "riesgos": [
-      "Plazo: el MVP completo con backend, frontend, autenticacion y recordatorios debe entrar en siete dias desde el 2026-10-05, y la fecha ya se movio una vez",
+      "Plazo: el MVP completo con backend, frontend, autenticacion y recordatorios debe entrar en diez dias desde el 2026-10-09, y la fecha ya se movio dos veces",
       "Supuesto sin probar: que el paciente lea el correo de confirmacion; si no, la liberacion automatica le quita un turno que pensaba usar",
       "WhatsApp semimanual: depende de que recepcion envie cada mensaje",
       "Ley 25.326 diferida: desde la v1 se guardan datos personales de pacientes",
@@ -110,7 +110,7 @@
       "plazos": "confirmacion 48 h, recordatorio 24 h, liberacion 12 h antes",
       "planilla_actual": "importacion diferida, sin fecha"
     },
-    "updated_at": "2026-10-05"
+    "updated_at": "2026-10-09"
   },
   "kb": {
     "created_by": "kb-creator",
@@ -506,5 +506,28 @@
     "skills_count": 30,
     "project_skills_count": 16,
     "updated_at": "2026-10-08"
+  },
+  "agents": {
+    "created_by": "agent-instruction",
+    "files": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "reglas_applied": [
+      "consultorio_id-desde-principal",
+      "tdd-estricto",
+      "postgresql-real-en-tests",
+      "reloj-inyectado",
+      "pyjwt-pwdlib-argon2",
+      "rbac-dependencias-abac-funciones-puras",
+      "exclusion-constraint-manual-btree_gist",
+      "alembic-un-solo-head",
+      "barrido-idempotente-sin-worker",
+      "asyncsession-por-solicitud",
+      "pydantic-extra-forbid",
+      "typescript-sin-any",
+      "datos-personales-minimizados",
+      "presupuesto-cero-y-alcance-v1"
+    ]
   }
 }

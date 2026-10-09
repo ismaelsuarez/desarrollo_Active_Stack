@@ -1,2 +1,5 @@
 # Local AI runtime state
 .atl/
+
+# Engram project memory (not versioned: the repo is on GitHub)
+.engram/

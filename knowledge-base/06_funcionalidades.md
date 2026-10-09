@@ -1,6 +1,6 @@
 # Funcionalidades
 
-Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN). Cada historia indica su versión: **v1** (entra en el MVP del 2026-10-12) o **backlog** (diferida). Los criterios de aceptación son verificables y alimentan las especificaciones de los changes.
+Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN). Cada historia indica su versión: **v1** (entra en el MVP del 2026-10-19) o **backlog** (diferida). Los criterios de aceptación son verificables y alimentan las especificaciones de los changes.
 
 ## Trazabilidad con los casos de uso confirmados
 

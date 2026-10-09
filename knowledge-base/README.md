@@ -1,6 +1,6 @@
 # Sistema de Turnos y Agenda Odontológica — Base de Conocimiento
 
-Base de conocimiento generada a partir del Discovery confirmado (`discovery/discovery.md`, actualizado el 2026-10-05) y de las decisiones confirmadas por el usuario en la fase de base de conocimiento. Cubre un sistema web de turnos y agenda para un consultorio odontológico de 2 a 5 profesionales. La v1 atiende un único consultorio y se entrega el 2026-10-12.
+Base de conocimiento generada a partir del Discovery confirmado (`discovery/discovery.md`, actualizado el 2026-10-05) y de las decisiones confirmadas por el usuario en la fase de base de conocimiento. Cubre un sistema web de turnos y agenda para un consultorio odontológico de 2 a 5 profesionales. La v1 atiende un único consultorio y se entrega el 2026-10-19.
 
 ## Índice de Archivos
 
@@ -37,4 +37,4 @@ Base de conocimiento generada a partir del Discovery confirmado (`discovery/disc
 
 ## Resumen Ejecutivo
 
-Sistema web (React, TypeScript, Vite; FastAPI, PostgreSQL; Redis opcional) para que un consultorio odontológico reduzca las ausencias, automatice la confirmación de turnos y controle los sobreturnos. El paciente se registra desde un enlace público, verifica su correo y gestiona sus turnos hasta 24 horas antes. El sistema pide confirmación a las 48 horas, recuerda a las 24 y libera el turno sin confirmar a las 12 horas (o lo deja "sin confirmar" en modo manual). El correo es automático y el WhatsApp es semimanual. La autorización combina cinco roles con políticas por atributos. El modelo de datos está preparado para varios consultorios, pero la v1 opera con uno. Presupuesto cero y entrega el 2026-10-12.
+Sistema web (React, TypeScript, Vite; FastAPI, PostgreSQL; Redis opcional) para que un consultorio odontológico reduzca las ausencias, automatice la confirmación de turnos y controle los sobreturnos. El paciente se registra desde un enlace público, verifica su correo y gestiona sus turnos hasta 24 horas antes. El sistema pide confirmación a las 48 horas, recuerda a las 24 y libera el turno sin confirmar a las 12 horas (o lo deja "sin confirmar" en modo manual). El correo es automático y el WhatsApp es semimanual. La autorización combina cinco roles con políticas por atributos. El modelo de datos está preparado para varios consultorios, pero la v1 opera con uno. Presupuesto cero y entrega el 2026-10-19.

@@ -39,7 +39,7 @@ Los cinco bloquean la v1 y están confirmados. Se referencian como CU-1 a CU-5 e
 
 ## Alcance v1
 
-Fecha de entrega del MVP completo: **2026-10-12**. La fecha original era 2026-10-03 y se movió una vez.
+Fecha de entrega del MVP completo: **2026-10-19**. La fecha original era 2026-10-03 y se movió dos veces (al 2026-10-12 y después al 2026-10-19).
 
 - Agenda por profesional, con un box fijo por profesional, duración variable según la prestación y bloqueos.
 - Horario semanal por profesional con excepciones por fecha (feriados, vacaciones, ausencias) que bloquean la agenda.

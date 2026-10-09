@@ -1,6 +1,6 @@
 # DevOps y Despliegue
 
-Restricciones de partida: **presupuesto cero** (solo servicios gratuitos o con plan gratuito), Docker y Docker Compose obligatorios, y el enlace público de reserva alojado en un plan gratuito de hosting en la nube. Entrega del MVP completo: 2026-10-12.
+Restricciones de partida: **presupuesto cero** (solo servicios gratuitos o con plan gratuito), Docker y Docker Compose obligatorios, y el enlace público de reserva alojado en un plan gratuito de hosting en la nube. Entrega del MVP completo: 2026-10-19.
 
 Este documento fija la **arquitectura de despliegue base** a partir de la exploración técnica del 2026-10-05 (`discovery/exploracion-tecnica.md`). Las cifras de planes gratuitos se leyeron en las páginas de cada proveedor en esa fecha y **cambian con el tiempo**; algunas se leyeron con extractores automáticos, por lo que conviene contrastarlas antes de comprometer el plan. Lo no verificado se marca `[NV]` y figura como suposición o pregunta abierta ([09](09_decisiones_y_supuestos.md), [10](10_preguntas_abiertas.md)). La elección concreta del proveedor del servicio web sigue abierta (Q-02 resuelta en cuanto a la arquitectura, Q-24 en cuanto al proveedor).
 
