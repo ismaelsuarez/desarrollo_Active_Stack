@@ -65,9 +65,30 @@ Fuente de verdad: `.atl/skill-registry.md` (generado por `skill-registry`). Esta
 | **Pruebas / TDD** | Ciclo de TDD estricto | `tdd` (cede ante el ciclo de TDD estricto del orquestador) |
 | **Orquestación** | Fundación, SDD / OPSX, commits | `kb-creator`, `roadmap-generator`, `skill-registry`, `work-unit-commits`, `chained-pr` |
 
-Cargá la skill correspondiente al contexto ANTES de escribir código. La columna **Ignore / Conflict** del registro **manda sobre el `SKILL.md`**: por ejemplo, `fastapi` ignora su preferencia por SQLModel, y `alembic` ignora el modo batch de SQLite.
+Cargá la skill correspondiente al contexto ANTES de escribir código. Las [aclaraciones de uso](#aclaraciones-de-uso-de-las-skills) de más abajo **mandan sobre el `SKILL.md`** cuando se contradicen.
 
 Huecos sin skill madura (usar el MCP de Context7 y [la KB 11](knowledge-base/11_politicas_de_acceso_abac.md)): restricción de exclusión con `btree_gist` y `23P01`, ABAC con funciones puras, reloj inyectado y zona horaria, `aiosmtplib`, PyJWT con pwdlib, Ley 25.326 y cálculo de disponibilidad de agenda.
+
+### Aclaraciones de uso de las skills
+
+Mandan sobre el `SKILL.md`. Viven en este archivo, que está versionado, porque `.atl/skill-registry.md` se regenera automáticamente y las pierde.
+
+| Skill | Ignorar o tener en cuenta |
+|-------|---------------------------|
+| `fastapi` | Ignorar su preferencia por SQLModel (`SKILL.md:284` y `references/other-tools.md:68-70`): el proyecto usa SQLAlchemy 2.x asíncrono con asyncpg. |
+| `sqlalchemy` | Su camino principal es síncrono (psycopg); el proyecto es asíncrono con asyncpg. Mantener `expire_on_commit=False`. Detrás de PgBouncer o del pooler de Neon, usar `prepared_statement_cache_size=0` o `NullPool`. |
+| `alembic` | Ignorar el paso de SQLite y `render_as_batch=True`. Inicializar en modo asíncrono (`alembic init -t async`, DD-14) aunque la skill prefiera el síncrono. No cubre `EXCLUDE`: crear la restricción de exclusión a mano tras `CREATE EXTENSION btree_gist`. |
+| `sql-job-queue` | Describe otro diseño de cola (378 líneas). Usar solo su paso de idempotencia "al menos una vez" como referencia del barrido de C-15; no cargarla en otros casos. |
+| `python-testing-patterns` | Sus ejemplos usan SQLite en memoria y `freezegun`. Las pruebas del proyecto corren contra PostgreSQL real e inyectan el reloj con el puerto `Reloj`. |
+| `tdd` | **Conflicto con el TDD estricto**: dice que el refactor no es parte del ciclo y pide confirmar los puntos de prueba con el usuario. Gana el ciclo RED, GREEN, TRIANGULATE, REFACTOR del orquestador. |
+| `docker-compose-patterns` | Prefiere `compose.yaml`; el proyecto usa `docker-compose.yml` y manda el proyecto. |
+| `vercel-react-best-practices` | 19 de sus 70 reglas son de Next.js o de componentes de servidor: ignorar las reglas `server-*` (SPA con Vite). |
+| `supabase-postgres-best-practices` | Ignorar las reglas de RLS con `auth.uid()`. Su regla de advisory locks enseña candados de sesión: en el pooler de Neon usar `pg_try_advisory_xact_lock` o la conexión directa. |
+| `postgresql-table-design` | No dice que `btree_gist` hace falta para el `=` escalar en restricciones de exclusión GiST: agregarlo a mano (ver `alembic`). |
+| `security-best-practices` | Prefiere `SameSite=Lax`, que interactúa con la pregunta abierta Q-28 (cookie de renovación entre dominios): decidirlo con el usuario. Usarla solo ante un pedido explícito de seguridad. |
+| `accessibility` | Sus ejemplos usan `lang="en"`; el idioma de la interfaz es `es-AR`. |
+
+Sin aclaraciones: `docker-build-strategies`, `vitest`, `react-testing` y `typescript-react-reviewer`.
 
 > Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry`; no versionado — no está en el repo). Esta tabla solo mapea skill→rol.
 
