@@ -10,10 +10,10 @@ Convención de revisión: las decisiones y supuestos que cambiaron con la explor
 
 ### DD-01 — Aplicación web con stack obligatorio
 **Decisión**: sistema web con frontend React, TypeScript y Vite, y backend Python con FastAPI, JWT, SQLAlchemy, PostgreSQL, Redis (para las funcionalidades asincrónicas que correspondan), Docker y Docker Compose.
-**Contexto**: restricción del proyecto, con presupuesto cero y entrega del MVP completo el 2026-10-12 (la fecha original era el 2026-10-03).
+**Contexto**: restricción del proyecto, con presupuesto cero y entrega del MVP completo el 2026-10-19 (la fecha original era el 2026-10-03; se movió al 2026-10-12 y después al 2026-10-19).
 **Alternativas consideradas**: no se evaluaron alternativas; el stack es una restricción.
 **Justificación**: viene dado por el proyecto.
-**Trade-offs aceptados**: sin libertad de elegir tecnología; plazo de siete días desde el 2026-10-05 para backend, frontend, autenticación y recordatorios.
+**Trade-offs aceptados**: sin libertad de elegir tecnología; plazo de diez días desde el 2026-10-09 para backend, frontend, autenticación y recordatorios.
 
 ### DD-02 — Mantenibilidad primero, escalabilidad después
 **Decisión**: prioridad 1 mantenibilidad, prioridad 2 escalabilidad. Escalabilidad significa modelo de datos preparado para varios consultorios (`consultorio_id` en toda tabla de un consultorio) con un solo consultorio activo en la v1.
@@ -375,7 +375,7 @@ Los siguientes son propuestas técnicas o de producto que el usuario **no confir
 
 | Riesgo | Descripción | Mitigación |
 |--------|-------------|------------|
-| Plazo ajustado | El MVP completo con backend, frontend, autenticación y recordatorios debe entregarse el 2026-10-12 (siete días desde el 2026-10-05) y la fecha ya se movió una vez. La cuenta de paciente agrega alcance al plan original. La arquitectura base (DD-13) suma servicios que configurar (Cloudflare Pages, Neon, host de la API, disparador externo, correo) dentro del mismo plazo. | Orden de entrega por dependencias; definir qué se recorta si no se llega (pregunta abierta Q-01); resolver temprano las preguntas de despliegue Q-23 a Q-25 y probar un despliegue mínimo antes de construir el resto. |
+| Plazo ajustado | El MVP completo con backend, frontend, autenticación y recordatorios debe entregarse el 2026-10-19 (diez días desde el 2026-10-09) y la fecha ya se movió dos veces (del 2026-10-03 al 2026-10-12 y luego al 2026-10-19). La cuenta de paciente agrega alcance al plan original. La arquitectura base (DD-13) suma servicios que configurar (Cloudflare Pages, Neon, host de la API, disparador externo, correo) dentro del mismo plazo. | Orden de entrega por dependencias; definir qué se recorta si no se llega (pregunta abierta Q-01); resolver temprano las preguntas de despliegue Q-23 a Q-25 y probar un despliegue mínimo antes de construir el resto. |
 | Canal automático solo por correo y liberación automática | Un paciente que no lee el correo puede perder un turno que pensaba usar. Es un supuesto sin probar. | Recordatorio a 24 h, WhatsApp semimanual, enlace de confirmación (SU-12), modo manual por consultorio (RN-28) y aviso de liberación (SU-15). |
 | WhatsApp semimanual | Depende de que Recepción envíe cada mensaje; no elimina por completo el trabajo manual. | Lista priorizada, un clic por mensaje, marca de enviado y alerta de pendientes (US-033). |
 | Ley 25.326 diferida | Desde la v1 se guardan datos personales y la ley aplica desde ese momento, aunque la auditoría y el consentimiento lleguen después. | Mínimo de RN-58: datos limitados, acceso por rol y atributos, contraseñas hasheadas, HTTPS, sin borrado físico, mensajes sin datos de salud. Auditoría y consentimiento como primer ítem del backlog. |

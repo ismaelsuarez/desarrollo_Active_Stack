@@ -86,14 +86,14 @@ Backlog posterior, en este orden de prioridad:
 
 ## 9. Restricciones
 
-- **Plazo**: entrega del MVP completo el 12-10-2026. La fecha original era el 3-10-2026 y se movió.
+- **Plazo**: entrega del MVP completo el 19-10-2026. La fecha original era el 3-10-2026 y se movió dos veces (a 12-10-2026 y luego a 19-10-2026).
 - **Backend obligatorio**: Python, FastAPI, JWT para autenticación, SQLAlchemy como ORM, PostgreSQL, Redis para las funcionalidades asincrónicas que correspondan, y Docker con Docker Compose.
 - **Frontend obligatorio**: React, TypeScript y Vite.
 - **Presupuesto cero**: solo servicios gratuitos o con plan gratuito. El enlace público de reserva se aloja en un plan gratuito de hosting en la nube.
 
 ## 10. Riesgos
 
-- **Plazo**: el MVP completo con backend, frontend, autenticación y recordatorios debe entrar en siete días desde el 5-10-2026, y la fecha ya se movió una vez.
+- **Plazo**: el MVP completo con backend, frontend, autenticación y recordatorios debe entrar en diez días desde el 9-10-2026, y la fecha ya se movió dos veces.
 - **Supuesto sin probar**: que el paciente lea el correo de confirmación. Si no lo lee, la liberación automática le quita un turno que pensaba usar.
 - **WhatsApp semimanual**: depende de que recepción envíe cada mensaje, así que no elimina por completo el trabajo manual.
 - **Ley 25.326 diferida**: desde la v1 se guardan datos personales de pacientes y la ley aplica desde ese momento, aunque la auditoría y el consentimiento lleguen después.

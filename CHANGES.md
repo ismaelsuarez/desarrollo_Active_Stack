@@ -1,9 +1,9 @@
 # CHANGES — Secuencia de Implementación
 
-> Índice canónico de todos los changes del proyecto **Sistema de Turnos y Agenda Odontológica** (v1, entrega **2026-10-12**).
+> Índice canónico de todos los changes del proyecto **Sistema de Turnos y Agenda Odontológica** (v1, entrega **2026-10-19**).
 > Cada change es atómico: un agente puede implementarlo en una sesión (~4-6 horas).
 > **Leer este archivo antes de ejecutar cualquier `/opsx:propose`.**
-> Regenerado el **2026-10-08** (quedan cuatro días) a partir de la KB actualizada el 2026-10-06 y alineada el 2026-10-08. Se conservan los IDs `C-01` a `C-20`, sus dependencias y el orden de la rebanada vertical; solo cambia lo que exige la arquitectura sin worker persistente (barrido en la API, DD-13), PyJWT/Argon2 (DD-12) y SQLAlchemy asíncrono con migraciones de un solo head (DD-14).
+> Regenerado el **2026-10-08**; plazo actualizado el **2026-10-09** (entrega el **2026-10-19**) a partir de la KB actualizada el 2026-10-06 y alineada el 2026-10-08. Se conservan los IDs `C-01` a `C-20`, sus dependencias y el orden de la rebanada vertical; solo cambia lo que exige la arquitectura sin worker persistente (barrido en la API, DD-13), PyJWT/Argon2 (DD-12) y SQLAlchemy asíncrono con migraciones de un solo head (DD-14).
 
 ---
 
@@ -23,7 +23,7 @@ Reglas del proyecto que aplican a **todos** los changes:
 - **Sin worker persistente y sin Redis obligatorio**: ningún change crea un proceso aparte ni exige Redis. Lo programado es un barrido idempotente dentro de la API (C-15), con candado en PostgreSQL, disparado por `POST /internal/barrido` o por un bucle `asyncio` local. Redis es opcional y solo auxiliar (límites de intentos); sin `REDIS_URL` todo funciona con PostgreSQL.
 - **Migraciones en paralelo con un único head**: varios changes crean migraciones Alembic a la vez. Antes de archivar, cada change rebasa su migración sobre la única cabeza vigente (`alembic heads` debe devolver una sola; el CI lo exige) y se aplica con `alembic upgrade head`, nunca `heads`. El autogenerate de Alembic no detecta restricciones `EXCLUDE`: se revisa cada migración generada. Las migraciones se numeran en el orden en que se archivan los changes.
 - **Preguntas abiertas como riesgo explícito**: Q-23 a Q-29 (proveedor de correo, host de la API, quién opera el disparador, `btree_gist`, cuota de Neon, cookie entre dominios, stack completo) figuran en el campo **Riesgos / bloqueado por** de cada change afectado y se resumen en [Preguntas abiertas que afectan al plan](#preguntas-abiertas-que-afectan-al-plan). Siguen abiertas: ningún change las resuelve por su cuenta.
-- **Plazo**: el alcance completo de la v1 entra antes del 2026-10-12, con holgura cero en el camino crítico (ver [Si el plazo aprieta](#si-el-plazo-aprieta)). La decisión de recorte es del Product Owner (Q-01 en `knowledge-base/10_preguntas_abiertas.md`), no de este documento.
+- **Plazo**: el alcance completo de la v1 entra antes del 2026-10-19; el camino crítico son diez sesiones secuenciales y el plan de tres agentes ocupa cinco días de trabajo, lo que deja margen hasta la entrega (ver [Si el plazo aprieta](#si-el-plazo-aprieta), que queda como contingencia). La decisión de recorte es del Product Owner (Q-01 en `knowledge-base/10_preguntas_abiertas.md`), no de este documento.
 - **Fuera de la v1**: lo diferido está en la sección [BACKLOG](#backlog-fuera-de-la-v1) y no genera changes.
 
 ---
@@ -142,25 +142,25 @@ C-01 → C-02 → C-03 → C-06* → C-07 → C-09 → C-16 → C-17 → C-18 �
 
 `*` C-04, C-05 y C-06 están a la misma profundidad (todos dependen solo de C-03) y se ejecutan en paralelo en GATE 3; los tres son prerrequisito de C-07/C-09 (C-04 y C-06 para C-07, C-05 para C-09). El primero de los tres en retrasarse pasa a ser el crítico. C-15 (barrido) corre en paralelo con C-09 y debe terminar antes de C-16: si C-15 se atrasa, pasa a ser el crítico.
 
-Diez sesiones secuenciales de 4 a 6 horas no caben con holgura en cuatro días: el camino crítico no tiene margen. Palancas honestas, de menor a mayor costo funcional: ejecutar C-01 y C-02 en una misma sesión; y, solo si el Product Owner lo decide, sacar C-17 del camino (ver [Si el plazo aprieta](#si-el-plazo-aprieta)).
+Diez sesiones secuenciales de 4 a 6 horas forman el camino crítico; con la entrega del 2026-10-19 caben con un margen acotado, y sin ningún recorte ese margen se consume ante cualquier imprevisto. Palancas honestas, de menor a mayor costo funcional: ejecutar C-01 y C-02 en una misma sesión; y, solo si el Product Owner lo decide, sacar C-17 del camino (ver [Si el plazo aprieta](#si-el-plazo-aprieta)).
 
 ### Plan óptimo con 3 agentes
 
-> Supuesto: dos sesiones por agente y por día (mañana y tarde), del 2026-10-08 al 2026-10-12. C-20 cae en la tarde del día de entrega: no hay holgura.
+> Supuesto: dos sesiones por agente y por día (mañana y tarde), a partir del 2026-10-09 (Día 1 = primer día de trabajo). El plan ocupa cinco días de trabajo; con la entrega del 2026-10-19 queda margen para imprevistos, validación y las preguntas abiertas de despliegue.
 
 ```
-Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)             │ Agente C (Frontend / config)         │ Fecha objetivo
+Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)             │ Agente C (Frontend / config)         │ Día objetivo
 ─────┼────────────────────────────────┼────────────────────────────────────┼──────────────────────────────────────┼───────────────
-  1  │ C-01 foundation-setup          │ Spike: Neon, host, correo (Q-23/24/26) │ Spike: Pages, cookie, disparador (Q-25/28) │ 10-08 mañana
-  2  │ C-02 core-models               │ Spike (cierre y registro)          │              —                       │ 10-08 tarde
-  3  │ C-03 auth-core                 │              —                     │              —                       │ 10-09 mañana
-  4  │ C-04 abac-policies             │ C-05 patient-account               │ C-06 agenda-config                   │ 10-09 tarde
-  5  │ C-07 turnos-core               │ C-08 patient-records               │ C-11 frontend-shell-auth             │ 10-10 mañana
-  6  │ C-09 availability-public-bkg   │ C-15 notifications-outbox-sweep    │ C-12 frontend-admin-config           │ 10-10 tarde
-  7  │ C-10 overbooking-authorization │ C-16 milestones-confirm-release    │ C-14 frontend-public-booking         │ 10-11 mañana
-  8  │ (holgura: adelantar C-20)      │ C-17 whatsapp-one-click            │ C-13 frontend-staff-agenda           │ 10-11 tarde
-  9  │ C-19 absenteeism-indicator     │              —                     │ C-18 frontend-notifications-ops      │ 10-12 mañana
- 10  │ C-20 deploy-hardening          │              —                     │ (apoyo en E2E y ajustes de UI)       │ 10-12 tarde
+  1  │ C-01 foundation-setup          │ Spike: Neon, host, correo (Q-23/24/26) │ Spike: Pages, cookie, disparador (Q-25/28) │ Día 1 mañana
+  2  │ C-02 core-models               │ Spike (cierre y registro)          │              —                       │ Día 1 tarde
+  3  │ C-03 auth-core                 │              —                     │              —                       │ Día 2 mañana
+  4  │ C-04 abac-policies             │ C-05 patient-account               │ C-06 agenda-config                   │ Día 2 tarde
+  5  │ C-07 turnos-core               │ C-08 patient-records               │ C-11 frontend-shell-auth             │ Día 3 mañana
+  6  │ C-09 availability-public-bkg   │ C-15 notifications-outbox-sweep    │ C-12 frontend-admin-config           │ Día 3 tarde
+  7  │ C-10 overbooking-authorization │ C-16 milestones-confirm-release    │ C-14 frontend-public-booking         │ Día 4 mañana
+  8  │ (holgura: adelantar C-20)      │ C-17 whatsapp-one-click            │ C-13 frontend-staff-agenda           │ Día 4 tarde
+  9  │ C-19 absenteeism-indicator     │              —                     │ C-18 frontend-notifications-ops      │ Día 5 mañana
+ 10  │ C-20 deploy-hardening          │              —                     │ (apoyo en E2E y ajustes de UI)       │ Día 5 tarde
 ```
 
 Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el paralelismo real empieza en GATE 3. La rebanada vertical completa (auth y roles, horarios, agenda sin solapamientos, reserva pública y estados del turno) queda cerrada al terminar el paso 7. En el paso 8, el Agente A puede preparar la parte de C-20 que no depende de código nuevo (workflow del disparador, variables y secretos del host, comprobación del E2E local); no cambia la dependencia formal de C-20.
@@ -657,7 +657,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 
 ## BACKLOG (fuera de la v1)
 
-> No generan changes ni entran en el plazo del 2026-10-12. Orden de prioridad acordado en `knowledge-base/06_funcionalidades.md` Épica 10. Cuando se planifiquen, se agregan como changes nuevos (`C-21` en adelante) sin alterar los de la v1.
+> No generan changes ni entran en el plazo del 2026-10-19. Orden de prioridad acordado en `knowledge-base/06_funcionalidades.md` Épica 10. Cuando se planifiquen, se agregan como changes nuevos (`C-21` en adelante) sin alterar los de la v1.
 
 | Prioridad | ID | Funcionalidad diferida | Nota |
 |-----------|----|------------------------|------|
