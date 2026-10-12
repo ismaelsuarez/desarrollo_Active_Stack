@@ -3,7 +3,7 @@
 > Este archivo (y su copia `CLAUDE.md`) es lo PRIMERO que todo agente lee al entrar al repo.
 > Generado a partir de `knowledge-base/` y `CHANGES.md`. No editar a mano sin re-sincronizar ambos archivos.
 
-Sistema web para que un consultorio odontológico de 2 a 5 profesionales reduzca las ausencias, automatice la confirmación de turnos y controle los sobreturnos. Entrega del MVP completo: **2026-10-19**.
+Sistema web para que un consultorio odontológico de 2 a 5 profesionales reduzca las ausencias, automatice la confirmación de turnos y controle los sobreturnos. Entrega en dos partes (DD-22, DD-33): la primera, el **2026-10-19**, es la del Trabajo de Integración: la fundación, el informe de Discovery y un único change, `crear-turno-sin-solapamientos`, llevado por el ciclo OPSX completo. La segunda parte son los changes C-01 a C-20 y C-21.
 
 ---
 
@@ -38,7 +38,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [02_descripcion_general.md](knowledge-base/02_descripcion_general.md) | Stack, arquitectura general, integraciones y API REST |
 | [03_actores_y_roles.md](knowledge-base/03_actores_y_roles.md) | Auth, RBAC, permisos |
 | [04_modelo_de_datos.md](knowledge-base/04_modelo_de_datos.md) | Entidades, ERD, migraciones |
-| [05_reglas_de_negocio.md](knowledge-base/05_reglas_de_negocio.md) | Reglas codificadas (RN-01 a RN-63) |
+| [05_reglas_de_negocio.md](knowledge-base/05_reglas_de_negocio.md) | Reglas codificadas (RN-01 a RN-65) |
 | [06_funcionalidades.md](knowledge-base/06_funcionalidades.md) | Historias de usuario por épica |
 | [07_flujos_principales.md](knowledge-base/07_flujos_principales.md) | Flujos extremo a extremo |
 | [08_arquitectura_propuesta.md](knowledge-base/08_arquitectura_propuesta.md) | Patrones, estructura, trabajos en segundo plano, variables de entorno |
@@ -46,8 +46,9 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [10_preguntas_abiertas.md](knowledge-base/10_preguntas_abiertas.md) | ⚠️ Preguntas abiertas a resolver ANTES de codear lo que bloquean |
 | [11_politicas_de_acceso_abac.md](knowledge-base/11_politicas_de_acceso_abac.md) | Cuatro atributos ABAC y matriz rol × acción × atributo |
 | [12_devops_y_despliegue.md](knowledge-base/12_devops_y_despliegue.md) | Compose, hosting gratuito, SMTP, disparador del barrido |
+| [13_aviso_de_privacidad_borrador.md](knowledge-base/13_aviso_de_privacidad_borrador.md) | Borrador del aviso de privacidad del registro (RN-65), pendiente de revisión legal |
 
-> ⚠️ Las preguntas de prioridad **Alta** de `10_preguntas_abiertas.md` se resuelven antes del change que bloquean: Q-01 (qué recortar si no hay plazo) y Q-03, Q-04 y Q-06 afectan a la rebanada vertical (C-05 a C-10); Q-23 a Q-25 afectan a C-05, C-15 y C-20; Q-28 afecta a C-03, C-11 y C-20. Las suposiciones `SU-NN` no están confirmadas: tratarlas como hipótesis.
+> ⚠️ **Puerta de las preguntas Alta**: un change no se propone (`/opsx:propose`) mientras tenga abierta una pregunta de prioridad **Alta** de `10_preguntas_abiertas.md` que bloquea su propio alcance; primero se le pregunta al dueño del proyecto y se registra la decisión como `DD-NN`. Al 2026-10-12 ningún change que se construye en local tiene abierta una pregunta Alta que bloquee su propio alcance: Q-03 quedó resuelta por DD-32. Las que siguen abiertas (Q-23 a Q-27 y Q-29) conciernen al entorno publicado (proveedor, host, disparador externo y cuota de Neon) y bloquean solo C-20: en local y en CI PostgreSQL corre como superusuario y `btree_gist` funciona, el correo va a Mailpit, el barrido corre con su bucle propio y nada se aloja, así que C-01, C-05, C-07, C-14, C-15 y C-16 solo las mencionan como riesgo del despliegue y no esperan su respuesta. Las suposiciones `SU-NN` son hipótesis, salvo las que `09_decisiones_y_supuestos.md` marca como confirmadas o reemplazadas por una decisión.
 
 ---
 
@@ -77,7 +78,7 @@ Mandan sobre el `SKILL.md`. Viven en este archivo, que está versionado, porque 
 |-------|---------------------------|
 | `fastapi` | Ignorar su preferencia por SQLModel (`SKILL.md:284` y `references/other-tools.md:68-70`): el proyecto usa SQLAlchemy 2.x asíncrono con asyncpg. |
 | `sqlalchemy` | Su camino principal es síncrono (psycopg); el proyecto es asíncrono con asyncpg. Mantener `expire_on_commit=False`. Detrás de PgBouncer o del pooler de Neon, usar `prepared_statement_cache_size=0` o `NullPool`. |
-| `alembic` | Ignorar el paso de SQLite y `render_as_batch=True`. Inicializar en modo asíncrono (`alembic init -t async`, DD-14) aunque la skill prefiera el síncrono. No cubre `EXCLUDE`: crear la restricción de exclusión a mano tras `CREATE EXTENSION btree_gist`. |
+| `alembic` | Ignorar el paso de SQLite y `render_as_batch=True`. Inicializar en modo asíncrono (`alembic init -t async`, DD-14) aunque la skill prefiera el síncrono. No cubre `EXCLUDE`: crear la restricción de exclusión a mano tras `CREATE EXTENSION btree_gist`. Ante dos heads la skill propone `alembic merge`: el proyecto no fusiona, rebasa la revisión nueva sobre el head existente (regla dura 8). |
 | `sql-job-queue` | Describe otro diseño de cola (378 líneas). Usar solo su paso de idempotencia "al menos una vez" como referencia del barrido de C-15; no cargarla en otros casos. |
 | `python-testing-patterns` | Sus ejemplos usan SQLite en memoria y `freezegun`. Las pruebas del proyecto corren contra PostgreSQL real e inyectan el reloj con el puerto `Reloj`. |
 | `tdd` | **Conflicto con el TDD estricto**: dice que el refactor no es parte del ciclo y pide confirmar los puntos de prueba con el usuario. Gana el ciclo RED, GREEN, TRIANGULATE, REFACTOR del orquestador. |
@@ -85,7 +86,7 @@ Mandan sobre el `SKILL.md`. Viven en este archivo, que está versionado, porque 
 | `vercel-react-best-practices` | 19 de sus 70 reglas son de Next.js o de componentes de servidor: ignorar las reglas `server-*` (SPA con Vite). |
 | `supabase-postgres-best-practices` | Ignorar las reglas de RLS con `auth.uid()`. Su regla de advisory locks enseña candados de sesión: en el pooler de Neon no usarlos; el proyecto usa la reclamación por fila con `FOR UPDATE SKIP LOCKED` (regla dura 9). |
 | `postgresql-table-design` | No dice que `btree_gist` hace falta para el `=` escalar en restricciones de exclusión GiST: agregarlo a mano (ver `alembic`). |
-| `security-best-practices` | Prefiere `SameSite=Lax`, que interactúa con la pregunta abierta Q-28 (cookie de renovación entre dominios): decidirlo con el usuario. Usarla solo ante un pedido explícito de seguridad. |
+| `security-best-practices` | Prefiere `SameSite=Lax`; el proyecto usa `SameSite=Strict` para la cookie de renovación porque el frontend y la API comparten origen (DD-26), y manda el proyecto. Usarla solo ante un pedido explícito de seguridad. |
 | `accessibility` | Sus ejemplos usan `lang="en"`; el idioma de la interfaz es `es-AR`. |
 
 Sin aclaraciones: `docker-build-strategies`, `vitest`, `react-testing` y `typescript-react-reviewer`.
@@ -98,11 +99,13 @@ Sin aclaraciones: `docker-build-strategies`, `vitest`, `react-testing` y `typesc
 
 El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
-- **Total**: 20 changes (`C-01` a `C-20`) en 7 fases.
-- **Camino crítico** (10): `C-01 → C-02 → C-03 → C-06 → C-07 → C-09 → C-16 → C-17 → C-18 → C-20`, con margen acotado hasta la entrega.
-- **Primer change**: `C-01` (`foundation-setup`).
-- **Rebanada vertical primero**: autenticación y roles (C-03 a C-05), horarios (C-06), agenda sin solapamientos (C-07) y reserva pública (C-09). Después recordatorios y liberación (C-15 a C-18), indicador de ausentismo (C-19) y cierre con despliegue (C-20).
-- **Si el plazo aprieta**: el orden de recortes está en la sección correspondiente de `CHANGES.md`; la decisión es del Product Owner (Q-01).
+- **Primera entrega**: un único change, `C-00` (`crear-turno-sin-solapamientos`), con el ciclo OPSX completo (DD-33).
+- **Segunda parte**: 20 changes (`C-01` a `C-20`) en 7 fases, más `C-21` (derechos de la Ley 25.326, DD-28).
+- **Camino crítico** (10): `C-01 → C-02 → C-03 → C-06 → C-07 → C-09 → C-16 → C-17 → C-18 → C-20`. Ordena las dependencias; no es un compromiso de fecha (DD-22).
+- **Orden de construcción de la segunda parte (DD-31)**: C-01, C-02, C-03; C-04, C-05 y C-06; C-07; C-08 y C-09; C-15 y C-16; C-11 y C-14; C-10 y C-13; y después, si alcanza el tiempo, C-12, C-17, C-18, C-19 y C-20.
+- **Primer change**: `C-00` (`crear-turno-sin-solapamientos`). `C-01` (`foundation-setup`) es el primero de la segunda parte.
+- **Qué va primero**: autenticación y roles (C-03 a C-05), horarios (C-06), agenda sin solapamientos (C-07) y reserva pública (C-09); enseguida recordatorios y liberación automática (C-15, C-16), que son el motivo del proyecto; después las pantallas (C-11, C-14, C-10, C-13) y, si alcanza el tiempo, el resto.
+- **Flujo de trabajo**: Spec-Driven Development con OpenSpec (ciclo OPSX: explore, propose, apply, verify, archive). No se agregan al repositorio otros flujos ni artefactos de proceso.
 
 **Antes de cualquier `/opsx:propose`**: leé [CHANGES.md](CHANGES.md), identificá las dependencias del change y los archivos de "Leer antes".
 

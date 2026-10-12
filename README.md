@@ -26,11 +26,11 @@ Hoy el consultorio lleva la agenda en papel, planilla o Google Calendar, y confi
 - Cinco roles con permisos (administrador, recepción, profesional, paciente y administrativo) y autorización por atributos.
 - Indicador de ausentismo para el administrador.
 
-Queda fuera de la v1 (backlog): auditoría y consentimiento de datos conforme a la Ley 25.326, lista de espera, seña por Mercado Pago, recall automático, API oficial de WhatsApp, facturación ARCA y obras sociales, odontograma y presupuestos, e importación desde planilla. El detalle está en [`knowledge-base/06_funcionalidades.md`](knowledge-base/06_funcionalidades.md).
+Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de la Ley 25.326 (change C-21 de la segunda parte; el aviso de privacidad y su aceptación ya están en la v1), lista de espera, seña por Mercado Pago, recall automático, API oficial de WhatsApp, facturación ARCA y obras sociales, odontograma y presupuestos, e importación desde planilla. El detalle está en [`knowledge-base/06_funcionalidades.md`](knowledge-base/06_funcionalidades.md).
 
 ## Estado del proyecto
 
-- **Entrega del MVP completo:** 2026-10-19.
+- **Entrega en dos partes:** la primera el 2026-10-19, con los changes completos y verificados a esa fecha; la segunda, con el resto. Se entrega el repositorio de GitHub.
 - **Fundación terminada:** descubrimiento de producto, base de conocimiento, roadmap de 20 changes, skills y reglas del proyecto.
 - **En curso:** propuesta del primer change, `c-01-foundation-setup`, lista en `openspec/changes/`.
 - **Código:** todavía no hay código ejecutable. El entorno local con Docker Compose se crea en el change C-01, y esta sección se completa ahí con los comandos reales.
@@ -117,7 +117,7 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
 ├── README.md                    Este archivo
 ├── AGENTS.md / CLAUDE.md        Instrucciones y reglas duras para los agentes (copias idénticas)
 ├── CHANGES.md                   Roadmap: 20 changes, dependencias y camino crítico
-├── knowledge-base/              Fuente de verdad del dominio (13 archivos)
+├── knowledge-base/              Fuente de verdad del dominio (14 archivos)
 ├── discovery/                   Descubrimiento de producto, análisis de mercado y exploración técnica
 ├── openspec/                    Changes de SDD (propuestas, especificaciones, diseño y tareas)
 └── .claude/
@@ -131,7 +131,7 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
 |-----------|-----------|
 | [`knowledge-base/README.md`](knowledge-base/README.md) | Índice de la base de conocimiento y convenciones de códigos (`RN-NN`, `US-NNN`, `DD-NN`, `SU-NN`, `Q-NN`) |
 | [`knowledge-base/01_vision_y_objetivos.md`](knowledge-base/01_vision_y_objetivos.md) | Propósito, alcance y casos de uso |
-| [`knowledge-base/05_reglas_de_negocio.md`](knowledge-base/05_reglas_de_negocio.md) | Reglas de negocio RN-01 a RN-63 |
+| [`knowledge-base/05_reglas_de_negocio.md`](knowledge-base/05_reglas_de_negocio.md) | Reglas de negocio RN-01 a RN-65 |
 | [`knowledge-base/08_arquitectura_propuesta.md`](knowledge-base/08_arquitectura_propuesta.md) | Arquitectura, patrones y variables de entorno |
 | [`knowledge-base/10_preguntas_abiertas.md`](knowledge-base/10_preguntas_abiertas.md) | Preguntas abiertas que bloquean changes concretos |
 | [`CHANGES.md`](CHANGES.md) | Plan de implementación y orden de recortes si el plazo aprieta |
