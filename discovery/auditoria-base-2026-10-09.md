@@ -4,7 +4,7 @@ Fecha: 2026-10-09. Objetivo: commit `44d3cdc` (rama `docs/skills-usage-notes`). 
 
 Alcance: `knowledge-base/` (13 archivos), `CHANGES.md`, `AGENTS.md` y `CLAUDE.md`, `openspec/changes/c-01-foundation-setup/`, `discovery/exploracion-tecnica.md`, `discovery/evaluacion-skills.md`, `README.md` y el estado del orquestador.
 
-Estado: rondas 1 y 2 aplicadas el 2026-10-11, sin commitear y rejuzgadas (ver "Rejuicio acotado de la ronda 1" y "Rejuicio acotado de la ronda 2"). RK-01 a RK-11 corregidos en la ronda 3 y rejuzgados (ver "Rejuicio acotado de la ronda 3"). RL-01 a RL-10 corregidos en la ronda 4 y rejuzgados (ver "Rejuicio acotado de la ronda 4"). RM-01 a RM-04 corregidos en la ronda 5 y rejuzgados; R5-01 y R5-02 corregidos en la ronda 6 y rejuzgados: un juez sin hallazgos y el otro con una sugerencia preexistente (R6-01). JD-06 a JD-31 y las sugerencias originales siguen sin corregir. El responsable autorizó las rondas que hagan falta. La etapa de implementación sigue en pausa.
+Estado al 2026-10-12: JD-01 a JD-08, JD-10 a JD-16, JD-18, JD-19 y JD-21 a JD-31 corregidos, y también las sugerencias originales y R6-01 (ver "Cierre del 2026-10-12"). JD-09, JD-17 y JD-20 quedan diferidos a la segunda parte de la entrega, con su motivo. Las correcciones del 2026-10-12 pasaron por un rejuicio de dos jueces a ciegas (ver "Rejuicio del cierre del 2026-10-12"); sus 12 hallazgos, F1 a F12, se corrigieron en la misma fecha y esas correcciones todavía no pasaron por otro rejuicio. Las rondas 1 a 6 del 2026-10-11 se commitearon en `dec6517` y `a68e208`. La etapa de implementación sigue en pausa hasta que el responsable la habilite.
 
 ## Cómo leer el libro
 
@@ -232,3 +232,112 @@ Fecha: 2026-10-11. Objetivo: el delta de la ronda 6 (sha256 `fd681bfc56aab970…
 - Abiertos: JD-06 a JD-31 (salvo lo anterior), las sugerencias originales y R6-01.
 - Ninguna prueba se ejecutó: son documentos. El comportamiento de bloqueos de PostgreSQL de RM-01 está inferido de su semántica documentada.
 - Las elecciones de los agentes y del orquestador que el responsable todavía no confirmó figuran como SU-42 a SU-47 en la KB 09.
+
+## Cierre del 2026-10-12
+
+Fecha: 2026-10-12. Aplicado por el orquestador sobre `a68e208`, en la rama `docs/foundation-audit-closeout`, sin commitear. El responsable pidió sanear todo antes de implementar C-01 y tomó cada decisión de producto de a una. Verificaciones ejecutadas: `openspec validate c-01-foundation-setup --strict` (válido) y `cmp AGENTS.md CLAUDE.md` (idénticos). Estas correcciones las revisaron después dos jueces (ver "Rejuicio del cierre del 2026-10-12", al final).
+
+### Decisiones del responsable
+
+| Decisión | Hallazgos y preguntas que cierra | Contenido |
+|----------|----------------------------------|-----------|
+| DD-22 | JD-16, Q-01 | La fecha del 2026-10-19 no se mueve y los 20 changes se mantienen. La entrega es en dos partes: la primera, el repositorio de GitHub con los changes completos y verificados a esa fecha (referencia: fases 0 a 3); la segunda, el resto. La primera parte no exige el sistema publicado. |
+| DD-23 | JD-25 | Clave primaria `bigint` con identidad en todas las tablas. |
+| DD-24 | JD-27, Q-14 | Un rol por usuario; la agenda de un profesional puede pertenecer a una cuenta de administrador, que además responde los sobreturnos de su propia agenda. |
+| DD-25 | JD-12, JD-28, Q-16 | Token de acceso de 15 minutos y de renovación de 7 días; enlaces de 24 horas y 30 minutos; contraseña de 8 caracteres como mínimo; 5 ingresos fallidos en 15 minutos bloquean el par cuenta y origen (tabla `intento_ingreso`), nunca la cuenta entera. |
+| DD-26 | JD-10, Q-28 | Frontend y API en el mismo origen: la API sirve el frontend compilado y el proxy de Vite lo resuelve en desarrollo; cookie con `SameSite=Strict`; sin Cloudflare Pages. Modifica DD-13. |
+| DD-27 | Q-06, Q-11 | Inicios cada 15 minutos; el personal ajusta la duración de un turno puntual; el paciente reserva hasta 60 días y con 2 turnos activos como máximo (RN-64). |
+| DD-28 | JD-18 | Aviso de privacidad y aceptación obligatoria en el registro (RN-65); el circuito de derechos de la Ley 25.326 pasa al change nuevo C-21, en la segunda parte. Borrador del aviso en `knowledge-base/13`, sin revisión legal. |
+| DD-29 | JD-24 | Los correos de cuenta usan como máximo 150 de los 500 diarios; los de turnos conservan el resto. |
+| DD-30 | JD-13, Q-04 | El profesional recibe el aviso del sobreturno y no tiene veto; el alta es `POST /sobreturnos`, que crea el turno y su autorización en una transacción. |
+
+### Correcciones sin decisión de producto
+
+| ID | Corrección |
+|----|------------|
+| JD-06 | Las claves foráneas hacia `turno` de `token_usuario` y `notificacion` las agrega la migración de C-07, que crea esa tabla. |
+| JD-07 | `turno_es_modificable` es falsa también para `ausente`; C-04 lo prueba. |
+| JD-08 | Puerta escrita en `AGENTS.md` y `CHANGES.md`: un change no se propone con una pregunta Alta abierta. Q-26, Q-27 y Q-29 pasan a prioridad Alta. Las fases 0 a 3 no tienen ninguna abierta. |
+| JD-11 | Variable opcional `MIGRATIONS_DATABASE_URL` para la conexión directa de las migraciones. La redacción de la regla dura 10 sobre el pooler no se tocó: ver "Pendiente". |
+| JD-14 | `migrate` recibe solo el secreto `database_url`; ningún valor sensible va en `.env`; `scripts/dev_secrets.sh` genera los secretos locales a partir de una sola contraseña. |
+| JD-15 | El registro oculta todo campo secreto de la configuración por su tipo y no por una lista de nombres. |
+| JD-19 | La ruta de salud es `GET /api/v1/health` en todos los documentos; las tablas de la KB 02 y 03 son relativas al prefijo y ya coincidían. |
+| JD-21 | Un `consultorio_id` enviado por el cliente se rechaza con 422 (regla dura 11); ya no se "ignora". |
+| JD-22 | Sin cambios: lo habían resuelto las rondas anteriores (RN-26 advierte la liberación solo cuando RN-60 la permite). |
+| JD-23 | El token de confirmación guarda el ciclo en que se emitió; un enlace anterior a una reprogramación se rechaza. |
+| JD-26 | `nombre_usuario` y `email` normalizados y `dni` solo con dígitos, con `CHECK` en la base. La regla de sincronización del correo entre `usuario` y `paciente` no se definió: ver "Pendiente". |
+| JD-29 | `APP_ENV` obligatoria y sin valor por defecto; `JWT_SECRET_KEY` de 32 bytes como mínimo. |
+| JD-30 | El arranque real del entorno se verifica con `scripts/smoke_compose.sh`, que corre en un job de CI. |
+| JD-31 | `alembic/env.py` y los scripts nacen de tareas con test previo; las tareas estructurales quedan limitadas a archivos de configuración. La regla dura 2 no cambió. |
+| R6-01 | Desvincular y reactivar responden 404 para una ficha que no existe en el consultorio. |
+| Sugerencias | README ampliado y no reemplazado; se quitó la frase que afirmaba que ningún recorte tocaba reglas; regla única de códigos de rechazo en la KB 11 (403 para políticas, 404 para lo ajeno, 409 solo para conflictos de escritura); RN-37 fija que reprogramar es una sola escritura sobre la misma fila; `CHECK` del orden de los plazos del consultorio; enums como `text` con `CHECK` y `naming_convention`; `consultorio.zona_horaria` como única fuente de la zona y ninguna consulta con `now()` de SQL; el token de los enlaces de correo va en el fragmento de la URL; SU-04 confirmada por la regla dura 12; ante dos heads se rebasa y no se usa `alembic merge`; imagen `postgres:17` de Debian, archivo de bloqueo `uv.lock` y `downgrade` que conserva `btree_gist`. |
+| Hueco nuevo | Ningún documento decía qué proceso ejecuta la semilla de C-02: es el servicio `seed` de Compose, de una sola ejecución, que agrega C-02. |
+
+### Diferido a la segunda parte de la entrega
+
+| ID | Motivo |
+|----|--------|
+| JD-09 | Cuota de cómputo de Neon frente al barrido cada 5 minutos (Q-27). Solo importa con el sistema publicado; se decide antes de C-15 y C-20. |
+| JD-17 | Demoras y desactivación del disparador externo (Q-25). Corresponde a C-15, C-16 y C-20. |
+| JD-20 | DD-01 fija Redis como restricción y el plan lo deja opcional; depende de lo que exija la cátedra (Q-29). |
+
+### Sin corregir, con motivo
+
+- Las claves foráneas no incluyen `consultorio_id`: queda como riesgo aceptado mientras haya un solo consultorio activo, con un test de referencia cruzada por change (KB 04).
+- El archivo `.active-orchestrator-state.json` lista skills que la evaluación descartó y conserva el texto original del discovery. Es el estado de una herramienta y un registro histórico; la fuente vigente de skills es la tabla de `AGENTS.md`. No se editó a mano.
+
+### Pendiente con el responsable
+
+- ~~Confirmar o corregir SU-42 a SU-47 (elecciones de los agentes en las rondas 2 a 4).~~ Confirmadas por el responsable el 2026-10-12, sin cambios.
+- ~~Confirmar dos elecciones del orquestador en este cierre: `uv` como herramienta del archivo de bloqueo de Python y el nombre `MIGRATIONS_DATABASE_URL`.~~ Confirmadas por el responsable el 2026-10-12.
+- Redacción de la regla dura 10 (JD-11): hoy nombra `NullPool` como alternativa suficiente detrás de un pooler; el hallazgo dice que además hacen falta nombres de sentencia únicos. No se verificó contra la documentación y una regla dura solo cambia con el responsable.
+- JD-26: regla de sincronización del correo entre la cuenta y la ficha.
+- Rejuicio de este cierre por los dos jueces: hecho (ver la sección siguiente). Las correcciones de F1 a F12 no pasaron por otro rejuicio.
+
+## Rejuicio del cierre del 2026-10-12
+
+Fecha: 2026-10-12. Dos jueces, a ciegas y de solo lectura, sobre las correcciones de "Cierre del 2026-10-12". Los jueces no tuvieron acceso a la web: toda afirmación de mercado que hicieron se apoya solo en los archivos de `discovery/` y no se contrastó con fuentes externas. Las correcciones las aplicó un agente de corrección sobre la rama `docs/foundation-audit-closeout`, sin commitear. Verificaciones ejecutadas al aplicarlas: `openspec validate c-01-foundation-setup --strict` (válido) y `cmp AGENTS.md CLAUDE.md` (idénticos).
+
+### Hallazgos y correcciones
+
+Severidad: F1 crítica; F2 a F11 advertencias; F12 sugerencia preexistente.
+
+| ID | Reportó | Severidad | Corrección aplicada |
+|----|---------|-----------|---------------------|
+| F1 | Ambos jueces | Crítica | La puerta de las preguntas Alta decía que ningún change de las fases 0 a 3 tenía una abierta, pero Q-23, Q-24, Q-26 y Q-29 (Alta) figuraban como riesgo de C-01, C-05, C-07 y C-14. Esas cuatro conciernen al entorno publicado (proveedor y host): en local y en CI PostgreSQL corre como superusuario, el correo va a Mailpit y nada se aloja. La puerta ahora dice que un change no se propone mientras una pregunta Alta bloquee su propio alcance y lista qué bloquea cada una (Q-03: C-16; Q-23, Q-25 y Q-27: C-15, C-16, C-20; Q-24, Q-26 y Q-29: C-20). Las líneas de riesgo de C-01, C-05, C-07 y C-14, la tabla de preguntas de `CHANGES.md`, la tabla y el resumen de dependencias de la KB 10 y la propuesta y el diseño de C-01 dicen lo mismo. |
+| F2 | Ambos jueces | Advertencia | `intento_ingreso`: (a) el intento inserta y confirma su renglón antes de contar, y se documenta que las solicitudes simultáneas superan el límite solo en la cantidad en vuelo, con un test de ingresos fallidos simultáneos en C-03; (b) `LOGIN_MAX_ATTEMPTS_PER_ORIGIN` (20, misma ventana) con su índice `(consultorio_id, origen_hash, creado_en)`, en KB 04, 05, 08, 09 y C-03; (c) el origen compartido de la red del consultorio figura en RN-09 y DD-25; (d) el valor `TRUSTED_PROXY_HOPS=0` detrás de un proxy figura en la lista de la KB 12 y en C-20; (e) C-03 y C-05 purgan al escribir y el barrido de C-15 purga las dos tablas; (f) la propiedad de `ORIGIN_HASH_SECRET` y `TRUSTED_PROXY_HOPS` pasa a C-03 en el diseño de C-01 y en DD-21. |
+| F3 | Ambos jueces | Advertencia | El servicio `seed` carga su propia `SeedSettings` (base de datos, `CONSULTORIO_ACTIVO_ID`, `APP_TIMEZONE`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`) y recibe solo los secretos `database_url` y `bootstrap_admin_password`; `scripts/dev_secrets.sh` genera `bootstrap_admin_password.txt` en C-02, y los secretos obligatorios posteriores se montan solo en `api`. Corregidos C-02, C-03, C-05 y la KB 12. |
+| F4 | Ambos jueces | Advertencia | El esquema de Compose de la KB 12 se presenta como el entorno completo al terminar la v1 (en C-01 solo existen tres secretos), suma el servicio `seed` y da al servicio `frontend` `target: dev`, el puerto 5173 y `VITE_DEV_PROXY_TARGET`. |
+| F5 | Juez A | Advertencia | `.env.example` trae `APP_ENV=development`; `scripts/smoke_compose.sh` y los jobs de CI que usan Compose crean `.env` desde él si no existe, y el job `backend` define `APP_ENV=test`. Corregidos D10 y D13, las tareas 1.2, 7.4 y 8.1 y los escenarios de `local-environment` y `continuous-integration` de C-01. |
+| F6 | Ambos jueces | Advertencia | Restos de DD-26: C-14 ya no promete un sitio estático que responde con la API dormida; `CHANGES.md` ya no lista la cookie entre dominios como abierta; la KB 12 no menciona dominios distintos ni un servidor web aparte para la VM; el Dockerfile del frontend tiene las etapas `dev` y `build` (sin nginx) y CI construye la imagen del backend y `--target build` del frontend; `VITE_DEV_PROXY_TARGET` entra en el catálogo de la KB 08 y en C-11. |
+| F7 | Ambos jueces | Advertencia | La regla de códigos de la KB 11 pasa a tres cláusulas explícitas (404 si revelar la existencia expone datos; 403 si solo se deniega la acción; 409 para conflictos con el estado de los datos al escribir) y cada ejemplo cita la cláusula que aplica; C-04 y el flujo 8 (turno de otra agenda: 404) quedan alineados. |
+| F8 | Ambos jueces | Advertencia | `turno.fin` admite la duración fijada por el personal; reprogramar conserva la duración actual y el paciente queda sujeto a la grilla y a los 60 días (RN-37, RN-64, C-07, C-09, KB 07); el máximo de turnos activos es atómico por el bloqueo de la fila del paciente, con un test de dos reservas simultáneas en C-09; C-07 prueba los límites de RN-64 para el personal. |
+| F9 | Ambos jueces | Advertencia | El backend guarda el texto y la versión del aviso y los sirve en `GET /publico/aviso-privacidad`; el frontend muestra lo que devuelve la API y reenvía la versión mostrada; los datos del responsable salen de `consultorio`; una prueba con `APP_ENV=production` falla si queda un marcador entre corchetes. `CHECK (rol <> 'paciente' OR aviso_privacidad_aceptado_en IS NOT NULL)` en `usuario`, y `POST /usuarios` rechaza el rol `paciente` con 422 (C-06). La KB 13 deja de afirmar que no se cede a terceros. |
+| F10 | Ambos jueces | Advertencia | Textos desactualizados tras DD-24 (US-006, C-06), DD-30 (flujo 7 y Q-04), RN-65 (KB 04, 08, 09, 01 y README), la KB 04 (entidad, diagrama y mapa de reglas con `intento_ingreso`, RN-09, RN-64 y RN-65), la KB 12 (se rebasa, no se usa `alembic merge`) y C-21 (árbol y tablas de `CHANGES.md`; primera línea de `AGENTS.md` y `CLAUDE.md`). |
+| F11 | Juez B | Advertencia | La redacción de logs no oculta valores secretos vacíos ni de menos de 4 caracteres (spec, D5 y tarea 3.2, con escenario); el error de arranque usa `hide_input_in_errors=True` y su mensaje lista solo nombres de campo (spec, D4, D5 y tarea 3.2). |
+| F12 | Juez A (preexistente) | Sugerencia | La restricción de exclusión omite los sobreturnos: la disponibilidad los trata como ocupados y el caso de uso rechaza con 409 un turno regular que se les superponga (KB 04, RN-17, C-07, C-09 y sus tests); la carrera simultánea queda como riesgo residual documentado. |
+
+### Veredicto de mercado
+
+Los dos jueces coinciden en que el núcleo de agenda está alineado con la brecha que identifica el análisis competitivo: prevención de solapamientos, sobreturnos controlados y autogestión del paciente. Los dos advierten que la primera parte de la entrega (fases 0 a 3) deja afuera los recordatorios automáticos, la confirmación y la liberación, que el análisis competitivo presenta como estándar del mercado y que son el motivo del proyecto. Esa advertencia no cambia DD-22 (decisión del dueño): queda registrada como el costo de entregar en dos partes. Como los jueces no pudieron consultar la web, el veredicto se apoya solo en `discovery/` y no se contrastó con fuentes externas.
+
+### Elecciones de redacción del corrector a confirmar
+
+- Un intento de ingreso bloqueado también deja su renglón (consecuencia de insertar antes de contar): quien insiste prolonga su propio bloqueo.
+- F9: la prueba de producción sobre los marcadores se escribe contra un consultorio de fixture completo (pasa en CI) y se repite contra el consultorio sembrado en la lista de C-20, para que no quede en rojo durante la primera parte.
+- F5: el corrector había definido `APP_ENV=test` en el job `backend` de CI porque `app = create_app()` validaba la configuración al importar `app.main`. El orquestador lo reemplazó después: la aplicación ya no se construye al importar (ver abajo).
+
+### Decisiones del responsable posteriores al rejuicio
+
+| Decisión | Qué cierra | Contenido |
+|----------|------------|-----------|
+| DD-31 | El reparo de los dos jueces sobre la primera parte | Orden de construcción: C-01, C-02, C-03; C-04, C-05 y C-06; C-07; C-08 y C-09; C-15 y C-16; C-11 y C-14; C-10 y C-13; después, si alcanza el tiempo, C-12, C-17, C-18, C-19 y C-20. Los recordatorios y la liberación automática entran en la primera parte; solo se posterga C-12. C-10 no se posterga porque C-13 depende de él. |
+| DD-32 | Q-03 | Un turno creado o reprogramado con menos de `horas_confirmacion` de anticipación nace `confirmado`: sin solicitud de confirmación, sin liberación automática y sin marca "sin confirmar" (RN-29). |
+
+Aplicadas por el orquestador después de la pasada del corrector, junto con tres puntos que el corrector dejó señalados: la ventana `LOGIN_LOCKOUT_MINUTES` no puede superar 1.440 minutos; la aplicación no se construye al importar `app.main` (Uvicorn usa `--factory`), así que las pruebas y la integración continua no necesitan variables de configuración para importar el módulo; y la severidad de F2 a F12 quedó clasificada. Estas últimas ediciones no pasaron por un rejuicio. Con DD-32 no queda ninguna pregunta de prioridad Alta abierta que bloquee un change que se construye en local; las abiertas (Q-23 a Q-27 y Q-29) son del entorno publicado y bloquean C-20.
+
+### Reorientación de la primera entrega
+
+El 2026-10-12 el responsable contrastó el plan con la consigna del Trabajo de Integración de Metodología I y confirmó que esa consigna es lo que se entrega en la primera parte. Decisión DD-33: la primera entrega es la fundación, el informe de Discovery y un único change, `crear-turno-sin-solapamientos` (C-00), con el ciclo OPSX completo; el trabajo se hace con Spec-Driven Development y OpenSpec, sin otros flujos. Los changes C-01 a C-20 y C-21, con todo lo saneado en esta auditoría, pasan a ser el plan de la segunda parte. El responsable confirmó además `uv`, el nombre `MIGRATIONS_DATABASE_URL` y los supuestos SU-42 a SU-47.
+
+Brechas frente a la consigna, pendientes: el informe de Discovery debe estar en `docs/discovery/informe-discovery.md` y en PDF, con portada, resumen ejecutivo, las celdas sin respaldo con el texto "No evidenciado", la sección "Verificación de fuentes" y las referencias; la verificación de al menos cinco fuentes la hace el responsable; el roadmap debe quedar alineado con el MVP de la sección D del informe; el video de defensa y la reflexión escrita son del responsable.
