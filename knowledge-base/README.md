@@ -10,7 +10,7 @@ Base de conocimiento generada a partir del Discovery confirmado (`discovery/disc
 | [02_descripcion_general.md](02_descripcion_general.md) | Stack obligatorio, arquitectura general, integraciones externas y resumen de la API REST. |
 | [03_actores_y_roles.md](03_actores_y_roles.md) | Actores, matriz RBAC de cinco roles, permisos y rutas públicas. |
 | [04_modelo_de_datos.md](04_modelo_de_datos.md) | Entidades con `consultorio_id`, ERD en Mermaid, restricciones (solapamientos, DNI único), datos semilla y catálogo inicial de prestaciones. |
-| [05_reglas_de_negocio.md](05_reglas_de_negocio.md) | Reglas RN-01 a RN-58 por dominio: cuentas, agenda, turnos, confirmación y liberación, cancelación, sobreturnos, ausentismo, pacientes, comunicación y protección de datos. |
+| [05_reglas_de_negocio.md](05_reglas_de_negocio.md) | Reglas RN-01 a RN-63 por dominio: cuentas, agenda, turnos, confirmación y liberación, cancelación, sobreturnos, ausentismo, pacientes, comunicación y protección de datos. |
 | [06_funcionalidades.md](06_funcionalidades.md) | Historias de usuario por épica, con versión (v1 o backlog), criterios de aceptación y trazabilidad con los casos de uso. |
 | [07_flujos_principales.md](07_flujos_principales.md) | Diez flujos extremo a extremo con diagramas de secuencia y estados: registro, ingreso, reserva, confirmación, liberación, cancelación, sobreturno, ausencias, WhatsApp e indicador. |
 | [08_arquitectura_propuesta.md](08_arquitectura_propuesta.md) | Patrones, estructura de directorios, trabajos en segundo plano, seguridad, variables de entorno y estrategia de pruebas. |

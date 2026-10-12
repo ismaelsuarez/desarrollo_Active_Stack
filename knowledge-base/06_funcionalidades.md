@@ -23,10 +23,15 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 - [ ] El formulario pide nombre y apellido, teléfono, correo, DNI, obra social (opcional), usuario y contraseña.
 - [ ] La contraseña se almacena solo como hash y no se muestra ni se registra.
 - [ ] Se crea la cuenta con rol `paciente` y la ficha de paciente asociada.
-- [ ] Si el DNI ya tiene una ficha creada por Recepción, no se vincula en forma automática (RN-49) y se informa al paciente.
+- [ ] Si el DNI ya tiene una ficha, no se crea una segunda ni se vincula en forma automática: se guarda una solicitud de vinculación con el DNI declarado (RN-49, RN-62).
+- [ ] La respuesta y el correo de verificación son idénticos exista o no el DNI. Esto no impide deducir, desde el rechazo de la reserva de una cuenta con el correo verificado, que un DNI ya figuraba en el consultorio: riesgo residual aceptado y acotado (RN-62, DD-19).
+- [ ] El registro tiene un límite de solicitudes por origen (la dirección del cliente tomada del encabezado de reenvío con la cantidad de saltos de proxy de la configuración; sin origen, rige un límite global; se guarda solo su hash con clave y se purga a las 24 horas) y responde 429 al superarlo; el intento cuenta aunque después falle la validación o el registro (RN-62, DD-21).
+- [ ] Un paciente con un DNI nuevo reserva por su cuenta, sin pasar por Recepción.
+- [ ] Dos registros simultáneos con el mismo DNI nuevo dejan una sola ficha y una solicitud, con la misma respuesta para ambos.
+- [ ] El formulario no envía el consultorio: lo resuelve el servidor (RN-59).
 - [ ] Se envía el correo de verificación.
 
-**Reglas relacionadas**: RN-01, RN-04, RN-47, RN-48, RN-49
+**Reglas relacionadas**: RN-01, RN-04, RN-47, RN-48, RN-49, RN-58, RN-59, RN-62
 
 ### US-002 — Verificar el correo (v1)
 **Como** paciente
@@ -190,8 +195,9 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 - [ ] Si otro paciente toma el mismo horario antes, se muestra un aviso y alternativas.
 - [ ] Se programan los hitos de confirmación, recordatorio y liberación.
 - [ ] El paciente recibe un correo con el resumen del turno.
+- [ ] Una cuenta sin ficha (solicitud de vinculación `pendiente` o `rechazada`) no puede reservar y recibe un mensaje de que debe comunicarse con el consultorio para verificar su cuenta, sin mención del DNI (RN-62).
 
-**Reglas relacionadas**: RN-13, RN-17, RN-23, RN-24, RN-29
+**Reglas relacionadas**: RN-13, RN-17, RN-23, RN-24, RN-29, RN-62
 
 ### US-015 — Ver mis turnos (v1)
 **Como** paciente
@@ -226,6 +232,7 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 - [ ] La acción está disponible solo hasta 24 horas antes del inicio.
 - [ ] Pasado el plazo se muestra el teléfono del consultorio.
 - [ ] El hueco queda libre de inmediato y el turno queda `cancelado` con registro de quién y cuándo.
+- [ ] El paciente recibe un correo que confirma la cancelación, que comunica algo ya ocurrido y no se omite porque el turno ya esté `cancelado`.
 
 **Reglas relacionadas**: RN-22, RN-33, RN-35, RN-36
 
@@ -237,7 +244,7 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Criterios de aceptación**:
 - [ ] Solo se ofrecen horarios válidos.
 - [ ] Si el nuevo horario no está disponible, el turno original se mantiene.
-- [ ] El turno vuelve a `pendiente` y se reinician los hitos.
+- [ ] El turno vuelve a `pendiente`, se reinician los hitos (las notificaciones `programada` o `preparada` de solicitud de confirmación y de recordatorio del ciclo anterior pasan a `omitida`, en todos los canales) y se limpia la marca "sin confirmar" (RN-32).
 - [ ] El cambio queda en el historial.
 
 **Reglas relacionadas**: RN-32, RN-33, RN-37
@@ -317,15 +324,18 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 
 ### US-025 — Resolver turnos sin confirmar (v1)
 **Como** Recepción
-**Quiero** ver la lista de turnos "sin confirmar" cuando el consultorio está en modo manual
+**Quiero** ver la lista de turnos "sin confirmar" cuando el consultorio está en modo manual, o cuando un turno no cumplió las condiciones de la liberación automática
 **Para** decidir si llamo al paciente o libero el turno
 
 **Criterios de aceptación**:
 - [ ] A las 12 horas, un turno `pendiente` en modo manual queda marcado "sin confirmar" y no se libera.
+- [ ] En modo automático, un turno cuya solicitud de confirmación no fue enviada queda marcado "sin confirmar" y no se libera (RN-60). Dentro del mismo ciclo no se vuelve a evaluar para la liberación automática aunque esa solicitud se envíe después: decide Recepción.
+- [ ] El barrido no selecciona ni marca un turno `pendiente` cuyo inicio ya pasó, y no lo reevalúa en cada barrido; ese turno se marca `atendido` o `ausente` (RN-44).
+- [ ] Al reprogramar un turno marcado, la marca se limpia y sale de la lista (RN-32).
 - [ ] Recepción puede confirmar, cancelar o liberar el turno desde la lista.
 - [ ] Liberar deja el turno en `liberado` y el hueco disponible.
 
-**Reglas relacionadas**: RN-28, RN-22, RN-29
+**Reglas relacionadas**: RN-28, RN-22, RN-29, RN-32, RN-44, RN-60
 
 ## Épica 6: Agenda del profesional
 
@@ -386,9 +396,9 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Criterios de aceptación**:
 - [ ] El correo se envía automáticamente a los turnos `pendiente` 48 horas antes.
 - [ ] Incluye el enlace para confirmar y el plazo de liberación.
-- [ ] El envío queda registrado y es idempotente.
+- [ ] El envío queda registrado; dos barridos simultáneos nunca envían la misma notificación y, ante una caída entre el envío y su registro, el correo puede repetirse (entrega al menos una vez, RN-61).
 
-**Reglas relacionadas**: RN-25, RN-29, RN-30, RN-54
+**Reglas relacionadas**: RN-25, RN-29, RN-30, RN-54, RN-61
 
 ### US-031 — Recordatorio 24 horas antes (v1)
 **Como** paciente
@@ -397,9 +407,9 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 
 **Criterios de aceptación**:
 - [ ] El recordatorio se envía 24 horas antes a los turnos `pendiente` y `confirmado`.
-- [ ] Para los `pendiente`, el texto advierte la liberación si no se confirma.
+- [ ] Para los `pendiente`, el texto advierte la liberación solo si ese turno puede liberarse de forma automática (RN-60); en otro caso solo le pide que confirme.
 
-**Reglas relacionadas**: RN-26, RN-54
+**Reglas relacionadas**: RN-26, RN-54, RN-60
 
 ### US-032 — Liberación automática de turnos sin confirmar (v1)
 **Como** Recepción
@@ -407,11 +417,13 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Para** reutilizar el hueco
 
 **Criterios de aceptación**:
-- [ ] En modo automático el turno `pendiente` pasa a `liberado` 12 horas antes.
-- [ ] El hueco queda disponible y el paciente recibe un aviso.
+- [ ] En modo automático el turno `pendiente` pasa a `liberado` 12 horas antes, solo si la solicitud de confirmación de su ciclo actual está `enviada` y el turno todavía no comenzó (RN-60).
+- [ ] Si la solicitud falló, fue omitida o sigue `programada` o `enviando`, el turno queda `pendiente` con la marca "sin confirmar" para que decida Recepción.
+- [ ] Un turno cuyo inicio ya pasó queda fuera de la selección del barrido y nunca se libera de forma automática (la actualización condicional también exige que no haya comenzado).
+- [ ] El hueco queda disponible y el paciente recibe un aviso, que no se omite por estar el turno `liberado` (comunica ese hecho).
 - [ ] En modo manual no se libera (ver US-025).
 
-**Reglas relacionadas**: RN-20, RN-22, RN-27, RN-28
+**Reglas relacionadas**: RN-20, RN-22, RN-27, RN-28, RN-60
 
 ### US-033 — Mensaje de WhatsApp con un clic (v1)
 **Como** Recepción
@@ -435,6 +447,7 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 - [ ] Una cancelación o reprogramación hecha por el personal genera un correo al paciente.
 - [ ] Se prepara también el mensaje de WhatsApp para Recepción.
 - [ ] La resolución de turnos afectados por una excepción (RN-16) usa el mismo aviso.
+- [ ] El aviso comunica algo que ya ocurrió, así que no se omite porque el turno ya esté cancelado o reprogramado; solo la solicitud de confirmación y el recordatorio dependen del estado y el ciclo del turno ("Vigencia por tipo" en [04](04_modelo_de_datos.md)).
 
 **Reglas relacionadas**: RN-16, RN-34, RN-54
 
@@ -492,10 +505,46 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Para** evitar fichas duplicadas
 
 **Criterios de aceptación**:
-- [ ] La vinculación es manual y queda registrada.
-- [ ] Una ficha ya vinculada a una cuenta no se puede vincular a otra.
+- [ ] Recepción ve la lista de solicitudes de vinculación (DNI declarado, correo de la cuenta y si está verificado, ficha existente) y puede consultar todas, sin filtrar por estado, para detectar intentos sospechosos. En una solicitud `vinculada`, la lista muestra la ficha vinculada.
+- [ ] El detalle de la ficha muestra a Recepción y Administrador la cuenta vinculada (identificador, nombre de usuario, correo y si está verificado) o nada si no tiene cuenta; el Profesional no recibe datos de la cuenta (RN-63).
+- [ ] La vinculación es manual, se resuelve desde la solicitud (vincular con la ficha elegida o rechazar con motivo opcional) y queda registrada con quién y cuándo.
+- [ ] Una ficha ya vinculada a una cuenta, una ficha inactiva o una cuenta con el correo sin verificar no se pueden vincular (409). Vincular bloquea primero la fila de la ficha elegida y escribe después la solicitud (por el estado que Recepción vio) y la ficha (activa y sin cuenta), las dos de forma condicional y en una sola transacción: una solicitud ya vinculada responde 409, y dos vínculos simultáneos sobre la misma ficha, o de la misma solicitud con dos fichas, dejan uno solo y el otro recibe 409 sin cambiar nada, tampoco el estado de su solicitud. Un interbloqueo o un fallo de serialización del motor (`40P01`, `40001`) también responde 409, y una ficha que no existe en el consultorio responde 404.
+- [ ] Al rechazar, si el correo de la cuenta está verificado, el paciente recibe un correo que le pide comunicarse con el consultorio, sin el motivo ni el DNI; con el correo sin verificar no se envía ningún correo y la cuenta, al verificar, ve el rechazo de la reserva (403).
+- [ ] Después de un rechazo, Recepción puede vincular la cuenta con la ficha correcta o crear una ficha nueva y vincularla; el paciente no reintenta por su cuenta.
+- [ ] Si la ficha correcta está ocupada por otra cuenta o inactiva, Recepción dispone de una salida (US-041, US-042).
+- [ ] Hasta que se vincula, la cuenta no puede reservar en línea.
 
-**Reglas relacionadas**: RN-48, RN-49
+**Reglas relacionadas**: RN-48, RN-49, RN-62, RN-63
+
+### US-041 — Desvincular una cuenta de una ficha (v1)
+**Como** Recepción
+**Quiero** desvincular una cuenta de paciente de su ficha, indicando el motivo
+**Para** corregir un vínculo hecho por error o la ficha que tomó otra persona, sin perder la ficha ni sus turnos
+
+**Criterios de aceptación**:
+- [ ] Solo Recepción y Administrador desvinculan (`paciente.desvincular`); Profesional y Paciente reciben 403.
+- [ ] Antes de desvincular, Recepción ve qué cuenta tiene la ficha en el detalle de la ficha (US-039).
+- [ ] El motivo es obligatorio; sin motivo se rechaza (422).
+- [ ] La ficha conserva sus datos y sus turnos; la cuenta queda sin ficha y no puede reservar (403 con el mensaje de que debe comunicarse con el consultorio, sin mencionar el DNI).
+- [ ] Los refresh tokens de la cuenta se revocan en la misma transacción: no puede renovar su sesión. El token de acceso ya emitido sigue válido hasta vencer (JD-12, sin corregir), pero no le da acceso a la ficha ni a sus turnos: el token nunca lleva la ficha y el vínculo vigente se lee en cada solicitud (RN-06, RN-63).
+- [ ] La solicitud de la cuenta queda `rechazada` con el motivo, quién lo hizo, cuándo y de qué ficha se la desvinculó; si la cuenta no tenía solicitud, se crea. No se envía ningún correo.
+- [ ] Una ficha sin cuenta responde 409; dos desvinculaciones simultáneas de la misma ficha dejan una sola y la otra recibe 409.
+- [ ] La cuenta desvinculada se puede vincular de nuevo con la ficha correcta (US-039).
+
+**Reglas relacionadas**: RN-02, RN-06, RN-62, RN-63
+
+### US-042 — Reactivar una ficha inactiva (v1)
+**Como** Recepción
+**Quiero** reactivar una ficha inactiva
+**Para** poder vincularle la cuenta de su titular
+
+**Criterios de aceptación**:
+- [ ] Solo Recepción y Administrador reactivan (`paciente.reactivar`); Profesional y Paciente reciben 403.
+- [ ] La ficha pasa a `activo = true` sin cambiar sus datos ni sus turnos; reactivar una ficha ya activa responde 409.
+- [ ] Con la ficha reactiva, vincular la cuenta funciona (US-039).
+- [ ] La v1 no tiene ninguna acción que desactive una ficha: `activo = false` solo existe para fichas cargadas o corregidas fuera de la aplicación, y reactivar sirve para recuperarlas (SU-47).
+
+**Reglas relacionadas**: RN-47, RN-63
 
 ## Épica 9: Indicadores
 

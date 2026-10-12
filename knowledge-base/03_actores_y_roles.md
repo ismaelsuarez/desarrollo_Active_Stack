@@ -34,6 +34,8 @@ Convención de permisos:
 | Excepciones y bloqueos de agenda | C R U | R | R* (propio) | — (se expone como disponibilidad) | Res. |
 | Catálogo de prestaciones | C R U | R | R | R (datos públicos) | Res. |
 | Pacientes (ficha) | C R U | C R U | R* (solo de su agenda) | R U* (solo la propia) | Res. |
+| Solicitudes de vinculación de cuenta (RN-62) | R U | R U | — | — | Res. |
+| Vínculo cuenta-ficha: ver la cuenta vinculada, desvincular una cuenta y reactivar una ficha inactiva (RN-63) | R U | R U | — | — | Res. |
 | Agenda (vista) | R (todas) | R (todas) | R* (solo la propia) | — | Res. |
 | Turnos | C R U X* | C R U X* | R* (solo propios), U* (estado) | C R* U* X* (solo propios) | Res. |
 | Autorización de sobreturno | C R | C R | R* (los que le afectan), U* (respuesta) | — | — |
@@ -45,12 +47,14 @@ Notas:
 
 - **Profesional** `U*` sobre turnos significa únicamente marcar `atendido` o `ausente` en turnos de su agenda (RN-38). No crea, mueve ni cancela turnos.
 - **Paciente** `C` sobre turnos significa reservar para sí mismo. `U*` es reprogramar y `X*` cancelar, ambos sujetos a la ventana de 24 horas (RN-33).
+- **Solicitudes de vinculación**: las crea el sistema al registrarse un paciente con un DNI que ya tiene ficha. `R` es ver la lista (con o sin el filtro de estado); `U` es resolverlas: vincular la cuenta con la ficha elegida o rechazar la solicitud, tras verificar la identidad, también para una solicitud ya rechazada (RN-49, RN-62). Cuando la solicitud está `vinculada`, la lista devuelve la ficha vinculada (identificador, nombre y apellido). Endpoints: `GET /solicitudes-vinculacion?estado=`, `POST /solicitudes-vinculacion/{id}/vincular` y `POST /solicitudes-vinculacion/{id}/rechazar`.
+- **Vínculo cuenta-ficha** (RN-63): `R` es ver la cuenta vinculada a una ficha: el detalle de la ficha (`GET /pacientes/{id}`) devuelve a Recepción y Administrador el identificador, el nombre de usuario, el correo y si está verificado, o nada si la ficha no tiene cuenta; el Profesional y el Paciente no reciben datos de la cuenta y no se devuelve ningún otro dato (minimización, RN-58). `U` es desvincular la cuenta de una ficha, con un motivo obligatorio (la ficha conserva datos y turnos, la cuenta queda sin ficha y se revocan sus sesiones renovables), y reactivar una ficha inactiva, que la v1 solo puede tener por datos cargados o corregidos fuera de la aplicación (no hay una acción que desactive una ficha, SU-47). Endpoints: `POST /pacientes/{id}/desvincular` y `POST /pacientes/{id}/reactivar`. Acciones `paciente.desvincular` y `paciente.reactivar` en [11](11_politicas_de_acceso_abac.md).
 - **Recepción** no administra horarios ni excepciones en la v1; ver pregunta abierta en [10](10_preguntas_abiertas.md).
 - **Administrativo**: todas las celdas son reservadas. Cuando existan sus funciones se completará la matriz.
 
 ## Rutas públicas
 
-Accesibles sin autenticación. Todas son de lectura, o bien parte del ciclo de alta, ingreso y recuperación de cuenta.
+Accesibles sin autenticación. Todas son de lectura, o bien parte del ciclo de alta, ingreso y recuperación de cuenta. En estas rutas no hay sesión y el cliente nunca envía el `consultorio_id`. El criterio es el tipo de flujo y no el prefijo de la ruta: una ruta que recibe un token de un solo uso enviado por correo, o un token de renovación (`POST /auth/verificar-email`, `POST /auth/restablecer-password`, `POST /turnos/confirmar-por-enlace`, `POST /auth/refresh`), toma el consultorio de la fila a la que apunta el token; las demás rutas sin token (`POST /auth/login`, `POST /auth/registro`, `POST /auth/reenviar-verificacion`, `POST /auth/recuperar-password` y las lecturas públicas `/publico/*`) toman el único consultorio activo de la v1 desde la configuración del servidor, con una sola dependencia (RN-59, DD-16).
 
 ### API (prefijo `/api/v1`)
 
@@ -89,6 +93,6 @@ El resto de las rutas del frontend requiere sesión y se resuelve según el rol.
 |-----|-----------------------|
 | Paciente | Mis turnos, reservar, reprogramar, cancelar, mi cuenta |
 | Profesional | Agenda del día propia, detalle del turno, responder aviso de sobreturno |
-| Recepción | Agenda de todos los profesionales, alta y movimiento de turnos, sin confirmar, sobreturnos, notificaciones y WhatsApp, pacientes |
+| Recepción | Agenda de todos los profesionales, alta y movimiento de turnos, sin confirmar, sobreturnos, notificaciones y WhatsApp, pacientes, solicitudes de vinculación de cuenta y vínculo cuenta-ficha (desvincular, reactivar) |
 | Administrador | Todo lo de Recepción más profesionales, horarios, bloqueos, prestaciones, usuarios, parámetros del consultorio e indicador de ausentismo |
 | Administrativo | Sin pantallas en la v1 |

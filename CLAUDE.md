@@ -15,10 +15,10 @@ Stack obligatorio (restricción del proyecto). Las versiones se fijan al crear e
 |------|-------------|---------------|
 | Frontend | React, TypeScript, Vite | SPA. Idioma de la interfaz: español (Argentina). |
 | Backend | Python, FastAPI | API REST. Documentación OpenAPI generada por FastAPI. |
-| Autenticación | JWT (PyJWT, HS256) y pwdlib con Argon2 | Los claims incluyen el rol (también `paciente`) y `consultorio_id`. |
+| Autenticación | JWT (PyJWT, HS256) y pwdlib con Argon2 | Los claims incluyen el rol (también `paciente`) y `consultorio_id`; nunca la ficha ni el identificador del paciente (RN-06). |
 | ORM | SQLAlchemy 2.x asíncrono (asyncpg) | Acceso a datos mediante repositorios. Migraciones con Alembic. |
 | Base de datos | PostgreSQL (Neon en producción) | Restricción de exclusión para impedir solapamientos. |
-| Trabajos programados | Barrido idempotente dentro de la API, con candado en PostgreSQL | Recordatorios, liberación automática y envío de correo. Un disparador HTTP externo lo activa cada 5 minutos. Redis es opcional. |
+| Trabajos programados | Barrido idempotente dentro de la API, con reclamación por fila en PostgreSQL | Recordatorios, liberación automática y envío de correo. Un disparador HTTP externo lo activa cada 5 minutos. Redis es opcional. |
 | Contenedores | Docker, Docker Compose | Entorno local; el despliegue usa servicios gratuitos. |
 | Correo | SMTP de una cuenta existente (`aiosmtplib`) | Confirmaciones y recordatorios. |
 | Presupuesto | Cero | Solo servicios gratuitos o con plan gratuito. |
@@ -38,7 +38,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [02_descripcion_general.md](knowledge-base/02_descripcion_general.md) | Stack, arquitectura general, integraciones y API REST |
 | [03_actores_y_roles.md](knowledge-base/03_actores_y_roles.md) | Auth, RBAC, permisos |
 | [04_modelo_de_datos.md](knowledge-base/04_modelo_de_datos.md) | Entidades, ERD, migraciones |
-| [05_reglas_de_negocio.md](knowledge-base/05_reglas_de_negocio.md) | Reglas codificadas (RN-01 a RN-58) |
+| [05_reglas_de_negocio.md](knowledge-base/05_reglas_de_negocio.md) | Reglas codificadas (RN-01 a RN-63) |
 | [06_funcionalidades.md](knowledge-base/06_funcionalidades.md) | Historias de usuario por épica |
 | [07_flujos_principales.md](knowledge-base/07_flujos_principales.md) | Flujos extremo a extremo |
 | [08_arquitectura_propuesta.md](knowledge-base/08_arquitectura_propuesta.md) | Patrones, estructura, trabajos en segundo plano, variables de entorno |
@@ -47,7 +47,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [11_politicas_de_acceso_abac.md](knowledge-base/11_politicas_de_acceso_abac.md) | Cuatro atributos ABAC y matriz rol × acción × atributo |
 | [12_devops_y_despliegue.md](knowledge-base/12_devops_y_despliegue.md) | Compose, hosting gratuito, SMTP, disparador del barrido |
 
-> ⚠️ Las preguntas de prioridad **Alta** de `10_preguntas_abiertas.md` se resuelven antes del change que bloquean: Q-01 (qué recortar si no hay plazo) y Q-03 a Q-06 afectan a la rebanada vertical (C-05 a C-10); Q-23 a Q-25 afectan a C-05, C-15 y C-20; Q-28 afecta a C-03, C-11 y C-20. Las suposiciones `SU-NN` no están confirmadas: tratarlas como hipótesis.
+> ⚠️ Las preguntas de prioridad **Alta** de `10_preguntas_abiertas.md` se resuelven antes del change que bloquean: Q-01 (qué recortar si no hay plazo) y Q-03, Q-04 y Q-06 afectan a la rebanada vertical (C-05 a C-10); Q-23 a Q-25 afectan a C-05, C-15 y C-20; Q-28 afecta a C-03, C-11 y C-20. Las suposiciones `SU-NN` no están confirmadas: tratarlas como hipótesis.
 
 ---
 
@@ -83,7 +83,7 @@ Mandan sobre el `SKILL.md`. Viven en este archivo, que está versionado, porque 
 | `tdd` | **Conflicto con el TDD estricto**: dice que el refactor no es parte del ciclo y pide confirmar los puntos de prueba con el usuario. Gana el ciclo RED, GREEN, TRIANGULATE, REFACTOR del orquestador. |
 | `docker-compose-patterns` | Prefiere `compose.yaml`; el proyecto usa `docker-compose.yml` y manda el proyecto. |
 | `vercel-react-best-practices` | 19 de sus 70 reglas son de Next.js o de componentes de servidor: ignorar las reglas `server-*` (SPA con Vite). |
-| `supabase-postgres-best-practices` | Ignorar las reglas de RLS con `auth.uid()`. Su regla de advisory locks enseña candados de sesión: en el pooler de Neon usar `pg_try_advisory_xact_lock` o la conexión directa. |
+| `supabase-postgres-best-practices` | Ignorar las reglas de RLS con `auth.uid()`. Su regla de advisory locks enseña candados de sesión: en el pooler de Neon no usarlos; el proyecto usa la reclamación por fila con `FOR UPDATE SKIP LOCKED` (regla dura 9). |
 | `postgresql-table-design` | No dice que `btree_gist` hace falta para el `=` escalar en restricciones de exclusión GiST: agregarlo a mano (ver `alembic`). |
 | `security-best-practices` | Prefiere `SameSite=Lax`, que interactúa con la pregunta abierta Q-28 (cookie de renovación entre dominios): decidirlo con el usuario. Usarla solo ante un pedido explícito de seguridad. |
 | `accessibility` | Sus ejemplos usan `lang="en"`; el idioma de la interfaz es `es-AR`. |
@@ -114,7 +114,7 @@ El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
 Reglas específicas de este proyecto, confirmadas con el usuario. Son contrato; romperlas es un defecto.
 
-1. NUNCA tomar `consultorio_id` del cliente → leerlo siempre del `Principal` del token (RN-55).
+1. NUNCA tomar `consultorio_id` del cliente → leerlo del `Principal` del token cuando hay token. Sin token la regla es por tipo de flujo: una ruta que recibe un token enviado por correo o de renovación (verificación de correo, restablecimiento de contraseña, `POST /turnos/confirmar-por-enlace`, `/auth/refresh`) lo toma de la fila a la que apunta el token; las demás (`/auth/login`, `/auth/registro`, reenvío de verificación, recuperación de contraseña y las lecturas `/publico/*`) lo resuelve el servidor desde su configuración (`CONSULTORIO_ACTIVO_ID`, variable obligatoria) con una única dependencia (RN-55, RN-59).
 2. NUNCA escribir código de producción sin un test que falle antes → ciclo RED, GREEN, TRIANGULATE, REFACTOR, con tests de comportamiento (RN-NN y US-NNN).
 3. NUNCA mockear la base en tests de repositorios ni de restricciones → PostgreSQL real en contenedor, no SQLite.
 4. NUNCA usar `datetime.now()` ni `utcnow()` en dominio o políticas → el puerto `Reloj`, `timestamptz` y zona `America/Argentina/Buenos_Aires`.
@@ -122,7 +122,7 @@ Reglas específicas de este proyecto, confirmadas con el usuario. Son contrato; 
 6. NUNCA autorizar ad hoc dentro de un router → RBAC como dependencias y ABAC como funciones puras con el reloj inyectado ([KB 11](knowledge-base/11_politicas_de_acceso_abac.md)).
 7. NUNCA confiar en el autogenerate para la restricción anti-solapamiento → crearla a mano tras `CREATE EXTENSION IF NOT EXISTS btree_gist`, con un test de dos turnos solapados, y traducir `23P01` a "horario ocupado".
 8. NUNCA dejar más de un head de Alembic → rebasar antes de archivar y usar `alembic upgrade head`, nunca `heads`.
-9. NUNCA crear un worker persistente ni usar Celery → barrido idempotente en la API con `pg_try_advisory_xact_lock` o `SELECT ... FOR UPDATE SKIP LOCKED`; nunca candados de sesión (no funcionan en el pooler de Neon); Redis solo opcional.
+9. NUNCA crear un worker persistente ni usar Celery → barrido idempotente en la API con reclamación por fila (`SELECT ... FOR UPDATE SKIP LOCKED`, estado intermedio `enviando` y envío fuera de la transacción; resultado escrito solo si la fila sigue `enviando` con la reclamación propia; entrega al menos una vez, RN-61); nunca candados de sesión como `pg_try_advisory_lock` (no funcionan en el pooler de Neon) ni un candado global del barrido; Redis solo opcional.
 10. NUNCA compartir una `AsyncSession` entre tareas → una sesión por solicitud, `expire_on_commit=False`, y detrás de un pooler `prepared_statement_cache_size=0` o `NullPool`.
 11. NUNCA aceptar un esquema Pydantic de entrada sin `extra='forbid'` → rechazar los campos no declarados.
 12. NUNCA usar `any` en TypeScript → tipado estricto, componentes en PascalCase con contenedor, presentacional y átomos (SU-04).

@@ -23,15 +23,15 @@ Entre lo verificado no existe un stack gratuito con API, PostgreSQL, Redis y un 
 | Frontend | Cloudflare Pages (sitio estático) | El enlace público siempre responde, aunque la API esté dormida. |
 | API | Servicio web gratuito (proveedor por decidir, Q-24) | Contiene el barrido de hitos en proceso. Se duerme por inactividad en los planes gratuitos conocidos. |
 | Base de datos | PostgreSQL en Neon | `btree_gist` figura como soportado [V]. Plan gratuito permanente de 1 GB. |
-| Redis | Opcional (Upstash) o sustituido por el candado de PostgreSQL | La base de datos es la fuente de verdad de lo programado; ver abajo. |
+| Redis | Opcional (Upstash) o sustituido por la reclamación por fila en PostgreSQL | La base de datos es la fuente de verdad de lo programado; ver abajo. |
 | Disparador del barrido | Llamada HTTP externa cada 5 minutos | `POST /internal/barrido`, autenticada con un secreto compartido. |
 | Correo | SMTP o API HTTPS de correo, según el puerto permitido por el host | Ver "Configuración de correo". |
 
 Reglas de diseño del barrido ([08](08_arquitectura_propuesta.md)):
 
-- La tabla `notificacion` sigue siendo la fuente de verdad y el barrido es **idempotente**; repetirlo o dispararlo dos veces no duplica efectos.
+- La tabla `notificacion` sigue siendo la fuente de verdad y el barrido es **idempotente**; repetirlo o dispararlo dos veces no duplica los cambios de estado ni los envíos concurrentes. La entrega de correo es al menos una vez: una caída entre el envío y el registro del resultado puede repetir un correo (RN-61).
 - El puerto `Planificador` oculta el disparador: en producción es la llamada HTTP externa; en local o en una VM puede ser un bucle `asyncio` propio. El caso de uso del barrido es el mismo.
-- El candado contra ejecuciones simultáneas es `pg_try_advisory_lock` o `SELECT ... FOR UPDATE SKIP LOCKED` en PostgreSQL. Redis, si se despliega, es auxiliar (por ejemplo para límites de intentos).
+- Contra ejecuciones simultáneas no hay un candado global: cada fila se reclama por separado con `SELECT ... FOR UPDATE SKIP LOCKED` en PostgreSQL (estado intermedio `enviando` y hora de reclamación), el envío SMTP ocurre fuera de la transacción y el resultado se registra en otra transacción corta, condicionada a que la fila siga `enviando` con la misma `reclamada_en` que fijó ese envío (DD-17, RN-61). No se usan candados de sesión (`pg_try_advisory_lock`): no son fiables detrás del pooler de Neon. La entrega es al menos una vez: una caída entre el envío y el registro puede repetir un correo. Redis, si se despliega, es auxiliar (por ejemplo para límites de intentos).
 - El endpoint `/internal/barrido` exige el secreto compartido (variable `SWEEP_SHARED_SECRET`, sensible) y no es parte de la API pública.
 
 ### Datos verificados de proveedores (consulta del 2026-10-05)
@@ -108,6 +108,7 @@ services:
     env_file: .env
     secrets:
       - jwt_secret_key
+      - origin_hash_secret
     depends_on:
       db:
         condition: service_healthy
@@ -118,6 +119,7 @@ services:
     env_file: .env
     secrets:
       - jwt_secret_key
+      - origin_hash_secret
       - smtp_password
       - sweep_shared_secret
     depends_on:
@@ -152,6 +154,8 @@ secrets:
     file: ./secrets/postgres_password.txt
   jwt_secret_key:
     file: ./secrets/jwt_secret_key.txt
+  origin_hash_secret:
+    file: ./secrets/origin_hash_secret.txt
   smtp_password:
     file: ./secrets/smtp_password.txt
   sweep_shared_secret:
@@ -164,7 +168,7 @@ volumes:
 Notas del esquema:
 
 - `depends_on` usa `condition: service_healthy` y `service_completed_successfully`; los perfiles separan los servicios de desarrollo.
-- Los secretos se montan en `/run/secrets/<nombre>`; la configuración de la aplicación los lee de ahí cuando existen. En un hosting se cargan desde su almacén de secretos. La carpeta `secrets/` no se versiona.
+- Los secretos se montan en `/run/secrets/<nombre>`; la configuración de la aplicación los lee de ahí cuando existen. `migrate` y `api` comparten imagen y ambos cargan `Settings`, así que ambos reciben los secretos que `Settings` exige para arrancar (`jwt_secret_key` y `origin_hash_secret`). En un hosting se cargan desde su almacén de secretos. La carpeta `secrets/` no se versiona.
 - `restart: unless-stopped` va en todos los servicios de ejecución prolongada.
 - El endpoint de salud de la API (`/health`, nombre a confirmar al implementar) existe para el `healthcheck`.
 - Las versiones de las imágenes se fijan al crear el proyecto.
@@ -181,7 +185,7 @@ Criterios para elegir el proveedor del servicio web de la API (a verificar con l
 | Salida SMTP permitida | Render gratuito bloquea los puertos 25, 465 y 587. Si el proveedor elegido también los bloquea, se necesita una API HTTPS de correo `[NV]` (Q-23). |
 | Contenedores Docker o proceso web | La API se despliega como servicio web. No se exige un proceso aparte siempre activo. |
 | HTTPS con dominio o subdominio del proveedor | Obligatorio para el enlace público y los enlaces de los correos. |
-| Variables de entorno y secretos | Para `JWT_SECRET_KEY`, `SMTP_PASSWORD`, `SWEEP_SHARED_SECRET` y la conexión a la base de datos. |
+| Variables de entorno y secretos | Para `JWT_SECRET_KEY`, `SMTP_PASSWORD`, `SWEEP_SHARED_SECRET`, `ORIGIN_HASH_SECRET` y la conexión a la base de datos. |
 | Dominio respecto del frontend | Define la estrategia de cookies (ver abajo). |
 
 Topologías consideradas:
@@ -208,7 +212,7 @@ Correo automático desde una cuenta existente, por ejemplo Gmail con contraseña
 
 Límites verificados:
 
-- **Gmail personal:** 500 correos por día, con bloqueo de entre 1 y 24 horas al excederlo. Workspace: 2.000 por día. El sistema documenta el tope de 500 por día y **alerta al 80 %** (el contador diario se lleva en el sistema).
+- **Gmail personal:** 500 correos por día, con bloqueo de entre 1 y 24 horas al excederlo. Workspace: 2.000 por día. El sistema documenta el tope de 500 por día y **alerta al 80 %** (el contador diario se lleva en el sistema). Se verifica antes de cada reclamación que enviaría un correo: con el tope alcanzado el barrido no reclama más correos, que siguen `programada` sin consumir intentos, ni reclama de nuevo una `enviando` vencida. El conteo del día suma las filas de canal `email` `enviada` con `enviada_en` dentro del día en la zona del consultorio y las que están `enviando` con la reclamación vigente (no vencida); pasar una reclamación vencida a `omitida` o a `fallida` no envía nada y no se frena por el tope (detalle en [04](04_modelo_de_datos.md)).
 - **Puertos bloqueados por algunos hosts:** Render gratuito bloquea la salida por 25, 465 y 587. Entonces Gmail por SMTP no es utilizable desde ese host.
 - **Posible API HTTPS de correo `[NV]`:** si el host elegido bloquea SMTP, hará falta un servicio de correo con API HTTPS. No se verificó ningún proveedor ni su plan gratuito; es la pregunta abierta Q-23. El puerto `EnviadorCorreo` permite cambiar el adaptador sin tocar los casos de uso.
 
@@ -235,6 +239,9 @@ El catálogo completo está en [08](08_arquitectura_propuesta.md). Resumen de la
 | `SMTP_PASSWORD` | vacío | Contraseña de aplicación (secreto) |
 | `JWT_SECRET_KEY` | valor de prueba | Valor aleatorio largo, único del entorno |
 | `SWEEP_SHARED_SECRET` | valor de prueba | Valor aleatorio largo, compartido con el disparador externo |
+| `ORIGIN_HASH_SECRET` | Obligatoria. Valor de prueba | Obligatoria. Valor aleatorio largo, único del entorno |
+| `TRUSTED_PROXY_HOPS` | `0` (el encabezado de reenvío se ignora) | La cantidad real de proxies de confianza delante de la API en el host elegido (por ejemplo `1`; a verificar con el host, Q-24) |
+| `CONSULTORIO_ACTIVO_ID` | Obligatoria. Identificador del consultorio de la semilla local (por ejemplo `1`) | Obligatoria. Identificador del consultorio sembrado en Neon (RN-59) |
 | `CORS_ORIGINS` | `http://localhost:5173` | Dominio público de reserva |
 | `FRONTEND_BASE_URL` | `http://localhost:5173` | Dominio público de reserva |
 | `OPENAPI_DOCS_ENABLED` | `true` | `false` |
@@ -250,10 +257,10 @@ Archivos:
 
 - El **barrido** corre dentro del proceso de la API. En producción lo dispara una llamada HTTP externa cada 5 minutos a `POST /internal/barrido` con el secreto compartido. Candidatos para el disparador: GitHub Actions (`schedule`, intervalo mínimo de 5 minutos [V]) y Cloudflare Workers (5 cron triggers en el plan gratuito [V]; su frecuencia mínima no se verificó `[NV]`). Quién lo opera es la pregunta Q-25.
 - En local o en una VM, el mismo caso de uso puede ejecutarse con un bucle `asyncio` propio detrás del puerto `Planificador`.
-- Al reiniciar o tras una caída del disparador, el barrido procesa lo vencido sin duplicar efectos (idempotencia de [08](08_arquitectura_propuesta.md)).
+- Al reiniciar o tras una caída del disparador, el barrido procesa lo vencido sin duplicar los cambios de estado (idempotencia de [08](08_arquitectura_propuesta.md)).
 - **Zona horaria:** los contenedores se ejecutan en UTC; la zona `America/Argentina/Buenos_Aires` se aplica en la lógica de negocio y en la presentación (SU-02, SU-36).
-- **Una sola ejecución del barrido a la vez:** el candado de PostgreSQL (`pg_try_advisory_lock` o `SKIP LOCKED`) evita duplicados si llegan dos disparos o hay más de una instancia de la API.
-- **Indicadores operativos mínimos:** cantidad de notificaciones `fallida`, antigüedad de la notificación `programada` más vieja (debería ser pequeña), estado del último barrido y envíos del día frente al tope de 500.
+- **Dos barridos a la vez no procesan la misma fila:** la reclamación por fila (`SKIP LOCKED`, estado `enviando`) evita envíos concurrentes duplicados si llegan dos disparos o hay más de una instancia de la API; ambos barridos pueden correr a la vez. Una reclamación abandonada se revisa al vencer `NOTIFICATION_CLAIM_TTL_SECONDS`, con la misma validación de vigencia por tipo que la primera reclamación y respetando el máximo de intentos y el tope diario (solo reenvía si no se alcanzó); el resultado de un envío lento que perdió la reclamación se descarta.
+- **Indicadores operativos mínimos:** cantidad de notificaciones `fallida`, antigüedad de la notificación `programada` más vieja (debería ser pequeña), cantidad de filas en `enviando` y antigüedad de la más vieja (una reclamación que supera `NOTIFICATION_CLAIM_TTL_SECONDS` sin retomarse indica un barrido caído), estado del último barrido y envíos del día frente al tope de 500.
 
 ## Migraciones, respaldo y recuperación
 
@@ -274,8 +281,10 @@ No hay requisito explícito de integración continua en las fuentes. Mínimo rec
 ## Lista de verificación previa a publicar el enlace público
 
 - [ ] HTTPS activo y `CORS_ORIGINS` y `FRONTEND_BASE_URL` apuntan al dominio público.
-- [ ] `JWT_SECRET_KEY`, `SWEEP_SHARED_SECRET` y la contraseña de SMTP cargados como secretos, no en el repositorio.
+- [ ] `JWT_SECRET_KEY`, `SWEEP_SHARED_SECRET`, `ORIGIN_HASH_SECRET` y la contraseña de SMTP cargados como secretos, no en el repositorio.
+- [ ] `TRUSTED_PROXY_HOPS` coincide con la cantidad de proxies de confianza delante de la API en el host elegido; se comprueba que un encabezado `X-Forwarded-For` enviado por el cliente no cambia el origen que ve la API (si no, el límite de registros por origen no sirve).
 - [ ] Neon con `btree_gist` habilitado; migraciones aplicadas (un único head) y datos semilla cargados.
+- [ ] `CONSULTORIO_ACTIVO_ID` (obligatoria) está definida y apunta al consultorio sembrado en Neon.
 - [ ] Prestaciones y duraciones confirmadas por el consultorio (SU-23).
 - [ ] Profesionales, boxes, horarios y feriados cargados.
 - [ ] Prueba real de verificación de correo, confirmación y recuperación de contraseña desde el host elegido (confirma que la salida SMTP o la API de correo funcionan).
