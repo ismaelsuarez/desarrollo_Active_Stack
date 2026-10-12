@@ -1,6 +1,6 @@
 # Funcionalidades
 
-Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN). Cada historia indica su versión: **v1** (entra en el MVP del 2026-10-19) o **backlog** (diferida). Los criterios de aceptación son verificables y alimentan las especificaciones de los changes.
+Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN). Cada historia indica su versión: **v1** (entra en el MVP, que se entrega en dos partes a partir del 2026-10-19, DD-22) o **backlog** (diferida). Los criterios de aceptación son verificables y alimentan las especificaciones de los changes.
 
 ## Trazabilidad con los casos de uso confirmados
 
@@ -21,6 +21,7 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 
 **Criterios de aceptación**:
 - [ ] El formulario pide nombre y apellido, teléfono, correo, DNI, obra social (opcional), usuario y contraseña.
+- [ ] El formulario muestra el aviso de privacidad que devuelve la API (`GET /publico/aviso-privacidad`: texto y versión) y una casilla de aceptación sin marcar; sin marcarla no se puede enviar, y la cuenta guarda la fecha y la versión aceptada (RN-65).
 - [ ] La contraseña se almacena solo como hash y no se muestra ni se registra.
 - [ ] Se crea la cuenta con rol `paciente` y la ficha de paciente asociada.
 - [ ] Si el DNI ya tiene una ficha, no se crea una segunda ni se vincula en forma automática: se guarda una solicitud de vinculación con el DNI declarado (RN-49, RN-62).
@@ -52,7 +53,7 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 
 **Criterios de aceptación**:
 - [ ] El ingreso devuelve un JWT con usuario, `consultorio_id` y rol, y una sesión renovable.
-- [ ] Tras varios intentos fallidos la cuenta se bloquea de forma temporal.
+- [ ] Tras 5 intentos fallidos en 15 minutos, el ingreso de esa cuenta desde ese origen se bloquea de forma temporal, y 20 intentos fallidos en esa ventana desde un mismo origen bloquean los ingresos de ese origen; el mensaje sigue siendo el genérico y la cuenta no queda bloqueada para otros orígenes (RN-09).
 - [ ] El mensaje de error no distingue entre usuario inexistente y contraseña incorrecta.
 - [ ] Un paciente con correo sin verificar no ingresa.
 
@@ -89,8 +90,8 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Para** que cada persona acceda solo a lo que le corresponde
 
 **Criterios de aceptación**:
-- [ ] Se pueden crear usuarios con los roles `administrador`, `recepcion`, `profesional` y `administrativo`.
-- [ ] Un usuario `profesional` se asocia a un profesional de la agenda.
+- [ ] Se pueden crear usuarios con los roles `administrador`, `recepcion`, `profesional` y `administrativo`; crear una cuenta con rol `paciente` se rechaza con 422 (el paciente se autorregistra, RN-01, RN-65).
+- [ ] Un profesional de la agenda se asocia a una cuenta de rol `profesional` o `administrador`; el administrador con agenda propia conserva sus permisos (DD-24).
 - [ ] Desactivar un usuario impide su ingreso y conserva su historial.
 - [ ] Cada usuario tiene un único rol.
 
@@ -192,12 +193,13 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 
 **Criterios de aceptación**:
 - [ ] El turno se crea `pendiente` con la duración de la prestación.
+- [ ] Los horarios se ofrecen cada `minutos_granularidad` desde el inicio de cada bloque y hasta `dias_anticipacion_maxima` días; un horario fuera de la grilla o del plazo se rechaza (422) y un paciente no puede superar `max_turnos_activos_paciente` turnos activos (409): la reserva bloquea la fila del paciente para que el máximo valga con reservas simultáneas (RN-64).
 - [ ] Si otro paciente toma el mismo horario antes, se muestra un aviso y alternativas.
 - [ ] Se programan los hitos de confirmación, recordatorio y liberación.
 - [ ] El paciente recibe un correo con el resumen del turno.
 - [ ] Una cuenta sin ficha (solicitud de vinculación `pendiente` o `rechazada`) no puede reservar y recibe un mensaje de que debe comunicarse con el consultorio para verificar su cuenta, sin mención del DNI (RN-62).
 
-**Reglas relacionadas**: RN-13, RN-17, RN-23, RN-24, RN-29, RN-62
+**Reglas relacionadas**: RN-13, RN-17, RN-23, RN-24, RN-29, RN-62, RN-64
 
 ### US-015 — Ver mis turnos (v1)
 **Como** paciente
@@ -242,9 +244,10 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Para** adaptarlo a mi disponibilidad
 
 **Criterios de aceptación**:
-- [ ] Solo se ofrecen horarios válidos.
+- [ ] Solo se ofrecen horarios válidos; uno fuera de la grilla o a más de `dias_anticipacion_maxima` días se rechaza (RN-64).
+- [ ] El turno conserva su duración actual al reprogramarse (RN-64).
 - [ ] Si el nuevo horario no está disponible, el turno original se mantiene.
-- [ ] El turno vuelve a `pendiente`, se reinician los hitos (las notificaciones `programada` o `preparada` de solicitud de confirmación y de recordatorio del ciclo anterior pasan a `omitida`, en todos los canales) y se limpia la marca "sin confirmar" (RN-32).
+- [ ] El turno vuelve a `pendiente` (o queda `confirmado` si el horario nuevo está a menos de `horas_confirmacion`, RN-29), se reinician los hitos (las notificaciones `programada` o `preparada` de solicitud de confirmación y de recordatorio del ciclo anterior pasan a `omitida`, en todos los canales) y se limpia la marca "sin confirmar" (RN-32).
 - [ ] El cambio queda en el historial.
 
 **Reglas relacionadas**: RN-32, RN-33, RN-37
@@ -269,7 +272,7 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Para** resolver cambios del paciente o del consultorio
 
 **Criterios de aceptación**:
-- [ ] No hay límite de anticipación para el personal.
+- [ ] No hay límite de anticipación para el personal; el nuevo inicio cae en la grilla y el turno conserva su duración actual salvo que el personal fije otra (RN-64).
 - [ ] Un turno `atendido` no se puede mover.
 - [ ] Se notifica al paciente del cambio (US-034).
 
@@ -303,7 +306,7 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 **Para** evitar el desorden en la atención
 
 **Criterios de aceptación**:
-- [ ] Un turno que se superpone a otro activo del mismo profesional es rechazado.
+- [ ] Un turno que se superpone a otro activo del mismo profesional es rechazado; también el turno regular que se superpone a un sobreturno activo (409), que controla la aplicación porque la restricción de la base no mira sobreturnos (RN-17).
 - [ ] La verificación se hace en la base de datos y soporta reservas concurrentes.
 - [ ] `cancelado` y `liberado` no bloquean el horario.
 
@@ -566,7 +569,7 @@ En el orden de prioridad acordado.
 
 | ID | Historia | Versión | Notas |
 |----|----------|---------|-------|
-| US-B01 | Auditoría y consentimiento de datos conforme a la Ley 25.326 | backlog (1) | Planificada, diferida de la v1. Riesgo: se almacenan datos personales desde la v1 (RN-58). |
+| US-B01 | Auditoría y consentimiento de datos conforme a la Ley 25.326 | backlog (1) | Planificada como change C-21 para la segunda parte de la entrega (DD-28). La v1 ya incluye el aviso de privacidad y la aceptación en el registro (RN-65). |
 | US-B02 | Lista de espera con relleno automático de huecos por cancelación | backlog (2) | |
 | US-B03 | Seña o pago por Mercado Pago al reservar | backlog (3) | |
 | US-B04 | Recall automático de controles periódicos | backlog (4) | |

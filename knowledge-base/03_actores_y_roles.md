@@ -13,7 +13,7 @@
 | Servidor SMTP | Servicio externo de envío de correo. | Recibe los mensajes que genera el barrido (y los correos de cuenta que envía la API). |
 | WhatsApp de Recepción | Canal externo operado por una persona. | Recepción abre el enlace con el mensaje prellenado y lo envía. |
 
-Nombres de rol en el código: `administrador`, `recepcion`, `profesional`, `paciente`, `administrativo`. Cada usuario tiene exactamente un rol (RN-08).
+Nombres de rol en el código: `administrador`, `recepcion`, `profesional`, `paciente`, `administrativo`. Cada usuario tiene exactamente un rol (RN-08). La agenda de un profesional puede pertenecer a una cuenta de rol `administrador` cuando el administrador también atiende (DD-24).
 
 ## RBAC — Matriz de permisos
 
@@ -62,6 +62,7 @@ Accesibles sin autenticación. Todas son de lectura, o bien parte del ciclo de a
 |------|-----------|
 | `GET /health` | Verificación de estado del servicio |
 | `GET /publico/consultorio` | Nombre, teléfono y datos de contacto del consultorio (el teléfono se muestra cuando el paciente ya no puede autogestionar, RN-33) |
+| `GET /publico/aviso-privacidad` | Texto y versión vigentes del aviso de privacidad, con el nombre, el domicilio y el contacto del consultorio; el registro exige aceptar esa versión (RN-65) |
 | `GET /publico/prestaciones` | Prestaciones activas con su duración |
 | `GET /publico/profesionales` | Profesionales activos (nombre y apellido) |
 | `GET /publico/disponibilidad` | Horarios libres por profesional y prestación (sin datos de otros pacientes) |

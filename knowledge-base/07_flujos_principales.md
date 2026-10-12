@@ -49,7 +49,7 @@ La marca "sin confirmar" del modo manual no es un estado: es `marcado_sin_confir
 2. Frontend envía `POST /auth/registro` sin consultorio: la API lo resuelve con su configuración (RN-59). API aplica el límite de solicitudes por origen (el origen, su hash y el límite global cuando no hay origen están en RN-62 y DD-21; cada solicitud que pasa el límite deja un renglón en `intento_registro`, que se confirma antes de que empiece la transacción del registro, en la misma sesión, para que el intento cuente aunque después falle la validación o el registro) y valida formato y unicidad de usuario y correo dentro del consultorio. Un DNI ya existente no es un error de campo (RN-49).
 3. API crea `usuario` (rol `paciente`, `email_verificado = false`, contraseña hasheada) e inserta la ficha de `paciente` con `INSERT ... ON CONFLICT (consultorio_id, dni) DO NOTHING`, de modo que la transacción sobreviva a un DNI repetido. Si insertó la ficha (DNI nuevo), el paciente reserva por su cuenta. Si no insertó nada (el DNI ya tiene ficha, con o sin cuenta, o la creó otro registro simultáneo), no crea una segunda ficha ni vincula: guarda una `solicitud_vinculacion` en estado `pendiente` con el DNI declarado (RN-49, RN-62). La respuesta y el correo de verificación son idénticos en ambos casos, de modo que el registro no dice si el DNI ya era paciente. Esto no cierra del todo la fuga: ver el caso de error de la reserva y las medidas que la acotan (RN-62, DD-19).
 4. API genera un token de verificación de un solo uso, guarda su hash en `token_usuario` y programa el correo en `notificacion` (`verificacion_email`).
-5. La API intenta enviar de inmediato el correo por SMTP (mismo caso de uso que el barrido; si falla, el siguiente barrido lo reintenta) con el enlace `FRONTEND_BASE_URL/verificar-email?token=...`.
+5. La API intenta enviar de inmediato el correo por SMTP (mismo caso de uso que el barrido; si falla, el siguiente barrido lo reintenta) con el enlace `FRONTEND_BASE_URL/verificar-email#token=...`. El token va en el fragmento de la URL y no en la query: el navegador no envía el fragmento al servidor ni en el encabezado `Referer`, así que no queda en los logs de acceso; la pantalla lo lee y lo envía en el cuerpo de un `POST`. Lo mismo vale para los enlaces de recuperación de contraseña y de confirmación de turno.
 6. El paciente abre el enlace. Frontend envía `POST /auth/verificar-email`.
 7. API valida el token (existe, no usado, no vencido; el consultorio sale de la fila del token, RN-59), marca `email_verificado` y `usado_en`.
 8. Frontend redirige a `/login`.
@@ -111,7 +111,7 @@ sequenceDiagram
 
 **Pasos de ingreso**:
 1. Frontend envía `POST /auth/login` con usuario y contraseña, sin consultorio: la API lo resuelve con su configuración (RN-59).
-2. API aplica la limitación de intentos (RN-09), verifica el hash y, para pacientes, que el correo esté verificado.
+2. API inserta el intento y aplica la limitación (RN-09: cuenta los intentos del par cuenta y origen y los del origen; si superan el límite, responde el mismo 401 genérico sin verificar la contraseña), verifica el hash y, para pacientes, que el correo esté verificado.
 3. API devuelve el JWT de acceso (usuario, `consultorio_id`, rol) y una sesión renovable (RN-06).
 4. Frontend resuelve las pantallas según el rol.
 
@@ -123,7 +123,7 @@ sequenceDiagram
 
 **Casos de error**:
 - Credenciales inválidas → mensaje genérico, se cuenta el intento.
-- Cuenta bloqueada temporalmente → mensaje con aviso de reintento posterior.
+- Par cuenta y origen bloqueado, o límite del origen alcanzado → el mismo 401 genérico, sin aviso de bloqueo; el bloqueo termina solo (RN-09, DD-25).
 - Token de recuperación vencido o usado → se ofrece pedir uno nuevo.
 
 ## Flujo 3: Reserva online
@@ -134,11 +134,11 @@ sequenceDiagram
 **Pasos**:
 1. Frontend consulta `GET /publico/prestaciones` y `GET /publico/profesionales` (el consultorio lo resuelve la API, RN-59).
 2. El paciente elige prestación y profesional. Frontend consulta `GET /publico/disponibilidad`.
-3. API calcula los huecos: horario semanal del profesional, menos excepciones, menos turnos activos, con la duración de la prestación (RN-11 a RN-14, RN-17).
+3. API calcula los huecos: horario semanal del profesional, menos excepciones, menos turnos activos (incluidos los sobreturnos activos, que cuentan como ocupado), con la duración de la prestación, con inicios cada `minutos_granularidad` desde el inicio de cada bloque y hasta `dias_anticipacion_maxima` días (RN-11 a RN-14, RN-17, RN-64).
 4. El paciente elige un horario. Si no tiene sesión, ingresa o se registra (flujos 1 y 2) y vuelve a la elección.
 5. Frontend envía `POST /turnos`. API aplica la política (`turno.crear`: paciente solo para sí, correo verificado).
-6. API inserta el turno `pendiente` con `fin = inicio + duración` y el box del profesional. La restricción de exclusión de la BD resuelve la concurrencia (RN-24).
-7. API registra en `turno_historial`, programa en `notificacion` los hitos de confirmación (T-48 h), recordatorio (T-24 h) y evalúa la liberación (T-12 h). Los hitos ya vencidos se omiten (RN-29).
+6. En una sola transacción, API bloquea la fila del paciente (`SELECT ... FOR UPDATE` filtrado por `consultorio_id`), verifica que no tenga ya `max_turnos_activos_paciente` turnos activos (RN-64) e inserta el turno `pendiente` con `fin = inicio + duración` y el box del profesional. La restricción de exclusión de la BD resuelve la concurrencia (RN-24).
+7. API registra en `turno_historial`, programa en `notificacion` los hitos de confirmación (T-48 h), recordatorio (T-24 h) y evalúa la liberación (T-12 h). Si faltan menos de `horas_confirmacion` para el inicio, el turno nace `confirmado`, no se programa la solicitud de confirmación y solo se programa el recordatorio si todavía no venció (RN-29).
 8. API programa en `notificacion` el correo con el resumen del turno (`resumen_reserva`, aviso de algo que ya ocurrió: siempre vigente) y lo despacha.
 
 ```mermaid
@@ -168,9 +168,11 @@ sequenceDiagram
 **Casos de error**:
 - Horario tomado entre la consulta y la reserva → 409 con alternativas (RN-24).
 - Fuera de horario o sobre un bloqueo → 422 (RN-14).
+- Horario fuera de la grilla o más allá de `dias_anticipacion_maxima` → 422; el paciente ya tiene el máximo de turnos activos → 409 con el máximo (RN-64).
+- Horario cubierto por un sobreturno activo → 409 horario ocupado (RN-17; lo controla el caso de uso).
 - Correo sin verificar → se ofrece el reenvío (RN-02).
 - Cuenta sin ficha (solicitud de vinculación `pendiente` o `rechazada`) → 403 con el mensaje de que debe comunicarse con el consultorio para verificar su cuenta (RN-62).
-- Reserva dentro de una ventana de hitos ya vencidos → el turno se crea y los hitos vencidos se omiten (RN-29).
+- Reserva con menos de `horas_confirmacion` de anticipación → el turno se crea `confirmado` y sin solicitud de confirmación; los hitos vencidos se omiten (RN-29).
 
 ## Flujo 4: Confirmación y recordatorio
 
@@ -230,7 +232,7 @@ sequenceDiagram
 **Casos de error**:
 - El paciente confirma justo antes de la liberación → la transición es idempotente y condicional: solo libera si el estado sigue `pendiente`.
 - Dos barridos simultáneos evalúan el mismo turno → solo una actualización condicional afecta la fila y se escribe una sola fila de historial.
-- El turno se creó con menos de 12 horas de anticipación → no se libera de forma automática; queda con la marca "sin confirmar" (RN-29).
+- El turno se creó o se reprogramó con menos de `horas_confirmacion` de anticipación → nació `confirmado`, así que el barrido no lo selecciona: ni se libera ni recibe la marca "sin confirmar" (RN-29).
 - La solicitud de confirmación del ciclo actual falló (`fallida`), fue omitida (`omitida`) o sigue `programada` o `enviando` → el turno no se libera: queda `pendiente` con la marca "sin confirmar" para que decida Recepción (RN-60).
 - El turno ya comenzó (su inicio pasó antes del barrido, por ejemplo por un disparador caído) → queda fuera de la selección, nunca se libera de forma automática ni se reevalúa; el personal lo marca `atendido` o `ausente` (RN-60, RN-44).
 - Falla del disparador externo o servicio dormido → al volver, el siguiente barrido procesa los vencidos sin duplicar (SU-26).
@@ -247,8 +249,8 @@ sequenceDiagram
 
 **Pasos de reprogramación por el paciente**:
 1. El paciente elige un nuevo horario entre los disponibles.
-2. API valida las reglas (RN-14, RN-17) y reserva el nuevo horario antes de liberar el anterior, en una sola transacción (RN-37).
-3. El turno vuelve a `pendiente`, se incrementa `ciclo_confirmacion`, se limpia `marcado_sin_confirmar_en` (la marca "sin confirmar" pertenece al ciclo anterior y sale de la lista de Recepción), las notificaciones `programada` o `preparada` de solicitud de confirmación y de recordatorio del ciclo anterior pasan a `omitida` en todos los canales ("Vigencia por tipo" en [04](04_modelo_de_datos.md)) y se reprograman los hitos (RN-32). El turno se evalúa de nuevo en su ciclo nuevo. Queda en el historial.
+2. API valida las reglas (RN-14, RN-17 y, para el paciente, la grilla y el límite de días de RN-64) y cambia el horario con una sola escritura sobre la misma fila del turno (RN-37); el turno conserva su duración actual (RN-64).
+3. El turno vuelve a `pendiente` (o queda `confirmado` si el horario nuevo está a menos de `horas_confirmacion`, RN-29), se incrementa `ciclo_confirmacion`, se limpia `marcado_sin_confirmar_en` (la marca "sin confirmar" pertenece al ciclo anterior y sale de la lista de Recepción), las notificaciones `programada` o `preparada` de solicitud de confirmación y de recordatorio del ciclo anterior pasan a `omitida` en todos los canales ("Vigencia por tipo" en [04](04_modelo_de_datos.md)) y se reprograman los hitos (RN-32). El turno se evalúa de nuevo en su ciclo nuevo. Queda en el historial.
 
 **Pasos por el personal**: igual, pero sin límite de 24 horas y mientras el turno no esté `atendido` (RN-34). Se avisa al paciente por correo y se prepara el mensaje de WhatsApp (US-034).
 
@@ -265,7 +267,7 @@ sequenceDiagram
 
 **Pasos**:
 1. Recepción intenta crear el turno. API detecta el solapamiento y rechaza el alta normal (RN-17).
-2. Recepción elige "Autorizar sobreturno", indica el motivo y confirma que avisó al profesional (RN-39, RN-40).
+2. Recepción elige "Autorizar sobreturno" e indica el motivo con la autorización explícita (RN-39, RN-41); el servidor registra el aviso al profesional en la misma operación (RN-40, DD-30).
 3. API verifica la política `sobreturno.autorizar` y las condiciones (horario semanal y sin bloqueos, RN-43).
 4. API crea el turno con `es_sobreturno = true` (queda fuera de la restricción de exclusión) y la fila de `autorizacion_sobreturno` con autorizante, fecha y aviso (RN-41).
 5. El profesional recibe el aviso en su agenda y, si lo desea, aprueba o rechaza (`respuesta_profesional`). La respuesta queda registrada.
@@ -279,7 +281,7 @@ sequenceDiagram
     actor Pr as Profesional
     R->>A: POST /turnos (solapa)
     A-->>R: 409 solapamiento
-    R->>A: POST /turnos/{id}/sobreturno (motivo, autorización)
+    R->>A: POST /sobreturnos (datos del turno, motivo, autorización)
     A->>A: Política sobreturno.autorizar y condiciones
     A->>B: Turno es_sobreturno y autorizacion_sobreturno
     A-->>R: 201 sobreturno registrado
@@ -291,7 +293,7 @@ sequenceDiagram
 **Casos de error**:
 - Paciente o Profesional intentan generar un sobreturno → 403 (RN-39).
 - Fuera del horario del profesional o sobre un bloqueo → 422 (RN-43).
-- Si el profesional rechaza, el sistema lo registra y lo muestra a Recepción; si el otorgamiento queda sin efecto es una pregunta abierta ([10](10_preguntas_abiertas.md)).
+- Si el profesional rechaza, el sistema lo registra y lo muestra a Recepción; el sobreturno queda firme (no hay veto) y Recepción decide si lo cancela (RN-40, DD-30; Q-04 resuelta en [10](10_preguntas_abiertas.md)).
 
 ## Flujo 8: Marcado de atendido y ausente
 
@@ -306,7 +308,7 @@ sequenceDiagram
 
 **Casos de error**:
 - Antes de la hora de inicio → rechazo (RN-44).
-- Turno de otro profesional → 404 o 403 según la política (A1).
+- Turno de otro profesional → 404: es un turno de otra agenda y revelar que existe expondría datos de otra persona (A1, regla de códigos de [11](11_politicas_de_acceso_abac.md)).
 - Turno `cancelado` o `liberado` → no admite el cambio.
 
 ## Flujo 9: WhatsApp con un clic

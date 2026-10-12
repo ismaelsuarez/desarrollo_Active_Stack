@@ -10,7 +10,7 @@ Define el contrato del entorno local con Docker Compose: qué servicios existen,
 El archivo `docker-compose.yml` SHALL validar con `docker compose config --quiet` y MUST NOT declarar la clave de nivel superior `version`.
 
 #### Scenario: Validación
-- **WHEN** se ejecuta `docker compose config --quiet` con los archivos de secreto de ejemplo presentes
+- **WHEN** se ejecuta `docker compose config --quiet` con los archivos de secreto de ejemplo presentes y `.env` creado a partir de `.env.example`
 - **THEN** termina con código 0
 
 #### Scenario: Sin clave version
@@ -43,6 +43,7 @@ El servicio `migrate` SHALL ejecutar `alembic upgrade head` y terminar, y arranc
 #### Scenario: Migración ejecutada
 - **WHEN** se ejecuta `docker compose up` sobre un volumen vacío
 - **THEN** `migrate` termina con código 0 y `api` queda en estado saludable
+- **AND** el proceso de `api` no corre como root
 
 ### Requirement: API resiliente con healthcheck
 El servicio `api` SHALL declarar `restart: unless-stopped` y un healthcheck que consulta `/api/v1/health`; el servicio `frontend` SHALL depender de `api` con `condition: service_healthy`.
@@ -63,12 +64,21 @@ El servicio `api` SHALL declarar `restart: unless-stopped` y un healthcheck que 
 - **THEN** `mailpit` queda incluido y expone su interfaz web en el puerto 8025
 
 ### Requirement: Secretos como archivos montados y no versionados
-Los valores sensibles SHALL llegar a los contenedores como secretos de Compose montados en `/run/secrets/<nombre>` desde la carpeta `secrets/`; `secrets/` y `.env` MUST quedar excluidos de Git, y `.env.example` MUST listar las variables sin valores reales.
+Los valores sensibles SHALL llegar a los contenedores como secretos de Compose montados en `/run/secrets/<nombre>` desde la carpeta `secrets/`, nunca por `env_file` ni por `environment`; `secrets/` y `.env` MUST quedar excluidos de Git, y `.env.example` MUST listar solo variables no sensibles. Cada servicio SHALL recibir únicamente los secretos que usa: `db` recibe `postgres_password`, `migrate` recibe `database_url` y `api` recibe `database_url` y `jwt_secret_key`.
 
 #### Scenario: Secretos de la API
 - **WHEN** se inspecciona el servicio `api`
-- **THEN** recibe `jwt_secret_key` como secreto de Compose
+- **THEN** recibe `database_url` y `jwt_secret_key` como secretos de Compose
 - **AND** ninguna variable sensible aparece con valor literal en `docker-compose.yml`
+
+#### Scenario: Secretos de las migraciones
+- **WHEN** se inspecciona el servicio `migrate`
+- **THEN** recibe `database_url` como secreto de Compose y no recibe `jwt_secret_key`
+
+#### Scenario: Contraseña de la base
+- **WHEN** se inspecciona el servicio `db`
+- **THEN** recibe `postgres_password` como secreto de Compose y lo lee con `POSTGRES_PASSWORD_FILE`
+- **AND** no define `POSTGRES_PASSWORD`
 
 #### Scenario: Archivos ignorados
 - **WHEN** se ejecuta `git check-ignore secrets/jwt_secret_key.txt .env`
@@ -76,5 +86,16 @@ Los valores sensibles SHALL llegar a los contenedores como secretos de Compose m
 
 #### Scenario: Ejemplo de entorno
 - **WHEN** se inspecciona `.env.example`
-- **THEN** incluye `DATABASE_URL`, `APP_ENV` y `APP_TIMEZONE`
-- **AND** no contiene contraseñas ni claves reales
+- **THEN** incluye `APP_ENV=development` y `APP_TIMEZONE`
+- **AND** no incluye `DATABASE_URL`, `JWT_SECRET_KEY` ni `POSTGRES_PASSWORD`
+
+#### Scenario: Arranque sin `.env`
+- **WHEN** se ejecuta el arranque verificado (`scripts/smoke_compose.sh`) en una copia limpia sin `.env`
+- **THEN** el script crea `.env` a partir de `.env.example`
+- **AND** `api` recibe `APP_ENV` y arranca
+
+#### Scenario: Secretos locales generados en un paso
+- **WHEN** se ejecuta el script de secretos locales en una copia limpia
+- **THEN** existen `secrets/postgres_password.txt`, `secrets/database_url.txt` y `secrets/jwt_secret_key.txt`
+- **AND** la contraseña de `database_url.txt` es la de `postgres_password.txt`
+- **AND** una segunda ejecución no cambia los archivos existentes

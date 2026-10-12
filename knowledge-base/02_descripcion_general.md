@@ -72,7 +72,7 @@ Decisiones de alto nivel:
 | Obras sociales | Validación y liquidación | — | No. Backlog. La obra social es solo un dato de texto. |
 | Mercado Pago | Seña o pago al reservar | — | No. Backlog. |
 | Google Calendar / planilla | Importación de agenda previa | — | No. Backlog, sin fecha. |
-| Hosting en la nube (planes gratuitos) | Frontend estático en Cloudflare Pages, API en un servicio web gratuito y PostgreSQL en Neon | Servicios de hosting | Sí. Arquitectura base en DD-13 de [09](09_decisiones_y_supuestos.md); el host de la API sigue abierto (Q-24 en [10](10_preguntas_abiertas.md)). |
+| Hosting en la nube (planes gratuitos) | Un servicio web gratuito con la API, que sirve también el frontend compilado (DD-26), y PostgreSQL en Neon | Servicios de hosting | Sí. Arquitectura base en DD-13 de [09](09_decisiones_y_supuestos.md); el host de la API sigue abierto (Q-24 en [10](10_preguntas_abiertas.md)). |
 | Disparador externo del barrido | Llama cada 5 minutos a `POST /internal/barrido` con un secreto compartido | HTTP (cron externo) | Sí. Quién lo opera sigue abierto (Q-25 en [10](10_preguntas_abiertas.md)). |
 
 ## API REST
@@ -82,8 +82,8 @@ Prefijo `/api/v1`. Documentación interactiva generada por FastAPI (OpenAPI). Re
 | Recurso | Endpoints principales | Acceso |
 |---------|-----------------------|--------|
 | Autenticación | `POST /auth/registro`, `POST /auth/verificar-email`, `POST /auth/reenviar-verificacion`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/recuperar-password`, `POST /auth/restablecer-password`, `GET /auth/me` | Público, salvo `logout` y `me` |
-| Público (reserva) | `GET /publico/consultorio`, `GET /publico/prestaciones`, `GET /publico/profesionales`, `GET /publico/disponibilidad` | Público, solo lectura |
-| Usuarios | `GET/POST /usuarios`, `PATCH /usuarios/{id}` | Administrador |
+| Público (reserva) | `GET /publico/consultorio`, `GET /publico/aviso-privacidad`, `GET /publico/prestaciones`, `GET /publico/profesionales`, `GET /publico/disponibilidad` | Público, solo lectura |
+| Usuarios | `GET/POST /usuarios`, `PATCH /usuarios/{id}` (el alta rechaza el rol `paciente` con 422, RN-07) | Administrador |
 | Profesionales y boxes | `GET/POST /profesionales`, `PATCH /profesionales/{id}`, `GET/POST /boxes` | Administrador (escritura) |
 | Horarios y bloqueos | `GET/PUT /profesionales/{id}/horario-semanal`, `GET/POST /profesionales/{id}/bloqueos`, `DELETE /bloqueos/{id}` | Administrador (escritura) |
 | Prestaciones | `GET/POST /prestaciones`, `PATCH /prestaciones/{id}` | Administrador (escritura) |
@@ -91,14 +91,14 @@ Prefijo `/api/v1`. Documentación interactiva generada por FastAPI (OpenAPI). Re
 | Solicitudes de vinculación | `GET /solicitudes-vinculacion?estado=` (con la ficha vinculada en las solicitudes `vinculada`), `POST /solicitudes-vinculacion/{id}/vincular`, `POST /solicitudes-vinculacion/{id}/rechazar` | Recepción, Administrador |
 | Turnos | `GET /turnos`, `POST /turnos`, `GET /turnos/{id}`, `PATCH /turnos/{id}` (reprogramar), `POST /turnos/{id}/confirmar`, `POST /turnos/{id}/cancelar`, `POST /turnos/{id}/liberar`, `POST /turnos/{id}/atendido`, `POST /turnos/{id}/ausente`, `GET /turnos/{id}/historial` | Según política ABAC |
 | Confirmación por enlace | `POST /turnos/confirmar-por-enlace` | Público, con el token de un solo uso recibido por correo (el consultorio sale de la fila del token, RN-59) |
-| Sobreturnos | `POST /turnos/{id}/sobreturno` (autorización), `POST /sobreturnos/{id}/respuesta-profesional` | Recepción, Administrador; Profesional (respuesta) |
+| Sobreturnos | `POST /sobreturnos` (crea el turno superpuesto y su autorización), `POST /sobreturnos/{id}/respuesta-profesional` (`{id}` es el del turno) | Recepción, Administrador; Profesional (respuesta), o Administrador sobre su propia agenda (DD-24) |
 | Agenda | `GET /agenda?profesional_id=&fecha=` | Según política ABAC |
 | Notificaciones | `GET /notificaciones?estado=`, `GET /notificaciones/{id}/whatsapp`, `POST /notificaciones/{id}/marcar-enviada` | Recepción, Administrador |
 | Indicadores | `GET /indicadores/ausentismo` | Administrador |
 | Consultorio | `GET /consultorio`, `PATCH /consultorio` (modo de liberación y parámetros) | Administrador (escritura) |
 | Salud | `GET /health` | Público |
 
-Convenciones: errores en formato uniforme (código, mensaje, detalle de campo), fechas en ISO 8601 con zona horaria, identificadores numéricos o UUID (a fijar en el diseño del modelo), paginación en listados.
+Convenciones: errores en formato uniforme (código, mensaje, detalle de campo), fechas en ISO 8601 con zona horaria, identificadores numéricos (`bigint`, DD-23), paginación en listados.
 
 ## Mapa de la base de conocimiento
 

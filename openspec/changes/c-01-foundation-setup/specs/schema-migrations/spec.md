@@ -22,6 +22,11 @@ La primera migración del esquema SHALL dejar instalada la extensión `btree_gis
 - **WHEN** la base ya tiene `btree_gist` instalada antes de la primera migración
 - **THEN** `alembic upgrade head` termina con código 0
 
+#### Scenario: Reversión de la migración base
+- **WHEN** se ejecuta `alembic downgrade base` después de `alembic upgrade head`
+- **THEN** el comando termina con código 0
+- **AND** `btree_gist` sigue en `pg_extension`, porque la extensión pudo existir antes de la migración
+
 ### Requirement: Migraciones solo con upgrade head
 Las migraciones MUST aplicarse con `alembic upgrade head`; ningún script, servicio ni documentación del proyecto usa `upgrade heads`.
 
@@ -42,11 +47,15 @@ El proyecto SHALL ofrecer un chequeo ejecutable que termina con código 0 cuando
 - **AND** la salida menciona los identificadores de ambas revisiones
 
 ### Requirement: Conexión de migraciones desde la configuración
-Las migraciones MUST obtener la conexión de `DATABASE_URL` de la configuración de la aplicación (entorno o archivo de secreto) y MUST NOT contener credenciales en archivos versionados.
+Las migraciones MUST obtener la conexión de la configuración de base de datos (entorno o archivo de secreto): `MIGRATIONS_DATABASE_URL` cuando está definida y `DATABASE_URL` en otro caso. MUST NOT contener credenciales en archivos versionados ni requerir secretos ajenos a la base.
 
 #### Scenario: URL desde el entorno
 - **WHEN** se ejecuta `alembic upgrade head` con `DATABASE_URL` apuntando a una base de prueba
 - **THEN** la migración se aplica sobre esa base
+
+#### Scenario: Migración sin secretos de la API
+- **WHEN** se ejecuta `alembic upgrade head` con `DATABASE_URL` definida y sin `JWT_SECRET_KEY` ni `APP_ENV`
+- **THEN** el comando termina con código 0
 
 #### Scenario: Archivo de configuración sin credenciales
 - **WHEN** se inspecciona el archivo de configuración de Alembic versionado

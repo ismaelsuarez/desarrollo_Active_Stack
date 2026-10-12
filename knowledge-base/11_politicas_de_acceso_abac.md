@@ -39,7 +39,9 @@ def mismo_consultorio(usuario: Usuario, recurso) -> bool:
 
 # domain/policies/turno.py
 def es_dueno_de_agenda(usuario: Usuario, turno: Turno) -> bool:
-    """A1. Profesional: turno.profesional_id es el del usuario."""
+    """A1. turno.profesional_id es el del profesional vinculado a la cuenta (profesional.usuario_id),
+    que la capa de aplicación carga de la base. La cuenta es de rol profesional o, si el
+    administrador también atiende, de rol administrador (DD-24)."""
 
 def es_titular_del_turno(usuario: Usuario, turno: Turno, ficha_vigente_id: int | None) -> bool:
     """A1. Paciente: turno.paciente_id es ficha_vigente_id, la ficha vinculada a la cuenta en ese
@@ -47,7 +49,8 @@ def es_titular_del_turno(usuario: Usuario, turno: Turno, ficha_vigente_id: int |
     token. None si la cuenta no tiene ficha: una cuenta sin ficha, o desvinculada (RN-63), nunca es titular."""
 
 def turno_es_modificable(turno: Turno) -> bool:
-    """A3. Falso si el estado es atendido, cancelado o liberado."""
+    """A3. Falso si el estado es atendido, ausente, cancelado o liberado (RN-19). Un turno ausente
+    solo admite la corrección a atendido, que es otra acción (turno.corregir_ausente)."""
 
 def transicion_permitida(turno: Turno, nuevo_estado: Estado) -> bool:
     """A3. Valida la tabla de transiciones de RN-18."""
@@ -127,7 +130,7 @@ Leyenda: **Sí** permitido; **No** denegado; **Cond.** permitido si se cumplen l
 | `turno.corregir_ausente` | Cond.: A3 estado `ausente`, queda en el historial | Cond.: A3 estado `ausente`, queda en el historial | No | No | Res. |
 | `turno.liberar` | Cond.: A3 estado `pendiente` y (consultorio en modo manual, o marca "sin confirmar" en cualquier modo, RN-60) | Cond.: A3 estado `pendiente` y (consultorio en modo manual, o marca "sin confirmar" en cualquier modo, RN-60) | No | No | Res. |
 | `sobreturno.autorizar` | Cond.: A4 autorización explícita, profesional avisado (RN-39, RN-40, RN-41, RN-43) | Cond.: igual que Administrador | No | No | No |
-| `sobreturno.responder` | No | No | Cond.: A1 sobreturno que afecta su agenda | No | No |
+| `sobreturno.responder` | Cond.: A1 solo el sobreturno que afecta su propia agenda, si el administrador tiene una (DD-24); nunca el de otro profesional | No | Cond.: A1 sobreturno que afecta su agenda | No | No |
 | `paciente.ver` | Sí, con la cuenta vinculada (RN-63) | Sí, con la cuenta vinculada (RN-63) | Cond.: A1 paciente con turnos en su agenda, sin datos de la cuenta | Cond.: A1 ficha propia, sin el bloque de la cuenta | Res. |
 | `paciente.editar` | Sí | Sí | No | Cond.: A1 ficha propia, solo teléfono y correo (RN-47) | Res. |
 | `paciente.vincular` | Sí | Sí | No | No | Res. |
@@ -137,22 +140,31 @@ Leyenda: **Sí** permitido; **No** denegado; **Cond.** permitido si se cumplen l
 | `notificacion.gestionar` | Sí | Sí | No | No | No |
 | `indicador.ausentismo` | Sí | No | No | No | Res. |
 
-Casos de rechazo representativos (para pruebas):
+Casos de rechazo representativos (para pruebas). Regla de códigos, con tres cláusulas que no se solapan:
 
-| Caso | Resultado | Atributo que decide |
-|------|-----------|---------------------|
-| Profesional A pide la agenda del profesional B | 403 | A1 |
-| Usuario con `consultorio_id` distinto al del recurso | 404 | A2 |
-| Cualquier rol edita un turno `atendido` | 403 | A3 (RN-19) |
-| Paciente cancela 23 h 59 min antes del turno | 403, con el teléfono del consultorio | A4 (RN-33) |
-| Paciente cancela el turno de otro paciente | 404 | A1 (RN-35) |
-| Cuenta desvinculada, con un token de acceso emitido antes, pide su antigua ficha o uno de sus turnos por identificador | 404 | A1 (RN-06, RN-63) |
-| Cuenta sin ficha vinculada (solicitud `pendiente` o `rechazada`, o desvinculada) lista sus turnos con `GET /turnos` | 200 con lista vacía | A1 (RN-06, RN-63) |
-| Profesional marca `ausente` antes de la hora de inicio | 409 | A4 (RN-44) |
-| Paciente intenta generar un sobreturno | 403 | RBAC (RN-39) |
-| Profesional o Paciente desvincula una cuenta o reactiva una ficha | 403 | RBAC (RN-63) |
-| Sobreturno sin profesional avisado | 422 | A4 y RN-40 |
-| Recepción pide el indicador de ausentismo | 403 | RBAC (RN-46) |
+- **404** cuando revelar que el recurso existe expondría datos: los turnos y las fichas de otra persona y cualquier recurso de otro consultorio.
+- **403** cuando la existencia del recurso ya es conocida dentro del consultorio y solo se deniega la acción: la agenda de otro profesional, una acción que el rol no puede hacer y los rechazos por estado o por ventana de tiempo.
+- **409** para los conflictos con el estado actual de los datos que se detectan al escribir: horario ocupado, una escritura condicional que no afecta ninguna fila y el límite de turnos activos de RN-64 (d). El 409 no es un código de política.
+
+422 es una entrada inválida. La última columna de la tabla indica qué cláusula aplica a cada caso.
+
+| Caso | Resultado | Atributo que decide | Cláusula de la regla |
+|------|-----------|---------------------|----------------------|
+| Profesional A pide la agenda del profesional B | 403 | A1 | 403: la agenda de B existe en el consultorio y solo se deniega la acción |
+| Usuario con `consultorio_id` distinto al del recurso | 404 | A2 | 404: recurso de otro consultorio |
+| Cualquier rol edita un turno `atendido` | 403 | A3 (RN-19) | 403: rechazo por estado |
+| Paciente cancela 23 h 59 min antes del turno | 403, con el teléfono del consultorio | A4 (RN-33) | 403: rechazo por ventana de tiempo |
+| Paciente cancela el turno de otro paciente | 404 | A1 (RN-35) | 404: turno de otra persona |
+| Profesional opera por identificador un turno de la agenda de otro profesional | 404 | A1 | 404: turno de otra persona |
+| Cuenta desvinculada, con un token de acceso emitido antes, pide su antigua ficha o uno de sus turnos por identificador | 404 | A1 (RN-06, RN-63) | 404: ficha y turnos de otra persona (la cuenta ya no es la titular) |
+| Cuenta sin ficha vinculada (solicitud `pendiente` o `rechazada`, o desvinculada) lista sus turnos con `GET /turnos` | 200 con lista vacía | A1 (RN-06, RN-63) | Ninguna: no es un rechazo, la lista se filtra por el vínculo vigente |
+| Profesional marca `ausente` antes de la hora de inicio | 403 | A4 (RN-44) | 403: rechazo por ventana de tiempo |
+| Paciente intenta generar un sobreturno | 403 | RBAC (RN-39) | 403: acción que el rol no puede hacer |
+| Profesional o Paciente desvincula una cuenta o reactiva una ficha | 403 | RBAC (RN-63) | 403: acción que el rol no puede hacer |
+| Pedido de sobreturno sin motivo o sin autorización explícita | 422 | Validación de entrada (RN-39, RN-41); el aviso al profesional lo registra el servidor en la misma operación (DD-30) | 422: entrada inválida |
+| Recepción pide el indicador de ausentismo | 403 | RBAC (RN-46) | 403: acción que el rol no puede hacer |
+| Un paciente con el máximo de turnos activos reserva otro (RN-64 d) | 409, con el máximo | Regla de negocio, no una política | 409: conflicto con el estado actual de los datos |
+| Dos reservas simultáneas del mismo horario | 409 | Restricción de exclusión (RN-24) | 409: conflicto detectado al escribir |
 
 ## Dónde se evalúa cada capa
 
