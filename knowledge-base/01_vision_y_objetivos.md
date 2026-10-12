@@ -39,7 +39,7 @@ Los cinco bloquean la v1 y están confirmados. Se referencian como CU-1 a CU-5 e
 
 ## Alcance v1
 
-Fecha de entrega del MVP completo: **2026-10-19**. La fecha original era 2026-10-03 y se movió dos veces (al 2026-10-12 y después al 2026-10-19).
+Fecha de la primera entrega: **2026-10-19**. La entrega es en dos partes (DD-22 en [09](09_decisiones_y_supuestos.md)): la primera contiene los changes completos y verificados a esa fecha y la segunda, el resto de la v1. La fecha original era 2026-10-03 y se movió dos veces (al 2026-10-12 y después al 2026-10-19).
 
 - Agenda por profesional, con un box fijo por profesional, duración variable según la prestación y bloqueos.
 - Horario semanal por profesional con excepciones por fecha (feriados, vacaciones, ausencias) que bloquean la agenda.
@@ -57,7 +57,7 @@ Fecha de entrega del MVP completo: **2026-10-19**. La fecha original era 2026-10
 
 Backlog posterior, en este orden de prioridad:
 
-1. Auditoría y consentimiento de datos conforme a la Ley 25.326. Es una funcionalidad planificada, diferida de la v1. Desde la v1 se almacenan datos personales de pacientes, por lo que la ley aplica desde ese momento (ver riesgo en [09](09_decisiones_y_supuestos.md)).
+1. Auditoría de accesos y circuito de derechos de la Ley 25.326 (change C-21, planificado para la segunda parte, DD-28). El aviso de privacidad y su aceptación en el registro ya están en la v1 (RN-65). Desde la v1 se almacenan datos personales de pacientes, por lo que la ley aplica desde ese momento (ver riesgo en [09](09_decisiones_y_supuestos.md)).
 2. Lista de espera con relleno automático de huecos por cancelación.
 3. Seña o pago por Mercado Pago al reservar.
 4. Recall automático de controles periódicos.

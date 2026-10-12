@@ -1,6 +1,6 @@
 # DevOps y Despliegue
 
-Restricciones de partida: **presupuesto cero** (solo servicios gratuitos o con plan gratuito), Docker y Docker Compose obligatorios, y el enlace público de reserva alojado en un plan gratuito de hosting en la nube. Entrega del MVP completo: 2026-10-19.
+Restricciones de partida: **presupuesto cero** (solo servicios gratuitos o con plan gratuito), Docker y Docker Compose obligatorios, y el enlace público de reserva alojado en un plan gratuito de hosting en la nube. La primera entrega, el 2026-10-19, es el repositorio y no exige el sistema publicado; la publicación (C-20) corresponde a la segunda parte (DD-22 en [09](09_decisiones_y_supuestos.md)).
 
 Este documento fija la **arquitectura de despliegue base** a partir de la exploración técnica del 2026-10-05 (`discovery/exploracion-tecnica.md`). Las cifras de planes gratuitos se leyeron en las páginas de cada proveedor en esa fecha y **cambian con el tiempo**; algunas se leyeron con extractores automáticos, por lo que conviene contrastarlas antes de comprometer el plan. Lo no verificado se marca `[NV]` y figura como suposición o pregunta abierta ([09](09_decisiones_y_supuestos.md), [10](10_preguntas_abiertas.md)). La elección concreta del proveedor del servicio web sigue abierta (Q-02 resuelta en cuanto a la arquitectura, Q-24 en cuanto al proveedor).
 
@@ -10,7 +10,7 @@ Este documento fija la **arquitectura de despliegue base** a partir de la explor
 |---------|-----------|-----------------|
 | Desarrollo local | Programar y probar | `docker compose --profile dev up` (recarga en caliente, servidor de correo de prueba). |
 | Demostración / producción v1 | Enlace público de reserva y uso del consultorio | Arquitectura base de varios servicios gratuitos (ver "Arquitectura de despliegue base"). |
-| Alternativa: stack completo en una VM | Si se exige el stack completo con Redis y proceso persistente | El mismo `docker-compose.yml` en una máquina virtual propia. |
+| Alternativa: stack completo en una VM | Si se exige el stack completo con Redis y proceso persistente | El mismo `docker-compose.yml` en una máquina virtual propia, con el mismo servicio único de la API que sirve el frontend compilado (DD-26). |
 
 No se prevé un entorno intermedio (staging) en la v1 por presupuesto y plazo; se registra como decisión implícita en [09](09_decisiones_y_supuestos.md).
 
@@ -20,7 +20,7 @@ Entre lo verificado no existe un stack gratuito con API, PostgreSQL, Redis y un 
 
 | Componente | Servicio | Notas |
 |------------|----------|-------|
-| Frontend | Cloudflare Pages (sitio estático) | El enlace público siempre responde, aunque la API esté dormida. |
+| Frontend | Lo sirve la propia API desde el build compilado (DD-26) | Un solo origen y un solo servicio; si el host duerme la API, la pantalla tarda en responder mientras despierta. |
 | API | Servicio web gratuito (proveedor por decidir, Q-24) | Contiene el barrido de hitos en proceso. Se duerme por inactividad en los planes gratuitos conocidos. |
 | Base de datos | PostgreSQL en Neon | `btree_gist` figura como soportado [V]. Plan gratuito permanente de 1 GB. |
 | Redis | Opcional (Upstash) o sustituido por la reclamación por fila en PostgreSQL | La base de datos es la fuente de verdad de lo programado; ver abajo. |
@@ -41,7 +41,7 @@ Reglas de diseño del barrido ([08](08_arquitectura_propuesta.md)):
 | Render | [V] El servicio web gratuito se duerme a los 15 minutos de inactividad. [V] Bloquea la salida por los puertos 25, 465 y 587. [V] El Postgres gratuito de 1 GB expira a los 30 días. [V] No hay worker ni cron gratuitos. |
 | Neon | [V] Plan gratuito permanente de 1 GB, 100 CU-h por mes y suspensión del cómputo a los 5 minutos. [V] `btree_gist` figura como soportado. |
 | Upstash Redis | [V] 500.000 comandos por mes. |
-| Cloudflare | [V] Pages para sitios estáticos y Workers con 5 cron triggers en el plan gratuito. |
+| Cloudflare | [V] Pages para sitios estáticos (no se usa: DD-26 sirve el frontend desde la API) y Workers con 5 cron triggers en el plan gratuito (candidato a disparador, Q-25). |
 | GitHub Actions | [V] `schedule` con intervalo mínimo de 5 minutos. |
 | Fly.io | [V] Sin plan gratuito: prueba de 2 horas o 7 días. |
 | Railway | [V] Crédito de 1 USD por mes. |
@@ -59,7 +59,7 @@ Reglas de diseño del barrido ([08](08_arquitectura_propuesta.md)):
 | Cuota de Upstash | 500.000 comandos por mes: si se usa Redis, limitar su uso a lo auxiliar. |
 | Postgres de Render | Expira a los 30 días: no se usa como base de producción. |
 | Correo desde el host | Render gratuito bloquea los puertos SMTP; ver "Configuración de correo". |
-| Cookie entre dominios | Frontend y API en dominios distintos: ver "Cookie de renovación y dominios". |
+| Cookie de renovación | Resuelto por DD-26: frontend y API en un solo origen, cookie propia con `SameSite=Strict`; ver "Cookie de renovación y origen". |
 | Disparador externo | Es una dependencia operativa más (Q-25). Si falla, los recordatorios no se envían ni los turnos se liberan hasta que vuelva; al volver, el barrido procesa lo vencido sin duplicar. |
 
 Si el docente exige el stack completo (API, PostgreSQL, Redis y proceso persistente), la alternativa es Docker Compose en una VM propia (por ejemplo la VM de Oracle Always Free, sujeta a sus condiciones `[NV]`).
@@ -74,10 +74,11 @@ Compose es el entorno de desarrollo local y la alternativa para una VM. No es la
 | `redis` (opcional) | Imagen oficial de Redis | Límites de intentos y otros usos auxiliares. Perfil `redis`. | — | 6379 (solo red interna) |
 | `migrate` | Imagen del backend | Ejecuta las migraciones (`alembic upgrade head`) y termina. | `db` saludable | — |
 | `api` | Imagen del backend | API FastAPI con el barrido en proceso (bucle `asyncio` o llamada a `/internal/barrido`). | `db`, `migrate` | 8000 |
-| `frontend` | Imagen del frontend | Desarrollo: servidor de Vite. Producción en VM: archivos estáticos servidos por un servidor web liviano. | `api` | 5173 (desarrollo) / 80 (producción en VM) |
+| `seed` (desde C-02) | Imagen del backend | Carga la semilla (`python -m app.seed`) con su propia `SeedSettings` y termina. | `migrate` completado | — |
+| `frontend` | Imagen del frontend (etapa `dev`) | Solo desarrollo: servidor de Vite, que reenvía `/api` a la API con `VITE_DEV_PROXY_TARGET`. En producción, y en la VM, no existe este servicio: la API sirve el frontend compilado (DD-26). | `api` | 5173 (desarrollo) |
 | `mailpit` (solo desarrollo) | Servidor SMTP de prueba | Captura los correos sin enviarlos (SU-33). Perfil `dev`. | — | 1025 (SMTP) / 8025 (interfaz) |
 
-Esquema de `docker-compose.yml` (ilustrativo; los valores salen del archivo `.env` y de secretos). No se declara la clave `version`, que es obsoleta:
+Esquema de `docker-compose.yml` (ilustrativo; los valores salen del archivo `.env` y de secretos). Es el entorno completo al terminar la v1: cada change agrega sus propios servicios y secretos, y en C-01 solo existen `postgres_password`, `database_url` y `jwt_secret_key`. No se declara la clave `version`, que es obsoleta:
 
 ```yaml
 services:
@@ -107,37 +108,53 @@ services:
     command: alembic upgrade head
     env_file: .env
     secrets:
-      - jwt_secret_key
-      - origin_hash_secret
+      - database_url
     depends_on:
       db:
         condition: service_healthy
 
-  api:
+  seed:
     build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: python -m app.seed
     env_file: .env
     secrets:
+      - database_url
+      - bootstrap_admin_password
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    build: ./backend
+    command: uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000
+    env_file: .env
+    secrets:
+      - database_url
       - jwt_secret_key
       - origin_hash_secret
       - smtp_password
       - sweep_shared_secret
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
     ports:
       - "8000:8000"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: dev
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_DEV_PROXY_TARGET: http://api:8000
+    ports:
+      - "5173:5173"
     depends_on:
       api:
         condition: service_healthy
@@ -152,6 +169,10 @@ services:
 secrets:
   postgres_password:
     file: ./secrets/postgres_password.txt
+  database_url:
+    file: ./secrets/database_url.txt
+  bootstrap_admin_password:
+    file: ./secrets/bootstrap_admin_password.txt
   jwt_secret_key:
     file: ./secrets/jwt_secret_key.txt
   origin_hash_secret:
@@ -168,9 +189,10 @@ volumes:
 Notas del esquema:
 
 - `depends_on` usa `condition: service_healthy` y `service_completed_successfully`; los perfiles separan los servicios de desarrollo.
-- Los secretos se montan en `/run/secrets/<nombre>`; la configuración de la aplicación los lee de ahí cuando existen. `migrate` y `api` comparten imagen y ambos cargan `Settings`, así que ambos reciben los secretos que `Settings` exige para arrancar (`jwt_secret_key` y `origin_hash_secret`). En un hosting se cargan desde su almacén de secretos. La carpeta `secrets/` no se versiona.
+- Los secretos se montan en `/run/secrets/<nombre>`; la configuración de la aplicación los lee de ahí cuando existen. `migrate` y `api` comparten imagen, pero `migrate` carga solo la configuración de base de datos y recibe únicamente `database_url`; `api` carga `Settings` completo y recibe los secretos que exige para arrancar; `seed` carga su propia `SeedSettings` y recibe solo `database_url` y `bootstrap_admin_password`. Ningún valor sensible va en `.env` ni en `environment`: `.env` solo tiene variables no sensibles. La contraseña local de la base figura en `postgres_password.txt` (para el contenedor de PostgreSQL) y dentro de `database_url.txt` (para la API); los genera `scripts/dev_secrets.sh` a partir de un mismo valor, así no pueden divergir. En un hosting se cargan desde su almacén de secretos. La carpeta `secrets/` no se versiona.
 - `restart: unless-stopped` va en todos los servicios de ejecución prolongada.
-- El endpoint de salud de la API (`/health`, nombre a confirmar al implementar) existe para el `healthcheck`.
+- A partir de C-02 hay un servicio más, `seed`, de una sola ejecución: corre `python -m app.seed` con la imagen del backend, depende de `migrate` y `api` depende de él. Carga su propia `SeedSettings` (la configuración de base de datos más `CONSULTORIO_ACTIVO_ID`, `APP_TIMEZONE`, `BOOTSTRAP_ADMIN_EMAIL` y `BOOTSTRAP_ADMIN_PASSWORD`) y recibe solo los secretos `database_url` y `bootstrap_admin_password` (C-02 agrega ese archivo a `scripts/dev_secrets.sh`): así los secretos obligatorios que agreguen los changes siguientes se montan solo en `api` y no rompen la semilla. El esquema de arriba es el entorno al terminar la v1, no el de C-01.
+- El endpoint de salud de la API es `GET /api/v1/health` (en las tablas de rutas, relativas al prefijo `/api/v1`, figura como `GET /health`) y existe para el `healthcheck`. No consulta la base.
 - Las versiones de las imágenes se fijan al crear el proyecto.
 
 ## Enfoque de hosting con plan gratuito
@@ -186,15 +208,15 @@ Criterios para elegir el proveedor del servicio web de la API (a verificar con l
 | Contenedores Docker o proceso web | La API se despliega como servicio web. No se exige un proceso aparte siempre activo. |
 | HTTPS con dominio o subdominio del proveedor | Obligatorio para el enlace público y los enlaces de los correos. |
 | Variables de entorno y secretos | Para `JWT_SECRET_KEY`, `SMTP_PASSWORD`, `SWEEP_SHARED_SECRET`, `ORIGIN_HASH_SECRET` y la conexión a la base de datos. |
-| Dominio respecto del frontend | Define la estrategia de cookies (ver abajo). |
+| Un solo servicio para la API y el frontend compilado | Con DD-26 la API sirve el frontend: el host debe admitir ese servicio único. El frontend y la API comparten origen y la cookie es propia (ver abajo). |
 
 Topologías consideradas:
 
 | Opción | Descripción | Estado |
 |--------|-------------|--------|
-| Base. Frontend estático, API con barrido en proceso, base en Neon, disparador externo | Es la arquitectura descrita arriba. | Vigente. |
+| Base. Un solo servicio web con la API (que sirve el frontend compilado, DD-26), barrido en proceso, base en Neon y disparador externo | Es la arquitectura descrita arriba. | Vigente. |
 | Todo en un proveedor | Frontend, API, base y Redis en un mismo proveedor gratuito. | Descartada entre lo verificado: ningún plan gratuito lo cubre sin tarjeta. |
-| VM propia con Compose | Stack completo con Redis y proceso persistente. | Alternativa si se exige el stack completo. |
+| VM propia con Compose | Stack completo con Redis y proceso persistente, con el mismo servicio único de la API que sirve el frontend compilado (sin servidor web aparte). | Alternativa si se exige el stack completo. |
 
 ## Configuración de correo (SMTP)
 
@@ -223,9 +245,9 @@ Mitigaciones generales:
 - **Dependencia de una cuenta personal:** si la cuenta se bloquea, se pierden los envíos. Mitigación: monitorear notificaciones `fallida` y el contador diario.
 - **Entregabilidad:** el remitente es el de la cuenta autenticada; no se configuran registros de dominio propios en la v1.
 
-## Cookie de renovación y dominios
+## Cookie de renovación y origen
 
-El token de renovación viaja en una cookie `HttpOnly` (SU-27). Con el frontend en Cloudflare Pages y la API en otro dominio, la cookie es de terceros respecto del frontend. **Suposición** `[NV]`: hace falta `SameSite=None; Secure` o un dominio común para frontend y API; no se verificó el comportamiento de los navegadores ni la disponibilidad de un dominio común en el plan gratuito. Se registra como pregunta abierta Q-28. `CORS_ORIGINS` se restringe al origen del frontend y las solicitudes con cookie exigen credenciales explícitas.
+El token de renovación viaja en una cookie `HttpOnly` (SU-27). El frontend y la API comparten origen (DD-26 en [09](09_decisiones_y_supuestos.md)): en producción la API sirve el frontend compilado y en desarrollo el servidor de Vite reenvía `/api` a la API. La cookie es propia, con `Secure` y `SameSite=Strict`, y no hace falta CORS; `CORS_ORIGINS` queda vacío salvo que se habilite un origen adicional.
 
 ## Variables de entorno por entorno
 
@@ -233,19 +255,21 @@ El catálogo completo está en [08](08_arquitectura_propuesta.md). Resumen de la
 
 | Variable | Desarrollo | Producción |
 |----------|------------|------------|
-| `APP_ENV` | `development` | `production` |
-| `DATABASE_URL` | PostgreSQL del Compose (`postgresql+asyncpg://...`) | Cadena de conexión de Neon (`postgresql+asyncpg://...`) |
+| `APP_ENV` | Obligatoria, sin valor por defecto. `development` | Obligatoria. `production` |
+| `DATABASE_URL` | PostgreSQL del Compose (`postgresql+asyncpg://...`), en el secreto `database_url` | Cadena de conexión de Neon (`postgresql+asyncpg://...`) |
+| `MIGRATIONS_DATABASE_URL` | Sin definir (las migraciones usan `DATABASE_URL`) | Conexión directa de Neon, sin pooler, cuando `DATABASE_URL` pasa por el pooler |
 | `SMTP_HOST` / `SMTP_PORT` | `mailpit` / `1025` | Servidor SMTP real, puerto 587 con STARTTLS (o la API HTTPS de correo que se elija, Q-23) |
 | `SMTP_PASSWORD` | vacío | Contraseña de aplicación (secreto) |
-| `JWT_SECRET_KEY` | valor de prueba | Valor aleatorio largo, único del entorno |
+| `JWT_SECRET_KEY` | Valor aleatorio de 32 bytes o más, generado por `scripts/dev_secrets.sh` | Valor aleatorio de 32 bytes o más, único del entorno |
 | `SWEEP_SHARED_SECRET` | valor de prueba | Valor aleatorio largo, compartido con el disparador externo |
 | `ORIGIN_HASH_SECRET` | Obligatoria. Valor de prueba | Obligatoria. Valor aleatorio largo, único del entorno |
 | `TRUSTED_PROXY_HOPS` | `0` (el encabezado de reenvío se ignora) | La cantidad real de proxies de confianza delante de la API en el host elegido (por ejemplo `1`; a verificar con el host, Q-24) |
 | `CONSULTORIO_ACTIVO_ID` | Obligatoria. Identificador del consultorio de la semilla local (por ejemplo `1`) | Obligatoria. Identificador del consultorio sembrado en Neon (RN-59) |
-| `CORS_ORIGINS` | `http://localhost:5173` | Dominio público de reserva |
+| `CORS_ORIGINS` | Vacío (el proxy de Vite deja todo en un origen) | Vacío (la API sirve el frontend, DD-26) |
 | `FRONTEND_BASE_URL` | `http://localhost:5173` | Dominio público de reserva |
 | `OPENAPI_DOCS_ENABLED` | `true` | `false` |
-| `BOOTSTRAP_ADMIN_*` | valores de prueba | Valores propios, retirados luego del primer uso |
+| `BOOTSTRAP_ADMIN_*` | valores de prueba (la contraseña llega como el secreto `bootstrap_admin_password`) | Valores propios, retirados luego del primer uso |
+| `VITE_DEV_PROXY_TARGET` | Solo desarrollo: `http://api:8000` dentro de Compose, `http://localhost:8000` fuera de Compose | No aplica (no entra en el build; la API sirve el frontend, DD-26) |
 
 Archivos:
 
@@ -268,7 +292,7 @@ Archivos:
 |---------|---------|
 | Migraciones | Alembic con `env.py` asíncrono (`alembic init -t async`) y `compare_type=True`. Historia lineal con una migración por change y **un único head**. Se aplican con `alembic upgrade head` (nunca `upgrade heads`) antes de iniciar la API (SU-29). |
 | Restricción de exclusión | El autogenerate de Alembic no detecta restricciones EXCLUDE. La migración ejecuta a mano `CREATE EXTENSION IF NOT EXISTS btree_gist` y luego crea la restricción (por ejemplo con `op.create_exclude_constraint`). Un test de integración inserta dos turnos solapados y espera el rechazo (SU-28). |
-| Verificación en CI | Comprobar que `alembic heads` devuelve un solo head. Dos revisiones con el mismo padre producen varios heads y `alembic upgrade head` falla; se resuelven con `alembic merge`. |
+| Verificación en CI | Comprobar que `alembic heads` devuelve un solo head. Dos revisiones con el mismo padre producen varios heads y `alembic upgrade head` falla; se resuelven rebasando la migración más reciente sobre la única cabeza vigente (regla dura 8), sin usar `alembic merge`. |
 | Datos semilla | Un comando de inicialización crea el consultorio, el administrador inicial y el catálogo de prestaciones (ver [04](04_modelo_de_datos.md)). Es idempotente. |
 | Respaldo | Volcado periódico de PostgreSQL (`pg_dump`) guardado fuera del servidor de la base. La frecuencia y el destino gratuito se definen al elegir el hosting. No se usa el Postgres gratuito de Render, que expira a los 30 días. |
 | Recuperación | Restaurar el volcado y volver a levantar los servicios; el siguiente barrido retoma los hitos pendientes. |
@@ -280,16 +304,17 @@ No hay requisito explícito de integración continua en las fuentes. Mínimo rec
 
 ## Lista de verificación previa a publicar el enlace público
 
-- [ ] HTTPS activo y `CORS_ORIGINS` y `FRONTEND_BASE_URL` apuntan al dominio público.
+- [ ] HTTPS activo, `FRONTEND_BASE_URL` apunta al dominio público y `CORS_ORIGINS` está vacío (DD-26).
 - [ ] `JWT_SECRET_KEY`, `SWEEP_SHARED_SECRET`, `ORIGIN_HASH_SECRET` y la contraseña de SMTP cargados como secretos, no en el repositorio.
-- [ ] `TRUSTED_PROXY_HOPS` coincide con la cantidad de proxies de confianza delante de la API en el host elegido; se comprueba que un encabezado `X-Forwarded-For` enviado por el cliente no cambia el origen que ve la API (si no, el límite de registros por origen no sirve).
+- [ ] `TRUSTED_PROXY_HOPS` coincide con la cantidad de proxies de confianza delante de la API en el host elegido; se comprueba que un encabezado `X-Forwarded-For` enviado por el cliente no cambia el origen que ve la API (si no, el límite de registros por origen no sirve) y que dos clientes distintos tienen orígenes distintos: con `TRUSTED_PROXY_HOPS=0` detrás del proxy del host todos los clientes comparten un origen, el límite de registros se vuelve global y el bloqueo de ingreso de DD-25 pasa a ser por cuenta (cualquiera puede bloquear una cuenta ajena durante la ventana).
 - [ ] Neon con `btree_gist` habilitado; migraciones aplicadas (un único head) y datos semilla cargados.
 - [ ] `CONSULTORIO_ACTIVO_ID` (obligatoria) está definida y apunta al consultorio sembrado en Neon.
+- [ ] El texto que sirve `GET /publico/aviso-privacidad` no contiene ningún marcador entre corchetes (nombre, domicilio y contacto del consultorio cargados, plazo de conservación definido) y lo revisó un profesional del derecho (RN-65); la prueba de producción de C-05 se ejecuta contra el consultorio sembrado.
 - [ ] Prestaciones y duraciones confirmadas por el consultorio (SU-23).
 - [ ] Profesionales, boxes, horarios y feriados cargados.
 - [ ] Prueba real de verificación de correo, confirmación y recuperación de contraseña desde el host elegido (confirma que la salida SMTP o la API de correo funcionan).
 - [ ] Disparador externo configurado y último barrido reciente.
-- [ ] Cookie de renovación probada entre el dominio del frontend y el de la API.
+- [ ] Cookie de renovación probada en el servicio publicado, con un solo origen y `SameSite=Strict` (DD-26).
 - [ ] `/docs` deshabilitado en producción.
 - [ ] Respaldo inicial realizado y restauración probada.
 - [ ] Teléfono del consultorio cargado para el mensaje de autogestión vencida (RN-33).
