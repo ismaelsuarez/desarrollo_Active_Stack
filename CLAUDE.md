@@ -91,7 +91,7 @@ Mandan sobre el `SKILL.md`. Viven en este archivo, que está versionado, porque 
 
 Sin aclaraciones: `docker-build-strategies`, `vitest`, `react-testing` y `typescript-react-reviewer`.
 
-> Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry`; no versionado — no está en el repo). Esta tabla solo mapea skill→rol.
+> Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry` y versionado en el repo). Esta tabla solo mapea skill→rol.
 
 ---
 
