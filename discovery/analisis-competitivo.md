@@ -2,6 +2,15 @@
 
 Fecha de consulta de todas las fuentes: 2026-10-02. Foco geográfico: Argentina, luego Latinoamérica y soluciones internacionales relevantes.
 
+> **Documento histórico, corregido por el informe vigente.** Este es el relevamiento original del 2026-10-02 y se conserva sin cambios como registro. El 2026-10-12 se verificaron las fuentes de 12 sistemas y varias afirmaciones de este documento resultaron falsas o sin respaldo. El informe vigente es `docs/discovery/informe-discovery.md`; su sección "Verificación de fuentes" detalla cada corrección. Las que cambian las conclusiones:
+>
+> - **Clinicorp** no documenta la prevención de solapamiento ni la reserva por enlace. Ningún sistema relevado documenta la prevención de solapamientos.
+> - **DentalCore** no ofrece reserva por el paciente, ni un bot de WhatsApp con 9 automatizaciones, ni Google Calendar, ni 20 obras sociales precargadas. Su total pasa de 4,00 a 3,75.
+> - **Bilog** tiene un centro de ayuda público y una página de planes; sus pacientes toman y cancelan turnos. Su total pasa de 2,60 a 3,00.
+> - **AgendaPro** publica precios en pesos argentinos; Mercado Pago no figura. Su total pasa de 3,00 a 2,85.
+> - **Odonthia** publica sus precios en pesos, sin discrepancia de moneda.
+> - **Hessy** no declara ciudad ni país, y **OdontoApp** declara más de 100 usuarios, no unos 10.
+
 ## Cómo leer este documento
 
 - **[C]** Comprobado: figura en documentación pública, centro de ayuda, tarifa publicada o ficha de terceros verificable.

@@ -1,7 +1,7 @@
 # Discovery — Sistema de turnos y agenda para consultorios odontológicos
 
-**Fecha**: 2026-10-02 (actualizado el 2026-10-05 con las decisiones sobre las preguntas abiertas)
-**Fuentes investigadas**: 24 sistemas odontológicos de Argentina, Latinoamérica y el exterior, más 2 complementos. Detalle, tabla comparativa, matriz de puntuación y recomendación en `discovery/analisis-competitivo.md`.
+**Fecha**: 2026-10-02 (actualizado el 2026-10-05 con las decisiones sobre las preguntas abiertas y el 2026-10-12 con la verificación de fuentes)
+**Fuentes investigadas**: 24 sistemas odontológicos de Argentina, Latinoamérica y el exterior, más 2 complementos. El informe vigente, con la tabla comparativa, la matriz de puntuación, la recomendación y la verificación de fuentes, es `docs/discovery/informe-discovery.md`. El relevamiento original del 2026-10-02 está en `discovery/analisis-competitivo.md`.
 
 ## 1. Problema que resuelve
 
@@ -33,15 +33,15 @@ Los cinco bloquean la v1 y fueron confirmados.
 
 | Competidor | Problema que resuelve | Pricing | Diferenciadores |
 |---|---|---|---|
-| DentalCore (Argentina) | Gestión de consultorio con agenda, WhatsApp, ARCA y obras sociales | USD 50/mes en el sitio, con cifras contradictorias en otras fuentes | Localización argentina más completa declarada. Proveedor unipersonal y sin reseñas |
+| DentalCore (Argentina) | Gestión de consultorio con agenda, WhatsApp, ARCA y obras sociales | USD 50/mes con 2 usuarios y USD 10 por usuario adicional | Localización argentina más completa declarada. Sin reseñas; el soporte lo da el fundador. El paciente solo confirma o cancela un turno ya cargado |
 | DentalTec (Argentina) | Gestión para odontólogos y círculos, con foco en obras sociales | No publicado | Validación de prácticas contra obras sociales. Turnos online no evidenciados |
-| Dentalink (Chile, con landing argentina) | Gestión de clínicas con agenda documentada | No publicado | Mejor documentación pública de agenda: sobreagendamiento, bloqueos y recurso por sillón |
-| AgendaPro (Chile, presente en Argentina) | Reserva online y gestión para negocios de servicios, con vertical dental | CLP publicados. Pesos argentinos sin confirmar | Reserva 24/7 con seña por Mercado Pago. Clínica limitada |
-| Odonthia (Argentina) | Gestión de consultorio con historia clínica y firma electrónica | Plan gratuito. Complementos desde USD 26/mes, con discrepancia de moneda | Cumplimiento legal argentino declarado |
+| Dentalink (Chile, con landing argentina) | Gestión de clínicas con agenda documentada | No publicado | Mejor documentación pública de agenda: bloqueos, horarios especiales y recurso por sillón. El sobreagendamiento es una opción al agendar, sin reglas documentadas |
+| AgendaPro (Chile, con sitio y precios para Argentina) | Reserva online y gestión para negocios de servicios, con vertical dental | ARS 13.900 a 44.900 por mes y plan Pro de ARS 314.900, con IVA | Reserva 24/7 con seña. Mercado Pago no evidenciado. Clínica limitada |
+| Odonthia (Argentina) | Gestión de consultorio con historia clínica y firma electrónica | Plan gratuito. Planes pagos de ARS 20.900 y 46.900 por mes en Argentina | Declara que le alcanza la Ley 25.326 |
 
-**Notas**: casi toda la evidencia de los proveedores argentinos es marketing, no documentación verificable en uso. Como referentes de experiencia de usuario: Simples Dental (agenda por sillones, lista de espera, enlace público), Clinicorp (reagendamiento y cancelación automáticos, prevención de solapamientos) y AgendaPro (reserva 24/7 con seña).
+**Notas**: la evidencia de los proveedores argentinos es mayormente comercial; la excepción es Bilog, cuyo centro de ayuda documenta los recordatorios y la liquidación de obras sociales. Como referentes de experiencia de usuario: Simples Dental (agenda por sillones, lista de espera, enlace público), Dentalink (agenda documentada con sillón, bloqueos y horarios especiales) y AgendaPro (reserva 24/7 con seña). Clinicorp dejó de ser referente el 2026-10-12: la verificación no encontró en su sitio la prevención de solapamientos ni el reagendamiento automático.
 
-**Vacíos del mercado argentino**: no se evidenció autogestión del paciente, lista de espera ni prevención de solapamientos en ningún proveedor local. Los precios son opacos y solo Odonthia declara la Ley 25.326.
+**Vacíos del mercado argentino**: ningún sistema relevado, local o extranjero, documenta la prevención de solapamientos. La autogestión del paciente es parcial: Bilog y AgendaPro declaran la toma y la cancelación de turnos, pero la reprogramación por el paciente y la lista de espera no se evidencian en ningún proveedor local. Los precios son desparejos (AgendaPro, Odonthia y DentalCore publican valores; DentalTec y Bilog no publican importes) y solo Odonthia declara la Ley 25.326.
 
 ## 5. Funcionalidades necesarias
 
@@ -98,7 +98,7 @@ Backlog posterior, en este orden de prioridad:
 - **WhatsApp semimanual**: depende de que recepción envíe cada mensaje, así que no elimina por completo el trabajo manual.
 - **Ley 25.326 diferida**: desde la v1 se guardan datos personales de pacientes y la ley aplica desde ese momento, aunque la auditoría y el consentimiento lleguen después.
 - **Hosting y correo gratuitos**: tienen límites de envío y de disponibilidad. El correo por SMTP de una cuenta existente tiene tope diario y puede caer en spam, y el enlace público necesita un hosting en la nube accesible desde internet.
-- **Mercado analizado por marketing**: casi nada de lo de los proveedores argentinos está verificado en uso. El puntaje de DentalCore (4,00) refleja lo que declara, no lo que está demostrado.
+- **Mercado analizado por marketing**: casi nada de lo de los proveedores argentinos está verificado en uso. El puntaje de DentalCore (3,75 tras la verificación del 2026-10-12) refleja lo que declara, no lo que está demostrado.
 
 ## 11. Preguntas abiertas
 
