@@ -198,7 +198,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ## PRIMERA ENTREGA — Change del Trabajo de Integración
 
 ### [C-00] `crear-turno-sin-solapamientos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado el 2026-10-13 (`openspec/changes/archive/2026-10-13-crear-turno-sin-solapamientos/`)
 - **Scope**: Crear un turno evitando solapamientos por profesional (y, por el box fijo de RN-10, por box). Es el único change de la primera parte de la entrega (DD-33) y recorre el ciclo OPSX completo: explore, propose, apply, verify y archive
   - Regla de negocio: un profesional no puede tener dos turnos superpuestos; los turnos `cancelado` y `liberado` no cuentan (RN-17); la duración del turno es la de la prestación elegida (RN-13)
   - La garantía final la da la base de datos: restricción de exclusión sobre el profesional y el rango de tiempo `[inicio, fin)`, creada a mano tras `CREATE EXTENSION IF NOT EXISTS btree_gist` (regla dura 7), con la violación traducida a un error de dominio "horario ocupado" (DD-08)
