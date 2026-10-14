@@ -120,10 +120,35 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
 ├── knowledge-base/              Fuente de verdad del dominio (14 archivos)
 ├── discovery/                   Descubrimiento de producto, análisis de mercado y exploración técnica
 ├── openspec/                    Changes de SDD (propuestas, especificaciones, diseño y tareas)
+├── backend/                     API en capas (dominio, aplicación, infraestructura), migraciones y pruebas
 └── .claude/
     ├── skills/                  23 skills del proyecto, versionadas
     └── commands/                Comandos de OpenSpec (/opsx:*)
 ```
+
+## Cómo correr las pruebas del backend
+
+Requisitos: [uv](https://docs.astral.sh/uv/) y Docker. Los comandos se ejecutan desde `backend/`.
+
+```bash
+# 1. Instalar las dependencias
+uv sync
+
+# 2. Pruebas unitarias (no necesitan base de datos)
+uv run pytest -m "not integration"
+
+# 3. Levantar un PostgreSQL descartable para las pruebas de integración
+docker run --rm -d --name tpi-pg-test -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:17
+
+# 4. Pruebas de integración contra PostgreSQL real
+export TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@127.0.0.1:55432/postgres"
+uv run pytest -m integration
+
+# 5. Detener el contenedor al terminar
+docker stop tpi-pg-test
+```
+
+Las pruebas de integración crean una base propia, le aplican las migraciones con `alembic upgrade head` y la eliminan al terminar. Si `TEST_DATABASE_URL` no está definida, fallan con un mensaje explícito: no se omiten.
 
 ## Documentación
 
