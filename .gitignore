@@ -1,2 +1,10 @@
 # Engram project memory (not versioned: the repo is on GitHub)
 .engram/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Local environment
+.env
