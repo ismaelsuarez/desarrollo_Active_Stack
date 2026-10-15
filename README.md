@@ -170,3 +170,13 @@ Las reglas duras que deben respetar tanto el equipo como los agentes están en [
 - Tests de repositorios y restricciones contra PostgreSQL real, sin mocks de base de datos.
 - Sin worker persistente: los recordatorios corren como barrido idempotente en la API.
 - Sin dependencias ni servicios con costo, y sin funciones del backlog dentro de un change de la v1.
+
+## Verificación de un único head de Alembic
+
+Desde `backend/`, sin conexión a PostgreSQL:
+
+```bash
+uv run python scripts/check_single_head.py
+```
+
+El comando imprime los heads y termina con código 0 solo si existe exactamente uno; las historias con dos heads se rechazan.
