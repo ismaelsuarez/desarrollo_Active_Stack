@@ -44,12 +44,14 @@ La configuración MUST rechazar, en cualquier entorno, una `JWT_SECRET_KEY` de m
 La configuración SHALL aceptar cada valor sensible desde un archivo de secreto en el directorio de secretos (por defecto `/run/secrets`), cuyo nombre es el de la variable en minúsculas (por ejemplo `jwt_secret_key`). Una variable de entorno definida tiene prioridad sobre el archivo. Se descartan los espacios y saltos de línea finales del archivo.
 
 #### Scenario: Secreto solo en archivo
-- **WHEN** `JWT_SECRET_KEY` no está en el entorno y el archivo `jwt_secret_key` del directorio de secretos contiene `valor-de-prueba\n`
-- **THEN** la configuración expone `JWT_SECRET_KEY` con el valor `valor-de-prueba`
+- **GIVEN** el resto de la configuración obligatoria es válido
+- **WHEN** `JWT_SECRET_KEY` no está en el entorno y el archivo `jwt_secret_key` del directorio de secretos contiene `archivo-secreto-de-prueba-0123456789\n`
+- **THEN** la configuración expone `JWT_SECRET_KEY` con el valor `archivo-secreto-de-prueba-0123456789`
 
 #### Scenario: Entorno y archivo a la vez
-- **WHEN** `JWT_SECRET_KEY` está en el entorno con `desde-entorno` y el archivo `jwt_secret_key` contiene `desde-archivo`
-- **THEN** la configuración expone `desde-entorno`
+- **GIVEN** el resto de la configuración obligatoria es válido
+- **WHEN** `JWT_SECRET_KEY` está en el entorno con `entorno-secreto-de-prueba-0123456789` y el archivo `jwt_secret_key` contiene `archivo-secreto-de-prueba-0123456789`
+- **THEN** la configuración expone `entorno-secreto-de-prueba-0123456789`
 
 #### Scenario: Directorio de secretos inexistente
 - **WHEN** el directorio de secretos no existe y las variables obligatorias están en el entorno

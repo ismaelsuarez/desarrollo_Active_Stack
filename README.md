@@ -180,3 +180,11 @@ uv run python scripts/check_single_head.py
 ```
 
 El comando imprime los heads y termina con código 0 solo si existe exactamente uno; las historias con dos heads se rechazan.
+
+## Configuración del backend
+
+`app.core.config.Settings` exige `DATABASE_URL`, `JWT_SECRET_KEY` y `APP_ENV` (`development`, `test` o `production`). La clave de firma debe ocupar al menos 32 bytes UTF-8. Los errores de validación nombran el campo sin mostrar valores sensibles.
+
+Los secretos se leen del entorno o de archivos en `/run/secrets` (directorio configurable mediante `SECRETS_DIR`); el entorno tiene prioridad sobre los archivos. `REDIS_URL` es opcional y `APP_TIMEZONE` usa `America/Argentina/Buenos_Aires` por defecto.
+
+`DatabaseSettings` carga únicamente la conexión, sin exigir la clave de firma ni `APP_ENV`: `migration_url` usa `MIGRATIONS_DATABASE_URL` cuando está definida y `DATABASE_URL` en otro caso. La integración de esta configuración con Alembic corresponde al siguiente lote.
