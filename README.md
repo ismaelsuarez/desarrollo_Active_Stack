@@ -32,8 +32,9 @@ Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de 
 
 - **Entrega en dos partes:** la primera el 2026-10-19, con los changes completos y verificados a esa fecha; la segunda, con el resto. Se entrega el repositorio de GitHub.
 - **Fundación terminada:** descubrimiento de producto, base de conocimiento, roadmap de 20 changes, skills y reglas del proyecto.
-- **En curso:** propuesta del primer change, `c-01-foundation-setup`, lista en `openspec/changes/`.
-- **Código:** todavía no hay código ejecutable. El entorno local con Docker Compose se crea en el change C-01, y esta sección se completa ahí con los comandos reales.
+- **C-00 completado:** creación de turnos sin solapamientos, archivada e integrada a `main`.
+- **C-01 en curso:** entorno local, salud HTTP, configuración, logging, frontend mínimo y CI; la ejecución remota de CI sigue pendiente hasta publicar la rama.
+- **Código ejecutable:** backend de C-00 y base de desarrollo de C-01. Aún no hay autenticación, pantallas de agenda ni despliegue publicado.
 
 ## Stack tecnológico
 
@@ -128,6 +129,70 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
     └── commands/                Comandos de OpenSpec (/opsx:*)
 ```
 
+## Desarrollo local con Docker Compose
+
+Requisitos: Docker Engine con Docker Compose v2 o posterior y Python 3 para los scripts locales. Para las pruebas fuera de contenedores: `uv`, Node.js 24 y npm. Ejecutar desde la raíz del repositorio:
+
+```bash
+scripts/dev_secrets.sh
+test -f .env || cp .env.example .env
+docker compose up --build -d --wait
+python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health').status)"
+```
+
+Frontend: `http://localhost:5173`. Salud de la API: `http://localhost:8000/api/v1/health` (responde `200` con `{"status": "ok"}`, sin consultar PostgreSQL). Compose aplica `alembic upgrade head` antes de iniciar la API. Se conserva la migración y la restricción de no solapamiento de C-00; C-01 no crea otra raíz ni requiere una revisión vacía.
+
+`.env` contiene solo configuración no sensible. Los secretos se generan una vez en `secrets/` y se montan en `/run/secrets`; no se imprimen ni sobrescriben. La carpeta tiene modo `0700`; los archivos son legibles por el proceso no root del contenedor mediante sus montajes. `.env` y `secrets/` están ignorados por Git. Si se personalizan `POSTGRES_USER` o `POSTGRES_DB`, exportar esos mismos valores al generar los secretos y usarlos en `.env`; no regenerar credenciales sobre un volumen ya inicializado.
+
+La configuración de la API exige `DATABASE_URL`, `JWT_SECRET_KEY` y `APP_ENV` (`development`, `test` o `production`). La clave de firma debe ocupar al menos 32 bytes UTF-8; los errores de validación nombran los campos sin mostrar valores sensibles. El entorno tiene prioridad sobre los archivos de secreto; `SECRETS_DIR` permite cambiar su directorio. `REDIS_URL` es opcional y `APP_TIMEZONE` usa `America/Argentina/Buenos_Aires` por defecto.
+
+Servicios opcionales, sin trabajador de aplicación separado:
+
+```bash
+docker compose --profile dev up -d mailpit
+python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8025').status)"
+docker compose --profile redis config --services
+```
+
+Mailpit captura los correos locales; su interfaz está en `http://localhost:8025`. Redis es opcional y no se necesita para arrancar C-01. El frontend de C-01 solo muestra el nombre del sistema; no implementa aún pantallas ni el proxy de C-11.
+
+Verificación integrada en un único comando:
+
+```bash
+scripts/smoke_compose.sh
+```
+
+El smoke test construye y levanta un proyecto Compose con nombre único y volúmenes nuevos, comprueba migraciones, salud, usuario no root y Mailpit, y elimina **solo esos recursos descartables**. No reutiliza ni elimina los volúmenes del entorno habitual. Para detener el entorno habitual conservando sus datos:
+
+```bash
+docker compose --profile dev --profile redis down
+```
+
+Nunca usar una reversión completa de migraciones para deshacer solo C-01 en una base con datos de C-00. Las pruebas de reversión completa usan bases temporales propias.
+
+## Pruebas y compilación del frontend
+
+Desde `frontend/`:
+
+```bash
+npm ci
+npm test -- --run
+npm run typecheck
+npm run build
+```
+
+## Verificación de migraciones y CI
+
+Desde `backend/` (el chequeo de heads no necesita una conexión a la base):
+
+```bash
+uv run alembic heads
+uv run python scripts/check_single_head.py
+```
+
+Las migraciones cargan únicamente la configuración de conexión: usan `MIGRATIONS_DATABASE_URL` si está definida y `DATABASE_URL` en otro caso, sin exigir `APP_ENV` ni `JWT_SECRET_KEY`. Sus valores también pueden proceder de archivos de secreto. Las pruebas aíslan sus URL para no seguir conexiones heredadas del entorno.
+
+
 ## Cómo correr las pruebas del backend
 
 Requisitos: [uv](https://docs.astral.sh/uv/) y Docker. Los comandos se ejecutan desde `backend/`.
@@ -172,37 +237,3 @@ Las reglas duras que deben respetar tanto el equipo como los agentes están en [
 - Tests de repositorios y restricciones contra PostgreSQL real, sin mocks de base de datos.
 - Sin worker persistente: los recordatorios corren como barrido idempotente en la API.
 - Sin dependencias ni servicios con costo, y sin funciones del backlog dentro de un change de la v1.
-
-## Verificación de un único head de Alembic
-
-Desde `backend/`, sin conexión a PostgreSQL:
-
-```bash
-uv run python scripts/check_single_head.py
-```
-
-El comando imprime los heads y termina con código 0 solo si existe exactamente uno; las historias con dos heads se rechazan.
-
-## Configuración del backend
-
-`app.core.config.Settings` exige `DATABASE_URL`, `JWT_SECRET_KEY` y `APP_ENV` (`development`, `test` o `production`). La clave de firma debe ocupar al menos 32 bytes UTF-8. Los errores de validación nombran el campo sin mostrar valores sensibles.
-
-Los secretos se leen del entorno o de archivos en `/run/secrets` (directorio configurable mediante `SECRETS_DIR`); el entorno tiene prioridad sobre los archivos. `REDIS_URL` es opcional y `APP_TIMEZONE` usa `America/Argentina/Buenos_Aires` por defecto.
-
-`DatabaseSettings` carga únicamente la conexión, sin exigir la clave de firma ni `APP_ENV`: `migration_url` usa `MIGRATIONS_DATABASE_URL` cuando está definida y `DATABASE_URL` en otro caso. Alembic usa esta configuración al ejecutar las migraciones.
-
-## Salud HTTP y logging
-
-La aplicación se crea mediante `app.main:create_app` (`uvicorn --factory`). `GET /api/v1/health` responde `200` con `{"status": "ok"}` sin consultar la base; otros métodos no están habilitados.
-
-Los registros de `app`, `tpi` y Uvicorn usan JSON con fecha UTC y redacción de secretos. `X-Request-ID` se devuelve en la respuesta y se incluye en los registros; se genera uno nuevo cuando falta o no es válido. La imagen del backend usa un usuario no root y el mismo punto de entrada de producción que verifican las pruebas del servidor.
-
-## Frontend mínimo
-
-Desde `frontend/`: `npm ci`, `npm test -- --run`, `npm run typecheck` y `npm run build`. La SPA de React con Vite muestra el nombre del sistema en español; todavía no implementa las pantallas de agenda. El Dockerfile ofrece etapas `dev` y `build`.
-
-Las pruebas de migraciones usan PostgreSQL real y bases descartables propias. C-01 conserva la revisión existente de C-00 y su restricción contra solapamientos; no crea otra raíz ni borra los datos existentes.
-
-## Secretos locales
-
-Ejecutar `scripts/dev_secrets.sh` desde la raíz para crear `secrets/`; una segunda ejecución conserva los archivos existentes. `.env.example` contiene solo configuración no sensible. Copiarla a `.env` si todavía no existe. Los secretos y `.env` no se versionan.

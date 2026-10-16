@@ -18,7 +18,7 @@ El archivo `docker-compose.yml` SHALL validar con `docker compose config --quiet
 - **THEN** no existe la clave `version`
 
 ### Requirement: Servicios del entorno local
-El entorno local SHALL definir exactamente los servicios `db`, `migrate`, `api`, `frontend`, `redis` y `mailpit`, y MUST NOT definir un servicio `worker` ni ningún otro proceso persistente aparte de la API.
+El entorno local SHALL definir exactamente los servicios `db`, `migrate`, `api`, `frontend`, `redis` y `mailpit`, y MUST NOT definir un servicio `worker` ni otro trabajador de aplicación separado de la API; esto no prohíbe los servicios de base de datos, frontend y auxiliares declarados.
 
 #### Scenario: Conjunto de servicios
 - **WHEN** se listan los servicios de `docker-compose.yml`
@@ -62,6 +62,20 @@ El servicio `api` SHALL declarar `restart: unless-stopped` y un healthcheck que 
 #### Scenario: Perfil dev
 - **WHEN** se activa el perfil `dev`
 - **THEN** `mailpit` queda incluido y expone su interfaz web en el puerto 8025
+
+### Requirement: Verificación de arranque aislada
+La verificación local y de CI SHALL usar un proyecto Compose descartable con identidad y volúmenes propios nuevos. Su limpieza MUST eliminar únicamente esos recursos; MUST NOT reutilizar ni eliminar los volúmenes del entorno de desarrollo habitual.
+
+#### Scenario: Entorno de prueba vacío
+- **WHEN** se ejecuta `scripts/smoke_compose.sh`
+- **THEN** el arranque usa un proyecto descartable con volúmenes propios nuevos
+- **AND** las comprobaciones y la limpieza usan la misma identidad de proyecto
+
+#### Scenario: Volúmenes de desarrollo existentes
+- **GIVEN** volúmenes persistentes del entorno de desarrollo habitual
+- **WHEN** termina la verificación de arranque y limpia su proyecto descartable
+- **THEN** elimina solo los contenedores y volúmenes de la prueba
+- **AND** los volúmenes habituales y sus datos permanecen intactos
 
 ### Requirement: Secretos como archivos montados y no versionados
 Los valores sensibles SHALL llegar a los contenedores como secretos de Compose montados en `/run/secrets/<nombre>` desde la carpeta `secrets/`, nunca por `env_file` ni por `environment`; `secrets/` y `.env` MUST quedar excluidos de Git, y `.env.example` MUST listar solo variables no sensibles. Cada servicio SHALL recibir únicamente los secretos que usa: `db` recibe `postgres_password`, `migrate` recibe `database_url` y `api` recibe `database_url` y `jwt_secret_key`.
