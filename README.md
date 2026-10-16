@@ -202,3 +202,7 @@ Los registros de `app`, `tpi` y Uvicorn usan JSON con fecha UTC y redacción de 
 Desde `frontend/`: `npm ci`, `npm test -- --run`, `npm run typecheck` y `npm run build`. La SPA de React con Vite muestra el nombre del sistema en español; todavía no implementa las pantallas de agenda. El Dockerfile ofrece etapas `dev` y `build`.
 
 Las pruebas de migraciones usan PostgreSQL real y bases descartables propias. C-01 conserva la revisión existente de C-00 y su restricción contra solapamientos; no crea otra raíz ni borra los datos existentes.
+
+## Secretos locales
+
+Ejecutar `scripts/dev_secrets.sh` desde la raíz para crear `secrets/`; una segunda ejecución conserva los archivos existentes. `.env.example` contiene solo configuración no sensible. Copiarla a `.env` si todavía no existe. Los secretos y `.env` no se versionan.
