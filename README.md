@@ -192,6 +192,7 @@ uv run python scripts/check_single_head.py
 
 Las migraciones cargan únicamente la configuración de conexión: usan `MIGRATIONS_DATABASE_URL` si está definida y `DATABASE_URL` en otro caso, sin exigir `APP_ENV` ni `JWT_SECRET_KEY`. Sus valores también pueden proceder de archivos de secreto. Las pruebas aíslan sus URL para no seguir conexiones heredadas del entorno.
 
+`.github/workflows/ci.yml` define verificaciones gratuitas de backend con PostgreSQL real, frontend, imágenes y arranque de Compose en cada push y pull request a `main`. La validación local del workflow no sustituye una ejecución de GitHub Actions: ese resultado se comprueba después de publicar una rama autorizada.
 
 ## Cómo correr las pruebas del backend
 
