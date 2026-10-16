@@ -34,11 +34,12 @@ La API SHALL asignar a cada solicitud HTTP un identificador, tomado del encabeza
 - **THEN** cada respuesta tiene un `X-Request-ID` distinto
 
 ### Requirement: Sin valores sensibles en los registros
-Los registros MUST NOT contener el valor de ningún campo secreto de la configuración ni la contraseña incluida en `DATABASE_URL` o en `MIGRATIONS_DATABASE_URL`; cuando un mensaje o un campo adicional los contiene, se reemplazan por `***`. El conjunto de valores ocultos SHALL derivarse del tipo del campo (todo campo declarado como secreto en la configuración) y no de una lista de nombres, de modo que un change posterior que agrega un campo secreto (`SMTP_PASSWORD`, `SWEEP_SHARED_SECRET`, `ORIGIN_HASH_SECRET`, `BOOTSTRAP_ADMIN_PASSWORD`) quede cubierto sin modificar el registro. En C-01 los campos secretos son `JWT_SECRET_KEY`, `DATABASE_URL` y `MIGRATIONS_DATABASE_URL`. Los valores vacíos y los de menos de 4 caracteres no se ocultan: reemplazar por contenido convertiría una cadena vacía en `***` en todo el registro.
+Los registros MUST reemplazar por `***` los valores secretos y las contraseñas de las URL de base que aparezcan en mensajes o campos adicionales. Los valores SHALL derivarse del tipo secreto del campo, no de una lista de nombres; agregar un campo secreto no requiere cambiar el registro. Se exceptúan los valores vacíos o menores de 4 caracteres para evitar reemplazos espurios.
 
 #### Scenario: Mensaje con un secreto
-- **WHEN** la configuración tiene `JWT_SECRET_KEY=super-secreto` y la aplicación registra un mensaje que contiene `super-secreto`
-- **THEN** la línea emitida no contiene `super-secreto`
+- **GIVEN** la configuración obligatoria es válida y declara `JWT_SECRET_KEY`, `DATABASE_URL` y `MIGRATIONS_DATABASE_URL` como campos secretos
+- **WHEN** la configuración tiene `JWT_SECRET_KEY=jwt-secreto-de-prueba-0123456789-abcd` y la aplicación registra un mensaje que contiene `jwt-secreto-de-prueba-0123456789-abcd`
+- **THEN** la línea emitida no contiene `jwt-secreto-de-prueba-0123456789-abcd`
 - **AND** contiene `***` en su lugar
 
 #### Scenario: URL de base con contraseña
@@ -50,12 +51,12 @@ Los registros MUST NOT contener el valor de ningún campo secreto de la configur
 - **THEN** la línea emitida no contiene ese valor
 
 #### Scenario: Campo secreto agregado después
-- **WHEN** una configuración de prueba que extiende la de la API con un campo secreto nuevo tiene ese campo en `valor-nuevo` y la aplicación registra un mensaje que contiene `valor-nuevo`
+- **WHEN** una configuración de prueba que extiende la de la API con un campo secreto nuevo (por ejemplo `SMTP_PASSWORD`, `SWEEP_SHARED_SECRET`, `ORIGIN_HASH_SECRET` o `BOOTSTRAP_ADMIN_PASSWORD`) tiene ese campo en `valor-nuevo` y la aplicación registra un mensaje que contiene `valor-nuevo`
 - **THEN** la línea emitida no contiene `valor-nuevo`
 - **AND** el código del registro no se modificó para conocer ese campo
 
 #### Scenario: Valor secreto vacío o muy corto
-- **WHEN** una configuración de prueba tiene un campo secreto con valor vacío y otro con el valor `abc`, y la aplicación registra el mensaje `inicio abc`
+- **WHEN** una configuración válida con una clave JWT de al menos 32 bytes tiene campos secretos adicionales de prueba, uno vacío y otro con el valor `abc`, y la aplicación registra el mensaje `inicio abc`
 - **THEN** la línea emitida conserva el mensaje `inicio abc` sin `***` insertado en ninguna posición
 
 #### Scenario: Error de arranque

@@ -190,3 +190,9 @@ El comando imprime los heads y termina con código 0 solo si existe exactamente 
 Los secretos se leen del entorno o de archivos en `/run/secrets` (directorio configurable mediante `SECRETS_DIR`); el entorno tiene prioridad sobre los archivos. `REDIS_URL` es opcional y `APP_TIMEZONE` usa `America/Argentina/Buenos_Aires` por defecto.
 
 `DatabaseSettings` carga únicamente la conexión, sin exigir la clave de firma ni `APP_ENV`: `migration_url` usa `MIGRATIONS_DATABASE_URL` cuando está definida y `DATABASE_URL` en otro caso. La integración de esta configuración con Alembic corresponde al siguiente lote.
+
+## Salud HTTP y logging
+
+La aplicación se crea mediante `app.main:create_app` (`uvicorn --factory`). `GET /api/v1/health` responde `200` con `{"status": "ok"}` sin consultar la base; otros métodos no están habilitados.
+
+Los registros de `app`, `tpi` y Uvicorn usan JSON con fecha UTC y redacción de secretos. `X-Request-ID` se devuelve en la respuesta y se incluye en los registros; se genera uno nuevo cuando falta o no es válido. La imagen del backend usa un usuario no root y el mismo punto de entrada de producción que verifican las pruebas del servidor.
