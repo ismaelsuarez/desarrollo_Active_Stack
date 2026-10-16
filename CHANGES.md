@@ -217,7 +217,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ## FASE 0 — Cimientos
 
 ### [C-01] `foundation-setup`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado y archivado el 2026-10-15 en [`2026-10-15-c-01-foundation-setup`](openspec/changes/archive/2026-10-15-c-01-foundation-setup/); 22/22 tareas y especificaciones sincronizadas.
 - **Scope**: Scaffolding del monorepo e infraestructura base (local/dev; sin worker)
   - Estructura: `backend/` en capas (`app/domain`, `app/application`, `app/infrastructure`, `app/api` con `internal/`, `app/core`), `frontend/` (Vite + React + TypeScript), `docker-compose.yml`, `.env.example` (con `APP_ENV=development`; `scripts/smoke_compose.sh` y los jobs de CI que usan Compose crean `.env` a partir de él si no existe)
   - `docker-compose.yml` **sin clave `version`**, con servicios `db` (PostgreSQL con volumen y healthcheck), `migrate` (`alembic upgrade head` y termina), `api` (healthcheck, `restart: unless-stopped`), `frontend` (etapa `dev` de su Dockerfile; el build de producción lo sirve la API, DD-26, y su etapa `build` produce `dist`), `redis` (opcional, perfil `redis`) y `mailpit` (perfil `dev`); `depends_on` con `service_healthy` y `service_completed_successfully`; secretos montados en `/run/secrets/<nombre>` (la carpeta `secrets/` no se versiona). No hay servicio `worker`

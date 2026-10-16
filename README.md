@@ -33,7 +33,8 @@ Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de 
 - **Entrega en dos partes:** la primera el 2026-10-19, con los changes completos y verificados a esa fecha; la segunda, con el resto. Se entrega el repositorio de GitHub.
 - **Fundación terminada:** descubrimiento de producto, base de conocimiento, roadmap de 20 changes, skills y reglas del proyecto.
 - **C-00 completado:** creación de turnos sin solapamientos, archivada e integrada a `main`.
-- **C-01 en curso:** entorno local, salud HTTP, configuración, logging, frontend mínimo y CI; la ejecución remota de CI sigue pendiente hasta publicar la rama.
+- **C-01 completado y archivado:** entorno local, salud HTTP, configuración, logging y frontend mínimo integrados a `main`, con las 22 tareas completadas y seis especificaciones sincronizadas. El change está en [`2026-10-15-c-01-foundation-setup`](openspec/changes/archive/2026-10-15-c-01-foundation-setup/). La [ejecución de CI de `2c463ad`](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) pasó los cuatro jobs.
+- **Próximo change:** C-02 (`core-models`), según el orden de construcción de [`CHANGES.md`](CHANGES.md).
 - **Código ejecutable:** backend de C-00 y base de desarrollo de C-01. Aún no hay autenticación, pantallas de agenda ni despliegue publicado.
 
 ## Stack tecnológico
@@ -192,7 +193,7 @@ uv run python scripts/check_single_head.py
 
 Las migraciones cargan únicamente la configuración de conexión: usan `MIGRATIONS_DATABASE_URL` si está definida y `DATABASE_URL` en otro caso, sin exigir `APP_ENV` ni `JWT_SECRET_KEY`. Sus valores también pueden proceder de archivos de secreto. Las pruebas aíslan sus URL para no seguir conexiones heredadas del entorno.
 
-`.github/workflows/ci.yml` define verificaciones gratuitas de backend con PostgreSQL real, frontend, imágenes y arranque de Compose en cada push y pull request a `main`. La validación local del workflow no sustituye una ejecución de GitHub Actions: ese resultado se comprueba después de publicar una rama autorizada.
+`.github/workflows/ci.yml` define verificaciones gratuitas de backend con PostgreSQL real, frontend, imágenes y arranque de Compose en cada push y pull request a `main`. La [ejecución de C-01 para `2c463ad`](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) terminó correctamente en los jobs `backend`, `frontend`, `images` y `compose-smoke`. La validación local del workflow no sustituye GitHub Actions; cada cambio posterior requiere su propia comprobación.
 
 ## Cómo correr las pruebas del backend
 
