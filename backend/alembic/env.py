@@ -1,5 +1,4 @@
 import asyncio
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -7,6 +6,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
+from app.core.config import DatabaseSettings
 
 config = context.config
 
@@ -19,14 +19,8 @@ target_metadata = None
 
 
 def database_url() -> str:
-    """La URL sale del entorno, nunca de alembic.ini."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        raise RuntimeError(
-            "DATABASE_URL no está definida: Alembic necesita la URL de PostgreSQL "
-            "(postgresql+asyncpg://usuario:clave@host:puerto/base)."
-        )
-    return url
+    """Load database-only settings; migration processes do not require API secrets."""
+    return DatabaseSettings().migration_url
 
 
 def run_migrations_offline() -> None:

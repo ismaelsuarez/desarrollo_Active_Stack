@@ -7,7 +7,7 @@ Versiona el esquema de PostgreSQL con una historia lineal de un único head, apl
 ## ADDED Requirements
 
 ### Requirement: Migración base con btree_gist
-La primera migración del esquema SHALL dejar instalada la extensión `btree_gist` mediante una creación idempotente (`CREATE EXTENSION IF NOT EXISTS btree_gist`), requisito de la restricción de no solapamiento de turnos.
+La migración inicial existente de C-00 SHALL conservar la creación idempotente de `btree_gist` (`CREATE EXTENSION IF NOT EXISTS btree_gist`), requisito de la restricción de no solapamiento de turnos.
 
 #### Scenario: Base vacía
 - **WHEN** se aplica `alembic upgrade head` sobre una base PostgreSQL vacía
@@ -23,9 +23,29 @@ La primera migración del esquema SHALL dejar instalada la extensión `btree_gis
 - **THEN** `alembic upgrade head` termina con código 0
 
 #### Scenario: Reversión de la migración base
+- **GIVEN** una base temporal propia y descartable, sin datos ajenos a la prueba
 - **WHEN** se ejecuta `alembic downgrade base` después de `alembic upgrade head`
 - **THEN** el comando termina con código 0
 - **AND** `btree_gist` sigue en `pg_extension`, porque la extensión pudo existir antes de la migración
+
+### Requirement: Conservación del esquema existente
+C-01 MUST conservar el esquema y los datos entregados por C-00, incluida la restricción de no solapamiento. Sin cambios de esquema se mantiene el head existente; cualquier revisión necesaria SHALL ser descendiente del único head vigente, nunca otra raíz. Revertir C-01 MUST NOT eliminar el esquema ni los datos de C-00.
+
+#### Scenario: Base ya migrada por C-00
+- **GIVEN** una base con la migración de C-00 aplicada y un turno guardado
+- **WHEN** se aplica `alembic upgrade head` con la configuración de C-01
+- **THEN** el turno y la restricción de no solapamiento permanecen
+- **AND** la historia conserva un único head
+
+#### Scenario: Sin cambios de esquema
+- **WHEN** C-01 modifica configuración sin agregar DDL
+- **THEN** se conserva el head `0001_turnos_sin_solapamiento` sin crear una revisión vacía
+
+#### Scenario: Reversión de C-01
+- **GIVEN** una base que conserva datos de C-00 después de aplicar C-01
+- **WHEN** se revierte únicamente C-01
+- **THEN** la base conserva las tablas, los datos y la restricción de C-00
+- **AND** no se ejecuta `alembic downgrade base` sobre esa base
 
 ### Requirement: Migraciones solo con upgrade head
 Las migraciones MUST aplicarse con `alembic upgrade head`; ningún script, servicio ni documentación del proyecto usa `upgrade heads`.

@@ -189,7 +189,7 @@ El comando imprime los heads y termina con código 0 solo si existe exactamente 
 
 Los secretos se leen del entorno o de archivos en `/run/secrets` (directorio configurable mediante `SECRETS_DIR`); el entorno tiene prioridad sobre los archivos. `REDIS_URL` es opcional y `APP_TIMEZONE` usa `America/Argentina/Buenos_Aires` por defecto.
 
-`DatabaseSettings` carga únicamente la conexión, sin exigir la clave de firma ni `APP_ENV`: `migration_url` usa `MIGRATIONS_DATABASE_URL` cuando está definida y `DATABASE_URL` en otro caso. La integración de esta configuración con Alembic corresponde al siguiente lote.
+`DatabaseSettings` carga únicamente la conexión, sin exigir la clave de firma ni `APP_ENV`: `migration_url` usa `MIGRATIONS_DATABASE_URL` cuando está definida y `DATABASE_URL` en otro caso. Alembic usa esta configuración al ejecutar las migraciones.
 
 ## Salud HTTP y logging
 
@@ -200,3 +200,5 @@ Los registros de `app`, `tpi` y Uvicorn usan JSON con fecha UTC y redacción de 
 ## Frontend mínimo
 
 Desde `frontend/`: `npm ci`, `npm test -- --run`, `npm run typecheck` y `npm run build`. La SPA de React con Vite muestra el nombre del sistema en español; todavía no implementa las pantallas de agenda. El Dockerfile ofrece etapas `dev` y `build`.
+
+Las pruebas de migraciones usan PostgreSQL real y bases descartables propias. C-01 conserva la revisión existente de C-00 y su restricción contra solapamientos; no crea otra raíz ni borra los datos existentes.
