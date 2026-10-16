@@ -196,3 +196,7 @@ Los secretos se leen del entorno o de archivos en `/run/secrets` (directorio con
 La aplicación se crea mediante `app.main:create_app` (`uvicorn --factory`). `GET /api/v1/health` responde `200` con `{"status": "ok"}` sin consultar la base; otros métodos no están habilitados.
 
 Los registros de `app`, `tpi` y Uvicorn usan JSON con fecha UTC y redacción de secretos. `X-Request-ID` se devuelve en la respuesta y se incluye en los registros; se genera uno nuevo cuando falta o no es válido. La imagen del backend usa un usuario no root y el mismo punto de entrada de producción que verifican las pruebas del servidor.
+
+## Frontend mínimo
+
+Desde `frontend/`: `npm ci`, `npm test -- --run`, `npm run typecheck` y `npm run build`. La SPA de React con Vite muestra el nombre del sistema en español; todavía no implementa las pantallas de agenda. El Dockerfile ofrece etapas `dev` y `build`.

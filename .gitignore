@@ -8,3 +8,7 @@ __pycache__/
 
 # Local environment
 .env
+
+# Frontend
+node_modules/
+dist/
