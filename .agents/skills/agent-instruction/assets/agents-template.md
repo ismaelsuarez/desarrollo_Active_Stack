@@ -40,7 +40,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 
 ## Skills Disponibles
 
-<!-- Fuente de verdad: .atl/skill-registry.md (generado por skill-registry). Adaptar filas a las skills que lista el registry; fallback a .claude/skills/ y ~/.claude/skills/ si no existe. -->
+<!-- Ejecutar python3 .agents/skills/skill-registry/scripts/refresh.py antes de leer el índice versionado .atl/skill-registry.md. Adaptar las filas a las skills físicas de .agents/skills/. No usar un fallback global. -->
 
 | Agente | Rol | Skills que carga |
 |--------|-----|------------------|
@@ -51,7 +51,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 
 Cargá la skill correspondiente al contexto ANTES de escribir código.
 
-> Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry`; no versionado — no está en el repo). Esta tabla solo mapea skill→rol.
+> El índice `.atl/skill-registry.md` está versionado y usa rutas relativas a la raíz del repositorio. Leer los `.agents/skills/<directorio>/SKILL.md` completos, sin inyectar resúmenes generados. Esta tabla solo mapea skill a rol; las skills faltantes se informan, no se sustituyen por instalaciones globales.
 
 ---
 

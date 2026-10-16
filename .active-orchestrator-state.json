@@ -503,9 +503,11 @@
   "registry": {
     "created_by": "skill-registry",
     "file": ".atl/skill-registry.md",
-    "skills_count": 30,
-    "project_skills_count": 16,
-    "updated_at": "2026-10-08"
+    "skills_count": 39,
+    "project_skills_count": 39,
+    "updated_at": "2026-10-15",
+    "skills_directory": ".agents/skills",
+    "path_policy": "repository-relative"
   },
   "agents": {
     "created_by": "agent-instruction",

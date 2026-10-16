@@ -9,44 +9,42 @@ metadata:
 
 ## Activation Contract
 
-Use this skill after installing, removing, creating, moving, or renaming skills, or when a delegator needs a fresh skill index.
+Use after installing, removing, creating, moving or renaming project skills, and before consuming the registry for delegation.
 
 ## Hard Rules
 
-- The registry is an index, not a compiler or summary. `SKILL.md` remains the source of truth.
-- Do not generate or inject compact rules by default; preserve author intent by passing exact skill paths to subagents.
-- Always write `.atl/skill-registry.md`, whether or not Engram is available.
-- Save the registry to Engram as `topic_key: skill-registry` when available, with `capture_prompt: false`.
-- Generate the registry with `gentle-ai skill-registry refresh --cwd <project>`: it owns the scan order, deduplication, and the skills it never indexes. Scan by hand only when that command is unavailable.
-- When scanning by hand, skip `_shared` and `skill-registry`; deduplicate by skill name, preferring project-level skills over user-level skills.
-- Add `.atl/` to `.gitignore` when possible unless explicitly disabled.
+- Canonical, self-contained bundles live in this repository's `.agents/skills/`. Global installations remain unchanged.
+- The versioned `.atl/skill-registry.md` is an index of relative local paths, not a summary. Read full `SKILL.md` files and pass their exact canonical paths; do not inject compact rules.
+- Use the project wrapper below: native Gentle AI owns metadata parsing and deduplication; the wrapper filters to physical canonical files and normalizes paths. Never silently fall back to global skills or a hand-written metadata scan.
+- Do not ignore `.atl/` in this project. The native command runs with `--no-gitignore`; its cache remains native-owned.
+- Persist the completed index to Engram under `topic_key: skill-registry`, `type: config`, with `capture_prompt: false` when available. A failed mirror does not invalidate the local index; report it.
 
 ## Decision Gates
 
 | Situation | Action |
 | --- | --- |
-| Same skill exists globally and in project | Keep the project-level skill |
-| Same skill exists in multiple global locations | Keep the first source in scan order |
-| No skills found | Write an empty registry so agents stop searching blindly |
-| Agent will delegate work | Select matching registry rows and pass their `SKILL.md` paths |
+| Same skill exists globally and in the repository | Use the complete physical local bundle |
+| Native command missing, failed or returns malformed metadata | Stop and report failure; do not fabricate success or substitute global paths |
+| Required local skill missing | Report it and request a local installation if needed |
+| Native startup hook overwrote the index | Run the project wrapper before reading it |
 
 ## Execution Steps
 
-1. Run `gentle-ai skill-registry refresh --cwd <project>` (add `--force` after skill changes); it writes `.atl/skill-registry.md`. If it reports the refresh was skipped (not a project), stop: there is no registry to persist. If it succeeds, go to step 4. If it fails, report the error instead of scanning by hand.
-2. Only if the command is unavailable: scan all known user and project skill directories for `*/SKILL.md`, reading frontmatter only as needed to extract `name` and `description` trigger text.
-3. Render `.atl/skill-registry.md` with scanned sources, registry contract, skill name, trigger/description, scope, and exact path.
-4. Persist to Engram when available using `title: skill-registry`, `topic_key: skill-registry`, `type: config`, and `capture_prompt: false`.
-5. Return the registry path, skill count, cache status, and whether Engram was updated.
+1. Run from the repository root:
+   ```bash
+   python3 .agents/skills/skill-registry/scripts/refresh.py
+   ```
+   Add `--force` after skill changes if needed, or `--cwd <repository>` when invoked elsewhere. Without `--cwd`, the script finds its own repository independently of the process directory.
+2. Read back `.atl/skill-registry.md`: every indexed path must exist under `.agents/skills/`, be relative to the repository root, and have project scope. Native intentionally excludes `_shared`, `skill-registry` and retired `sdd-*` entries; load this internal skill directly by path.
+3. Update only the `registry` metadata in `.active-orchestrator-state.json`; preserve completed foundation state and other sections. Mirror the read-back index in Engram when available.
+4. Report count, canonical location, native cache/refresh outcome, and mirror result.
 
 ## Output Contract
 
-Return:
-- Project name and `.atl/skill-registry.md` path.
-- Number of indexed skills.
-- Whether the cache was hit or regenerated.
-- Any skipped or duplicate skills when relevant.
+Return the project and registry paths, number of local skills, native cache/refresh status, projection result, failures and Engram mirror status.
 
 ## References
 
-- `docs/skill-style-guide.md` — how skills should be authored before indexing.
-- `skills/_shared/skill-resolver.md` — how delegators use the index.
+- [Local workflow and limitations](references/local-registry.md) — command behavior, native hooks, validation and portability.
+- [Skill style guide](references/skill-style-guide.md) — authoring guidance.
+- [Skill resolver](../_shared/skill-resolver.md) — delegation path contract.

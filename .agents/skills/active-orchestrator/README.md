@@ -13,7 +13,7 @@ Thin orchestrator skill for the SDD/OpenSpec project foundation flow.
 5. `find-skill` — recommend agent skills for the detected stack
 6. `agent-instruction` — generate `CLAUDE.md` / `AGENTS.md`
 
-**Checkpoints between phases.** The full flow never runs phases back-to-back: it stops at every phase boundary so you can review what was produced and choose **continue / adjust / stop**. Where a phase depends on your judgment (the roadmap), it first asks if there's anything to take into account. And `find-skill` only *recommends* — nothing is installed into your global skills until you pick it at the install gate.
+**Checkpoints between phases.** The full flow never runs phases back-to-back: it stops at every phase boundary so you can review what was produced and choose **continue / adjust / stop**. Where a phase depends on your judgment (the roadmap), it first asks if there's anything to take into account. And `find-skill` only *recommends* — nothing is installed into this project's `.agents/skills/` until you pick it at the install gate. Global installations remain unchanged.
 
 State is shared across phases via `.active-orchestrator-state.json` (schema v4, frozen contract).
 

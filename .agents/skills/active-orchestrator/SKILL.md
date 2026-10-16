@@ -33,6 +33,18 @@ You are a **thin orchestrator**. Your ONLY jobs are:
 
 ---
 
+## Repository-local skill policy
+
+This project's canonical, self-contained bundles live in `.agents/skills/<directory>/`.
+Read the full local `SKILL.md`; `.claude/skills/` contains compatibility links only.
+Before reading or delegating from the registry, run
+`python3 .agents/skills/skill-registry/scripts/refresh.py` from the repository root.
+The versioned `.atl/skill-registry.md` indexes relative local paths, not compact rules.
+Use local bundles for sub-skill dispatch; report a missing local skill instead of
+silently using a global installation. Do not restart the completed foundation to refresh this phase.
+Global hooks remain unchanged and may regenerate the native index after source changes;
+the project command restores local relative paths before consumption.
+
 ## Operating rules (non-negotiable)
 
 1. **NEVER reimplement a phase's logic yourself** (discovery, KB, roadmap, rules). Always route to its sub-skill — `Skill` for interactive phases, `Agent` for mechanical ones.
@@ -42,7 +54,7 @@ You are a **thin orchestrator**. Your ONLY jobs are:
 5. **Resume by default.** If `.active-orchestrator-state.json` exists with `step != "done"`, ask to resume or restart.
 6. **STOP and wait after each AskUserQuestion call.** Never assume the answer.
 7. **NEVER chain phases without a checkpoint.** Every phase boundary holds a checkpoint (§ Inter-phase checkpoint protocol). You never advance `step` to the next phase without the user's explicit "Continuar". This applies in the full flow (`/active-orchestrator:init`); standalone single-phase commands run only their phase and stop.
-8. **NEVER install anything autonomously.** `find-skill` recommends; the user picks; only then you install. Installing into the user's global skills is a HIGH-governance side-effect — propose and wait.
+8. **NEVER install anything autonomously.** `find-skill` recommends; the user picks; only then you install. Install only into this project's `.agents/skills/` after confirmation; never mutate global skill directories.
 
 ---
 
@@ -163,15 +175,9 @@ Before branching: always load and apply resume logic above.
    openspec init
    ```
 
-4. Cleanup of redundant scaffolding. `openspec init` unconditionally drops
-   `<project>/.claude/skills/openspec-*` dirs — redundant copies of skills that
-   already ship globally in the stack. Remove them immediately after init (the glob
-   is future-proof: any new `openspec-*` dir added by `openspec init` later is
-   covered automatically). Do NOT touch `.claude/commands/opsx/` — that is the
-   slash-command delivery and must stay intact.
-   ```bash
-   rm -rf .claude/skills/openspec-*
-   ```
+4. Preserve project-local OpenSpec skills. This repository uses `.agents/skills/openspec-*`
+   as its canonical workflow implementation. Do not delete these bundles in favor of a global copy.
+   Keep any `.claude/skills/` compatibility links relative and inside the repository.
 
 5. Write initial state file:
    ```json
@@ -329,7 +335,7 @@ After the sub-agent returns: confirm `CHANGES.md` exists.
 **Input consumed**: `{ stack, domains, problem }` derived from `state.kb.discovery`.
 **Output**: recommendations table + `state.skills` (recommended + installed lists).
 
-> **Hard rule — never auto-install.** Installing into the user's global skills mutates their environment (HIGH governance). `find-skill` defaults to `npx skills add … -y`, which silently skips its own confirmation. So you dispatch it in **recommend-only** mode and own the install decision yourself. The user picks; only then you install.
+> **Hard rule — never auto-install.** Skills belong in this project's `.agents/skills/`, not in the user's global environment. Do not use global install or auto-confirm flags. So you dispatch it in **recommend-only** mode and own the install decision yourself. The user picks; only then you install.
 
 **Step 3a — dispatch in RECOMMEND-ONLY mode** (sub-agent — mechanical):
 ```
@@ -345,27 +351,27 @@ Agent({
 
 One option per recommended skill. STOP and wait. The user may pick all, some, or none.
 
-**Step 3c — install ONLY the picks (you, the orchestrator):** for each selected skill run `npx skills add <repo> --skill <name> -g` (drop `-y` if you want its own prompt too; the user already confirmed here). Then write `state.skills.installed` = only the picked skills. If the user picked none, leave it `[]` and note it.
+**Step 3c — install ONLY the picks (you, the orchestrator):** for each selected skill run `npx skills add <repo> --skill <name>` from the repository root in project-local mode. Verify a complete physical bundle exists at `.agents/skills/<directory>/` (not a link outside the repository). Never use `-g`/`--global`; do not silently fall back to a global installation. Then write `state.skills.installed` = only the picked skills. If the user picked none, leave it `[]` and note it.
 
 **Checkpoint (post-phase advance gate):** summarize what was installed (or "ninguna"), then run the advance gate. Advance `step = "registry"` ONLY on "Continuar".
 
 ### Phase 4: skill-registry (after find-skill — feeds both agent-instruction AND the SDD orchestrator)
 
-**Why here — after `find-skill`, before `agent-instruction`**: the registry is a build-time scan of every installed skill (it reads each `SKILL.md` and distills compact rules). It MUST run AFTER `find-skill` — that phase *installs* the domain skills, and `skill-registry` *scans* them; run it earlier and it scans a directory missing the skills about to be installed. And it MUST run BEFORE `agent-instruction` — Phase 5 consumes `.atl/skill-registry.md` as its single source of truth for which skills exist (instead of re-scanning the filesystem), so the registry has to exist first. One scan, one source of truth.
+**Why here — after `find-skill`, before `agent-instruction`**: the registry is a build-time scan of every installed skill (the native command indexes metadata and the project wrapper keeps canonical local paths). It MUST run AFTER `find-skill` — that phase *installs* the domain skills, and `skill-registry` *scans* them; run it earlier and it scans a directory missing the skills about to be installed. And it MUST run BEFORE `agent-instruction` — Phase 5 consumes `.atl/skill-registry.md` as its single source of truth for which skills exist (instead of re-scanning the filesystem), so the registry has to exist first. One scan, one source of truth.
 
-**Why it matters**: without this phase the project is founded with NO `.atl/skill-registry.md`. The SDD orchestrator's Skill Resolver Protocol then finds no registry, falls back to `.agents/SKILLS.md` (which nothing writes), and every sub-agent runs WITHOUT the project's compact rules. This phase closes that loop — built once here, read cheaply at every delegation.
+**Why it matters**: without this phase the project is founded with NO `.atl/skill-registry.md`. Delegators need this index to select full local skill paths. Run the project wrapper before consuming the index; if it fails, report the failure rather than selecting a global fallback.
 
-**Input consumed**: the installed skills on disk (`state.skills.installed` + the agent skills dirs).
+**Input consumed**: canonical physical bundles in `.agents/skills/`; native metadata is projected through the project wrapper.
 **Output**: `.atl/skill-registry.md` (+ engram upsert if available) + `state.registry`.
 
-> Note on "Project Conventions": in this first foundation pass `CLAUDE.md`/`AGENTS.md` don't exist yet (Phase 5 generates them), so the registry's conventions section starts empty. That's fine — the compact rules (the critical output) are complete, and the orchestrator reads `CLAUDE.md` directly anyway. A later `/active-orchestrator:registry` re-run indexes the conventions too.
+> The registry is only an index. Read `AGENTS.md`/`CLAUDE.md` directly for project conventions and domain-specific skill exceptions; these are not compiled into skill summaries.
 
 **Dispatch** (sub-agent — mechanical):
 ```
 Agent({
   description: "Foundation: skill-registry",
   model: "sonnet",
-  prompt: "Use the Skill tool to invoke `skill-registry`. Scan the installed skills, build .atl/skill-registry.md with compact rules, write state.registry. Return a summary + confirm .atl/skill-registry.md exists."
+  prompt: "Read `.agents/skills/skill-registry/SKILL.md` and run its project wrapper to build `.atl/skill-registry.md` with relative canonical paths. Write only state.registry metadata; preserve completed foundation state and all other sections. Return the skill count and confirm the versioned index exists."
 })
 ```
 
@@ -375,7 +381,7 @@ After the sub-agent returns: confirm `.atl/skill-registry.md` exists.
 
 ### Phase 5: agent-instruction (LAST — interactive; needs KB + the registry)
 
-**Why last**: `agent-instruction` builds the Navigation Map (Mapa de Navegación) referencing all KB files (`state.kb.files`) and reads `.atl/skill-registry.md` as its **single source of truth for available skills**. It maps those skills to the project's agent roles and *references* the registry for the compact rules — it does NOT copy the rules into `CLAUDE.md` (those live only in the registry, which is not versioned). All inputs exist only after Phases 1, 3 and 4 complete.
+**Why last**: `agent-instruction` builds the Navigation Map (Mapa de Navegación) referencing all KB files (`state.kb.files`) and reads `.atl/skill-registry.md` as its **single source of truth for available skills**. It maps those skills to the project's agent roles and *references* the versioned registry for canonical skill paths — it does NOT copy skill rules into `CLAUDE.md`; load the full local `SKILL.md` instead. All inputs exist only after Phases 1, 3 and 4 complete.
 
 **Why inline + interactive**: this phase **asks the user for the project's hard rules** (stack-aware — it proposes defaults from the detected stack and confirms), so it must run inline. It also generates a project `AGENTS.md`/`CLAUDE.md` that does **NOT repeat** the global `~/.claude/CLAUDE.md` the stack already installed — only project-specific instructions. A sub-agent could not ask the rules, so this phase is never delegated.
 
@@ -393,16 +399,15 @@ After completion: this is the LAST phase, so there's no "next phase" to gate int
 
 ## Step 3 — Lazy-load dispatch + graceful degradation
 
-Before invoking each sub-skill via the `Skill` tool, check that it is installed:
+Before invoking a sub-skill, normalize the index with the project wrapper,
+resolve its canonical directory from `.atl/skill-registry.md`, and check the local file:
 
 ```bash
-npx skills list -g | grep <skill-name>
+test -f .agents/skills/<directory>/SKILL.md
 ```
 
-Or check for local install:
-```bash
-npx skills list | grep <skill-name>
-```
+The registry intentionally omits its own internal `skill-registry` entry;
+load `.agents/skills/skill-registry/SKILL.md` directly for that phase.
 
 **If the sub-skill is found**: dispatch normally.
 
@@ -416,9 +421,9 @@ npx skills list | grep <skill-name>
 
 3. On "Sí, instalar": run:
    ```bash
-   npx skills add <repo> --skill <name> -g
+   npx skills add <repo> --skill <name>
    ```
-   Where `<repo>` is the skill's source repo (see catalog). Then dispatch normally.
+   Where `<repo>` is the source repo (see catalog). Run from this repository in local mode, verify the complete bundle under `.agents/skills/`, normalize the registry, then dispatch normally. Never install globally.
 
 4. On "No, saltear":
    - Mark the skip in state:
@@ -471,10 +476,10 @@ This table is the **frozen contract**. C-13b (`kb-creator`) and C-13c (`roadmap-
 | `kb-creator` | **Two sources (sub-skill decides)**: (a) **interactive** — Q&A discovery: system_type, scale, stack, problem, domains; (b) **ingest** — existing docs/specs/READMEs provided by the user. Reads top-level `state.discovery` (if present) to pre-fill some fields. | `knowledge-base/*.md` + `state.kb` (`discovery`, `source`, `files`) |
 | `roadmap-generator` | `state.kb.discovery` + `state.kb.files` (reads `knowledge-base/`) | `CHANGES.md` + `state.roadmap` |
 | `find-skill` | `{ stack, domains, problem }` derived from `state.kb.discovery` | recommendations table + `state.skills` |
-| `skill-registry` | installed skills on disk (`state.skills.installed` + agent skills dirs) | `.atl/skill-registry.md` (+ engram upsert) + `state.registry` |
+| `skill-registry` | canonical bundles in `.agents/skills/` + native metadata through the project wrapper | `.atl/skill-registry.md` (+ engram upsert) + `state.registry` |
 | `agent-instruction` | `state.kb.discovery` + `state.kb.files` (reads `knowledge-base/`) + `.atl/skill-registry.md` (skills source of truth) + applicable rule snippets | `CLAUDE.md` / `AGENTS.md` + `state.agents` |
 
-**Order constraint**: `discovery-research`, when chosen, runs BEFORE everything else — it's the only phase whose output (`state.discovery`) is optional and feeds `kb-creator`, never the other way around. `kb-creator` runs first among the MANDATORY phases (produces `kb.discovery` + KB everyone consumes). `find-skill` installs the domain skills. `skill-registry` then scans them and distills compact rules into `.atl/skill-registry.md`. `agent-instruction` runs LAST — it consumes the registry as its single source of truth for available skills (no re-scan) and needs the KB index too.
+**Order constraint**: `discovery-research`, when chosen, runs BEFORE everything else — it's the only phase whose output (`state.discovery`) is optional and feeds `kb-creator`, never the other way around. `kb-creator` runs first among the MANDATORY phases (produces `kb.discovery` + KB everyone consumes). `find-skill` installs the domain skills. `skill-registry` then runs the project wrapper to index native metadata as canonical relative paths in the versioned `.atl/skill-registry.md`. `agent-instruction` runs LAST — it consumes the registry as its single source of truth for available skills (no re-scan) and needs the KB index too.
 
 ---
 
@@ -500,7 +505,7 @@ This table is the **frozen contract**. C-13b (`kb-creator`) and C-13c (`roadmap-
 - Does NOT port templates (`templates/kb/*`, `templates/reglas/*`, docker-compose) — those feed the sub-skills in C-13b/c, not the orchestrator.
 - Does NOT commit or push (unless explicitly asked).
 - Does NOT install project dependencies (`npm install`, `pip install`, etc.).
-- Does NOT install skills autonomously. `find-skill` only recommends; the user picks at the install gate (§ Phase 3) before anything is added to the global skills.
+- Does NOT install skills autonomously. `find-skill` only recommends; the user picks at the install gate (§ Phase 3) before any bundle is added to this project's `.agents/skills/`.
 - Does NOT chain phases silently. Every phase boundary holds a checkpoint (§ Inter-phase checkpoint protocol); `step` never advances without the user's explicit "Continuar".
 
 ---

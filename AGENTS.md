@@ -54,7 +54,19 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 
 ## Skills Disponibles
 
-Fuente de verdad: `.atl/skill-registry.md` (generado por `skill-registry`). Esta tabla solo mapea skill → rol.
+Las skills del proyecto residen físicamente en `.agents/skills/<directorio>/`, con sus recursos y licencias. `.claude/skills/` conserva enlaces relativos internos de compatibilidad; no es una segunda fuente.
+
+Antes de resolver o delegar skills, ejecutar desde la raíz:
+
+```bash
+python3 .agents/skills/skill-registry/scripts/refresh.py
+```
+
+El índice versionado `.atl/skill-registry.md` usa únicamente rutas relativas a esta raíz. Cargar los `SKILL.md` completos y transmitir sus rutas canónicas a los subagentes; no inyectar resúmenes generados. Si falta una skill local o falla la actualización, informar el problema sin sustituirla por una instalación global. Las incorporaciones requieren confirmación y se instalan en el proyecto, nunca con `-g`/`--global`.
+
+Los hooks globales no se modifican: una actualización nativa forzada o un cambio en sus fuentes puede sobrescribir el índice. El comando del proyecto lo normaliza antes de consumirlo; los aciertos de caché nativos lo conservan. Esta política no intercepta esos hooks ni garantiza su salida.
+
+Esta tabla solo mapea skill a rol. Las excepciones específicas del proyecto siguen siendo las indicadas más abajo.
 
 | Agente | Rol | Skills que carga |
 |--------|-----|------------------|
@@ -91,7 +103,7 @@ Mandan sobre el `SKILL.md`. Viven en este archivo, que está versionado, porque 
 
 Sin aclaraciones: `docker-build-strategies`, `vitest`, `react-testing` y `typescript-react-reviewer`.
 
-> Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry` y versionado en el repo). Esta tabla solo mapea skill→rol.
+> `.atl/skill-registry.md` es un índice, no un resumen de instrucciones. La fuente de verdad de cada skill es su `SKILL.md` local completo. No agregar `.atl/` a `.gitignore`: el índice se versiona en este proyecto.
 
 ---
 

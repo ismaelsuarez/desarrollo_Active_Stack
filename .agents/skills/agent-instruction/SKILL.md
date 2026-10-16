@@ -44,7 +44,7 @@ Generá **`AGENTS.md` en la raíz** y un **`CLAUDE.md` en la raíz** con el mism
 1. `knowledge-base/02_descripcion_general.md` → stack tecnológico (copiá la tabla).
 2. `knowledge-base/README.md` → nombre del proyecto + resumen ejecutivo.
 3. `CHANGES.md` → camino crítico, fases y primer change (resumen, NO el detalle completo).
-4. `.atl/skill-registry.md` (si existe) → **fuente de verdad de las skills disponibles** (nombres + triggers + paths). Es lo que genera `skill-registry`; leelo de ahí, no re-escanees. *Fallback* si no existe: escaneá `.claude/skills/` + `~/.claude/skills/`. En ambos casos, agrupá las skills por rol de agente.
+4. Ejecutar `python3 .agents/skills/skill-registry/scripts/refresh.py` y leer `.atl/skill-registry.md`, el índice versionado de nombres, triggers y rutas relativas canónicas. Leer cada `SKILL.md` completo desde `.agents/skills/` y agrupar las skills por rol. Si falla la actualización o falta una skill local, informar el problema; no usar una instalación global como sustituto.
 5. `knowledge-base/10_preguntas_abiertas.md` → flag de inconsistencias Alta a resolver antes de codear.
 6. `~/.claude/CLAUDE.md` (global, si existe) → las instrucciones que el stack ya instaló (orquestador, governance, engram, TDD, reglas universales). **Leelo para NO repetirlas** — el proyecto las hereda, no las duplica.
 
@@ -97,9 +97,10 @@ Mapeá las skills detectadas a los roles de agente del proyecto. Estructura suge
 
 Adaptá las filas a las skills realmente presentes en el repo. No inventes skills que no existen.
 
-**DRY — no copies los compact rules acá.** El `AGENTS.md`/`CLAUDE.md` solo mapea skill→rol (decisión de arquitectura, versionada). Los compact rules de cada skill viven SOLO en `.atl/skill-registry.md` (no versionado); el orquestador los resuelve en runtime. Debajo de la tabla, agregá esta línea textual de referencia:
+**No duplicar las reglas de las skills.** El índice versionado `.atl/skill-registry.md` contiene nombres, triggers y rutas; cada `.agents/skills/<directorio>/SKILL.md` es la fuente de verdad de sus instrucciones. `AGENTS.md`/`CLAUDE.md` solo mapean skill a rol y conservan las excepciones específicas del proyecto. Incluir esta referencia:
 
-> Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry`; no versionado — no está en el repo).
+> Antes de resolver o delegar skills, ejecutar `python3 .agents/skills/skill-registry/scripts/refresh.py`. El índice `.atl/skill-registry.md` está versionado y usa rutas relativas a la raíz del repositorio. Leer los `SKILL.md` completos, sin inyectar resúmenes generados ni sustituirlos por instalaciones globales.
+
 
 ## Code Examples
 
@@ -109,7 +110,7 @@ Ver la plantilla completa en [assets/agents-template.md](assets/agents-template.
 # {Proyecto} — Instrucciones para Agentes
 ## Stack Tecnológico        → tabla desde KB 02
 ## Base de Conocimiento     → links a knowledge-base/*.md
-## Skills Disponibles       → tabla skill→rol (desde el registry) + línea de referencia a `.atl/skill-registry.md` para los compact rules
+## Skills Disponibles       → tabla skill→rol (desde el registry) + línea de referencia a `.atl/skill-registry.md` para las rutas canónicas de los `SKILL.md` completos
 ## Roadmap de Changes       → resumen de CHANGES.md + primer change
 ## Reglas Duras (específicas del proyecto)  → 1 línea de referencia al global + reglas del proyecto confirmadas (stack-aware)
 ## Flujo de Trabajo         → KB → CHANGES → /opsx:propose → archive
@@ -118,8 +119,8 @@ Ver la plantilla completa en [assets/agents-template.md](assets/agents-template.
 ## Commands
 
 ```bash
-# Fuente de verdad de skills: el registry (si existe). Fallback: escaneo directo.
-test -f .atl/skill-registry.md && cat .atl/skill-registry.md || ls .claude/skills/ ~/.claude/skills/
+# Actualizar el índice local antes de consumirlo; no usar un fallback global.
+python3 .agents/skills/skill-registry/scripts/refresh.py && cat .atl/skill-registry.md
 
 # Verificar pre-checks
 ls knowledge-base/ CHANGES.md

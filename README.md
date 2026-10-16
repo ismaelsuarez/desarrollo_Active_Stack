@@ -73,7 +73,7 @@ Los cambios van en ramas propias y se integran a `main` mediante pull request. L
 
 ## Skills utilizadas
 
-Las skills del proyecto están versionadas en [`.claude/skills/`](.claude/skills/), con su `SKILL.md` completo, para que queden en el repositorio remoto. El mapa de qué skill carga cada rol de agente está en [`AGENTS.md`](AGENTS.md).
+Las skills del proyecto están versionadas en [`.agents/skills/`](.agents/skills/), con sus bundles completos y sin depender de instalaciones globales. `.claude/skills/` conserva enlaces relativos de compatibilidad. Antes de consumir el registro, ejecutar `python3 .agents/skills/skill-registry/scripts/refresh.py`: [`.atl/skill-registry.md`](.atl/skill-registry.md) contiene las rutas locales relativas y se deben leer los `SKILL.md` completos. El mapa de qué skill carga cada rol de agente está en [`AGENTS.md`](AGENTS.md).
 
 **Skills de la fundación (Active-Stack)**, usadas para armar el proyecto:
 
@@ -84,7 +84,7 @@ Las skills del proyecto están versionadas en [`.claude/skills/`](.claude/skills
 | `kb-creator` | Group-Active-IA/kb-creator | Base de conocimiento de 13 archivos |
 | `roadmap-generator` | Group-Active-IA/roadmap-generator | `CHANGES.md` con los 20 changes |
 | `find-skill` | vercel-labs/skills | Búsqueda de skills para el stack |
-| `skill-registry` | JuanCruzRobledo/skill-registry | Registro de skills con sus reglas compactas |
+| `skill-registry` | JuanCruzRobledo/skill-registry | Índice de rutas locales para cargar las skills completas |
 | `agent-instruction` | JuanCruzRobledo/agent-instruction | `AGENTS.md` y `CLAUDE.md` |
 
 **Skills del stack**, elegidas tras evaluar unas 45 candidatas (ver [`discovery/evaluacion-skills.md`](discovery/evaluacion-skills.md)):
@@ -121,8 +121,10 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
 ├── discovery/                   Descubrimiento de producto, análisis de mercado y exploración técnica
 ├── openspec/                    Changes de SDD (propuestas, especificaciones, diseño y tareas)
 ├── backend/                     API en capas (dominio, aplicación, infraestructura), migraciones y pruebas
+├── .agents/skills/              Bundles canónicos completos de las skills del proyecto
+├── .atl/skill-registry.md       Índice versionado de rutas locales relativas
 └── .claude/
-    ├── skills/                  23 skills del proyecto, versionadas
+    ├── skills/                  Enlaces relativos de compatibilidad a .agents/skills/
     └── commands/                Comandos de OpenSpec (/opsx:*)
 ```
 

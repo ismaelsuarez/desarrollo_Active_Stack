@@ -97,10 +97,10 @@ Learn more: https://skills.sh/vercel-labs/agent-skills/react-best-practices
 If the user wants to proceed, you can install the skill for them:
 
 ```bash
-npx skills add <owner/repo@skill> -g -y
+npx skills add <owner/repo@skill>
 ```
 
-The `-g` flag installs globally (user-level) and `-y` skips confirmation prompts.
+Run from the repository root in project-local mode after the user selects the skill. Keep the complete physical bundle, supporting resources and license in `.agents/skills/<directory>/`; verify that it does not depend on a link outside the repository. Do not use `-g`/`--global` or skip confirmation. Never modify global skill installations. After installation, run `python3 .agents/skills/skill-registry/scripts/refresh.py --force`; report a missing local bundle rather than substituting a global copy.
 
 ## Common Skill Categories
 
