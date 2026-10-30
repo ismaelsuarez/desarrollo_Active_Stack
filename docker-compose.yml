@@ -37,7 +37,7 @@ services:
   api:
     <<: *backend
     env_file: .env
-    secrets: [database_url, jwt_secret_key]
+    secrets: [database_url, jwt_secret_key, origin_hash_secret]
     depends_on:
       seed:
         condition: service_completed_successfully
@@ -84,6 +84,8 @@ secrets:
     file: ./secrets/database_url.txt
   jwt_secret_key:
     file: ./secrets/jwt_secret_key.txt
+  origin_hash_secret:
+    file: ./secrets/origin_hash_secret.txt
   bootstrap_admin_password:
     file: ./secrets/bootstrap_admin_password.txt
 

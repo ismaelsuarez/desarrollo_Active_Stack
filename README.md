@@ -35,8 +35,9 @@ Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de 
 - **C-00 completado:** creación de turnos sin solapamientos, archivada e integrada a `main`.
 - **C-01 completado y archivado:** entorno local, salud HTTP, configuración, logging y frontend mínimo integrados a `main`, con las 22 tareas completadas y seis especificaciones sincronizadas. El change está en [`2026-10-15-c-01-foundation-setup`](openspec/changes/archive/2026-10-15-c-01-foundation-setup/). La [ejecución de CI de `2c463ad`](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) pasó los cuatro jobs.
 - **C-02 completado y archivado:** modelos troncales con `consultorio_id`, migración de identidad `0002_core_models`, puerto `Reloj`, Value Object `Dni` y servicio de semilla con Argon2 integrados a `main`, con las 23 tareas completadas y cuatro especificaciones sincronizadas. El change está en [`2026-10-30-c-02-core-models`](openspec/changes/archive/2026-10-30-c-02-core-models/).
-- **Próximo change:** C-03 (`auth-core`), según el orden de construcción de [`CHANGES.md`](CHANGES.md).
-- **Código ejecutable:** backend de C-00, entorno de C-01, y modelos relacionales, migración y semilla de C-02. Aún no hay endpoints de autenticación, pantallas de agenda ni despliegue publicado.
+- **C-03 completado y archivado:** autenticación JWT HS256 con PyJWT, hash Argon2 con pwdlib, rotación atómica de refresh tokens en cookies HttpOnly SameSite=Strict, RBAC con dependencias FastAPI, rate limiting contra tabla `intento_ingreso` con mitigación de timing attacks dummy, e integración con puerto `Reloj` inyectado, con las 15 tareas completadas y especificaciones sincronizadas. El change está en [`2026-10-30-c-03-auth-core`](openspec/changes/archive/2026-10-30-c-03-auth-core/).
+- **Próximos changes:** C-04 (`abac-policies`), C-05 (`patient-account`) y C-06 (`agenda-config`) en GATE 3, según el orden de construcción de [`CHANGES.md`](CHANGES.md).
+- **Código ejecutable:** backend de C-00, entorno de C-01, modelos relacionales y semilla de C-02, y autenticación completa con RBAC y rate limiting de C-03. Aún no hay pantallas de agenda ni despliegue publicado.
 
 ## Stack tecnológico
 

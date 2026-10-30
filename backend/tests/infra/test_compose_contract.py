@@ -41,9 +41,9 @@ def test_secrets_have_service_specific_mounts():
     assert services['db']['secrets'] == ['postgres_password']
     assert services['migrate']['secrets'] == ['database_url']
     assert services['seed']['secrets'] == ['database_url', 'bootstrap_admin_password']
-    assert services['api']['secrets'] == ['database_url', 'jwt_secret_key']
+    assert services['api']['secrets'] == ['database_url', 'jwt_secret_key', 'origin_hash_secret']
     assert services['db']['environment']['POSTGRES_PASSWORD_FILE'] == '/run/secrets/postgres_password'
     for service in services.values():
         environment = service.get('environment', {})
-        assert not {'POSTGRES_PASSWORD', 'DATABASE_URL', 'MIGRATIONS_DATABASE_URL', 'JWT_SECRET_KEY', 'BOOTSTRAP_ADMIN_PASSWORD'} & environment.keys()
-    assert document['secrets'] == {name: {'file': './secrets/' + name + '.txt'} for name in ['postgres_password', 'database_url', 'jwt_secret_key', 'bootstrap_admin_password']}
+        assert not {'POSTGRES_PASSWORD', 'DATABASE_URL', 'MIGRATIONS_DATABASE_URL', 'JWT_SECRET_KEY', 'BOOTSTRAP_ADMIN_PASSWORD', 'ORIGIN_HASH_SECRET'} & environment.keys()
+    assert document['secrets'] == {name: {'file': './secrets/' + name + '.txt'} for name in ['postgres_password', 'database_url', 'jwt_secret_key', 'bootstrap_admin_password', 'origin_hash_secret']}

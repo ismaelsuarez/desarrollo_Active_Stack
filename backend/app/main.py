@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.v1.routers.health import router
+from app.api.v1.routers.auth import router as auth_router
+from app.api.v1.routers.health import router as health_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
@@ -22,5 +23,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(configured)
     logger = logging.getLogger('tpi.api')
     app.add_middleware(RequestIdMiddleware, logger=logger)
-    app.include_router(router)
+    app.include_router(health_router)
+    app.include_router(auth_router)
     return app

@@ -172,6 +172,21 @@ class RefreshTokenModel(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class IntentoIngresoModel(Base):
+    __tablename__ = "intento_ingreso"
+    __table_args__ = (
+        Index("ix_intento_ingreso_par", "consultorio_id", "identificador_hash", "origen_hash", "creado_en"),
+        Index("ix_intento_ingreso_origen", "consultorio_id", "origen_hash", "creado_en"),
+        Index("ix_intento_ingreso_creado_en", "creado_en"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("consultorio.id"), index=True)
+    identificador_hash: Mapped[str] = mapped_column(Text)
+    origen_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ProfesionalModel(Base):
     __tablename__ = "profesional"
     __table_args__ = (UniqueConstraint("box_id", name="profesional_box_unico"),)

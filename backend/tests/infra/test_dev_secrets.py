@@ -12,10 +12,11 @@ def test_generates_consistent_secrets_and_is_idempotent(tmp_path):
     assert result.returncode == 0, result.stderr
     files = {
         name: (tmp_path / 'secrets' / f'{name}.txt').read_text().strip()
-        for name in ['postgres_password', 'database_url', 'jwt_secret_key', 'bootstrap_admin_password']
+        for name in ['postgres_password', 'database_url', 'jwt_secret_key', 'bootstrap_admin_password', 'origin_hash_secret']
     }
     assert unquote(urlsplit(files['database_url']).password) == files['postgres_password']
     assert len(files['jwt_secret_key'].encode()) >= 32
+    assert len(files['origin_hash_secret'].encode()) >= 32
     assert len(files['bootstrap_admin_password']) >= 16
     assert not any(value in result.stdout + result.stderr for value in files.values())
     before = {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in (tmp_path / 'secrets').iterdir()}

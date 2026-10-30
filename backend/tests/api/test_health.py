@@ -9,7 +9,13 @@ from app.core.config import Settings
 
 def configured_app():
     from app.main import create_app
-    return create_app(Settings(database_url='postgresql+asyncpg://u:p@localhost/test', jwt_secret_key='x' * 32, app_env='test', consultorio_activo_id=1))
+    return create_app(Settings(
+        database_url='postgresql+asyncpg://u:p@localhost/test',
+        jwt_secret_key='x' * 32,
+        origin_hash_secret='y' * 32,
+        app_env='test',
+        consultorio_activo_id=1,
+    ))
 
 
 async def test_health_endpoint_is_public_and_minimal():
@@ -27,7 +33,7 @@ async def test_health_disallows_post():
 
 
 def test_importing_app_does_not_load_configuration(monkeypatch):
-    for name in ['APP_ENV', 'DATABASE_URL', 'JWT_SECRET_KEY']:
+    for name in ['APP_ENV', 'DATABASE_URL', 'JWT_SECRET_KEY', 'CONSULTORIO_ACTIVO_ID', 'ORIGIN_HASH_SECRET']:
         monkeypatch.delenv(name, raising=False)
     sys.modules.pop('app.main', None)
     assert callable(importlib.import_module('app.main').create_app)
@@ -36,7 +42,13 @@ def test_importing_app_does_not_load_configuration(monkeypatch):
 @pytest.mark.parametrize('database_url', ['postgresql+asyncpg://u:p@127.0.0.1:1/x', 'postgresql+asyncpg://u:p@not-a-database.invalid/x'])
 async def test_health_does_not_connect_to_database(database_url):
     from app.main import create_app
-    app = create_app(Settings(database_url=database_url, jwt_secret_key='x' * 32, app_env='test', consultorio_activo_id=1))
+    app = create_app(Settings(
+        database_url=database_url,
+        jwt_secret_key='x' * 32,
+        origin_hash_secret='y' * 32,
+        app_env='test',
+        consultorio_activo_id=1,
+    ))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
         response = await client.get('/api/v1/health')
     assert response.status_code == 200
@@ -73,6 +85,7 @@ async def test_application_logs_share_request_context_and_redaction(supplied, ca
     app = create_app(Settings(
         database_url='postgresql+asyncpg://u:private-password@127.0.0.1:1/test',
         jwt_secret_key=key,
+        origin_hash_secret='y' * 32,
         app_env='test',
         consultorio_activo_id=1,
     ))

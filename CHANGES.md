@@ -264,7 +264,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ## FASE 1 — Identidad y acceso
 
 ### [C-03] `auth-core`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado y archivado el 2026-10-30 en [`2026-10-30-c-03-auth-core`](openspec/changes/archive/2026-10-30-c-03-auth-core/); 15/15 tareas y especificaciones sincronizadas.
 - **Scope**: Autenticación JWT (PyJWT) y RBAC base
   - `POST /api/v1/auth/login` — JWT de acceso HS256 con PyJWT (`JWT_SECRET_KEY`, `JWT_ALGORITHM`) y claims `sub`, `consultorio_id`, `rol`, `jti` emitidos solo por el servidor (nunca la ficha ni el identificador del paciente: el vínculo entre la cuenta y su ficha se lee en cada solicitud, RN-06, RN-63), con el consultorio que entrega `consultorio_sin_token` (el cliente no lo envía); refresh con rotación
   - `POST /api/v1/auth/refresh` — rotación, el token reutilizado revoca la cadena; `POST /api/v1/auth/logout`; `GET /api/v1/auth/me`

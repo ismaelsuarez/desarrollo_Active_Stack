@@ -33,6 +33,7 @@ from app.core.config import Settings
 
 DB = 'postgresql+asyncpg://tester:private-password@localhost/test'
 KEY = 'jwt-secreto-de-prueba-0123456789-abcd'
+ORIGIN_SECRET = 'origin-secret-hash-key-0123456789-abcdef'
 
 
 class ExtendedSettings(Settings):
@@ -45,6 +46,7 @@ def settings():
     return ExtendedSettings(
         database_url=DB,
         jwt_secret_key=KEY,
+        origin_hash_secret=ORIGIN_SECRET,
         app_env='test',
         consultorio_activo_id=1,
     )
@@ -89,6 +91,7 @@ def test_new_secret_is_redacted_even_when_it_looks_like_an_invalid_url():
     config = ExtendedSettings(
         database_url=DB,
         jwt_secret_key=KEY,
+        origin_hash_secret=ORIGIN_SECRET,
         app_env='test',
         consultorio_activo_id=1,
         additional_secret=raw,
@@ -108,6 +111,7 @@ def test_ordinary_application_logger_uses_current_redaction_without_duplicate_ha
         Settings(
             database_url=DB,
             jwt_secret_key='old-key-' * 4,
+            origin_hash_secret=ORIGIN_SECRET,
             app_env='test',
             consultorio_activo_id=1,
         )

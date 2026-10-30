@@ -42,6 +42,7 @@ create(url_path, f'postgresql+asyncpg://{user}:{quote(password, safe="")}@db:543
 if unquote(urlsplit(url_path.read_text().strip()).password or '') != password:
     raise SystemExit('Local database secret files do not match; existing files were not overwritten.')
 create(directory / 'jwt_secret_key.txt', secrets.token_urlsafe(32))
+create(directory / 'origin_hash_secret.txt', secrets.token_urlsafe(32))
 create(directory / 'bootstrap_admin_password.txt', secrets.token_urlsafe(24))
 print('Local Compose secret files are ready; existing values were preserved.')
 PY
