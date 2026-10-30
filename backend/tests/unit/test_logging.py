@@ -42,7 +42,12 @@ class ExtendedSettings(Settings):
 
 
 def settings():
-    return ExtendedSettings(database_url=DB, jwt_secret_key=KEY, app_env='test')
+    return ExtendedSettings(
+        database_url=DB,
+        jwt_secret_key=KEY,
+        app_env='test',
+        consultorio_activo_id=1,
+    )
 
 
 @pytest.mark.parametrize('message,extra,absent', [
@@ -81,7 +86,13 @@ def test_invalid_configuration_error_does_not_disclose_values(monkeypatch, tmp_p
 
 def test_new_secret_is_redacted_even_when_it_looks_like_an_invalid_url():
     raw = 'secret://[not-a-host'
-    config = ExtendedSettings(database_url=DB, jwt_secret_key=KEY, app_env='test', additional_secret=raw)
+    config = ExtendedSettings(
+        database_url=DB,
+        jwt_secret_key=KEY,
+        app_env='test',
+        consultorio_activo_id=1,
+        additional_secret=raw,
+    )
     record = logging.LogRecord('c01.redact', logging.INFO, '', 0, raw, (), None)
     assert json.loads(JsonFormatter(config).format(record))['message'] == '***'
 
@@ -93,7 +104,14 @@ def test_new_secret_is_redacted_even_when_it_looks_like_an_invalid_url():
 def test_ordinary_application_logger_uses_current_redaction_without_duplicate_handlers(message, capsys):
     from app.main import create_app
 
-    create_app(Settings(database_url=DB, jwt_secret_key='old-key-' * 4, app_env='test'))
+    create_app(
+        Settings(
+            database_url=DB,
+            jwt_secret_key='old-key-' * 4,
+            app_env='test',
+            consultorio_activo_id=1,
+        )
+    )
     create_app(settings())
     logging.getLogger('app.api.v1.routers.health').error(message, extra={'credential': KEY})
     raw = capsys.readouterr().err

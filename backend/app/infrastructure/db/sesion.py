@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -6,8 +8,10 @@ from sqlalchemy.ext.asyncio import (
 )
 
 
-def crear_engine(url: str) -> AsyncEngine:
-    return create_async_engine(url)
+def crear_engine(url: str, **kwargs: Any) -> AsyncEngine:
+    connect_args = kwargs.pop("connect_args", {})
+    connect_args.setdefault("prepared_statement_cache_size", 0)
+    return create_async_engine(url, connect_args=connect_args, **kwargs)
 
 
 def crear_fabrica_de_sesiones(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

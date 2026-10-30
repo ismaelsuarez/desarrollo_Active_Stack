@@ -39,6 +39,8 @@ fi
 "${compose[@]}" up -d --build --wait --wait-timeout 180
 migrate="$("${compose[@]}" ps -aq migrate)"
 [[ "$(docker inspect --format '{{.State.ExitCode}}' "$migrate")" == 0 ]]
+seed="$("${compose[@]}" ps -aq seed)"
+[[ "$(docker inspect --format '{{.State.ExitCode}}' "$seed")" == 0 ]]
 api="$("${compose[@]}" ps -q api)"
 [[ "$(docker inspect --format '{{.State.Health.Status}}' "$api")" == healthy ]]
 [[ "$("${compose[@]}" exec -T api id -u)" != 0 ]]

@@ -25,12 +25,21 @@ services:
       db:
         condition: service_healthy
 
+  seed:
+    <<: *backend
+    command: python -m app.seed
+    env_file: .env
+    secrets: [database_url, bootstrap_admin_password]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   api:
     <<: *backend
     env_file: .env
     secrets: [database_url, jwt_secret_key]
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
     ports: ['127.0.0.1:${API_PORT:-8000}:8000']
     restart: unless-stopped
@@ -75,6 +84,8 @@ secrets:
     file: ./secrets/database_url.txt
   jwt_secret_key:
     file: ./secrets/jwt_secret_key.txt
+  bootstrap_admin_password:
+    file: ./secrets/bootstrap_admin_password.txt
 
 volumes:
   db_data:

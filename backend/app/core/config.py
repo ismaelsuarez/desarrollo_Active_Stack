@@ -37,6 +37,7 @@ class DatabaseSettings(BaseSettings):
 class Settings(DatabaseSettings):
     jwt_secret_key: SecretStr = Field(validation_alias='JWT_SECRET_KEY')
     app_env: Literal['development', 'test', 'production'] = Field(validation_alias='APP_ENV')
+    consultorio_activo_id: int = Field(validation_alias='CONSULTORIO_ACTIVO_ID', gt=0)
     redis_url: str | None = None
     app_timezone: str = 'America/Argentina/Buenos_Aires'
 
@@ -46,6 +47,13 @@ class Settings(DatabaseSettings):
         if len(value.get_secret_value().encode('utf-8')) < 32:
             raise ValueError('JWT_SECRET_KEY must contain at least 32 bytes')
         return value
+
+
+class SeedSettings(DatabaseSettings):
+    consultorio_activo_id: int = Field(validation_alias='CONSULTORIO_ACTIVO_ID', gt=0)
+    app_timezone: str = 'America/Argentina/Buenos_Aires'
+    bootstrap_admin_email: str = Field(default='admin@consultorio.com', validation_alias='BOOTSTRAP_ADMIN_EMAIL')
+    bootstrap_admin_password: SecretStr = Field(validation_alias='BOOTSTRAP_ADMIN_PASSWORD')
 
 
 @lru_cache

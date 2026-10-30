@@ -34,8 +34,9 @@ Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de 
 - **Fundación terminada:** descubrimiento de producto, base de conocimiento, roadmap de 20 changes, skills y reglas del proyecto.
 - **C-00 completado:** creación de turnos sin solapamientos, archivada e integrada a `main`.
 - **C-01 completado y archivado:** entorno local, salud HTTP, configuración, logging y frontend mínimo integrados a `main`, con las 22 tareas completadas y seis especificaciones sincronizadas. El change está en [`2026-10-15-c-01-foundation-setup`](openspec/changes/archive/2026-10-15-c-01-foundation-setup/). La [ejecución de CI de `2c463ad`](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) pasó los cuatro jobs.
-- **Próximo change:** C-02 (`core-models`), según el orden de construcción de [`CHANGES.md`](CHANGES.md).
-- **Código ejecutable:** backend de C-00 y base de desarrollo de C-01. Aún no hay autenticación, pantallas de agenda ni despliegue publicado.
+- **C-02 completado y archivado:** modelos troncales con `consultorio_id`, migración de identidad `0002_core_models`, puerto `Reloj`, Value Object `Dni` y servicio de semilla con Argon2 integrados a `main`, con las 23 tareas completadas y cuatro especificaciones sincronizadas. El change está en [`2026-10-30-c-02-core-models`](openspec/changes/archive/2026-10-30-c-02-core-models/).
+- **Próximo change:** C-03 (`auth-core`), según el orden de construcción de [`CHANGES.md`](CHANGES.md).
+- **Código ejecutable:** backend de C-00, entorno de C-01, y modelos relacionales, migración y semilla de C-02. Aún no hay endpoints de autenticación, pantallas de agenda ni despliegue publicado.
 
 ## Stack tecnológico
 

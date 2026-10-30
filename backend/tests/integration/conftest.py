@@ -86,7 +86,9 @@ async def base_limpia(engine: AsyncEngine) -> AsyncIterator[None]:
     yield
     async with engine.begin() as conexion:
         await conexion.execute(
-            text("TRUNCATE turno, profesional, prestacion RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE refresh_token, token_usuario, paciente, usuario, turno, profesional, prestacion, consultorio RESTART IDENTITY CASCADE"
+            )
         )
 
 

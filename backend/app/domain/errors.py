@@ -23,3 +23,7 @@ class PrestacionInexistente(ErrorDeDominio):
 
 class InicioSinZonaHoraria(ErrorDeDominio):
     mensaje = "el inicio debe indicar zona horaria"
+
+
+class DniInvalido(ErrorDeDominio):
+    mensaje = "el DNI debe contener solo dígitos numéricos"

@@ -32,12 +32,13 @@ def test_production_server_logs_are_json_redacted_and_correlated(supplied, tmp_p
     command[command.index('--host') + 1] = '127.0.0.1'
     command[command.index('--port') + 1] = str(port)
     env = {name: value for name, value in os.environ.items() if name not in {
-        'DATABASE_URL', 'MIGRATIONS_DATABASE_URL', 'JWT_SECRET_KEY', 'APP_ENV', 'SECRETS_DIR',
+        'DATABASE_URL', 'MIGRATIONS_DATABASE_URL', 'JWT_SECRET_KEY', 'APP_ENV', 'SECRETS_DIR', 'CONSULTORIO_ACTIVO_ID',
     }}
     env.update({
         'DATABASE_URL': f'postgresql+asyncpg://user:{PASSWORD}@127.0.0.1:1/test',
         'JWT_SECRET_KEY': KEY,
         'APP_ENV': 'test',
+        'CONSULTORIO_ACTIVO_ID': '1',
         'SECRETS_DIR': str(tmp_path / 'no-secrets'),
     })
     process = subprocess.Popen(command, cwd=BACKEND, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)

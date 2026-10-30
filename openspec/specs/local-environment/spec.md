@@ -18,11 +18,11 @@ El archivo `docker-compose.yml` SHALL validar con `docker compose config --quiet
 - **THEN** no existe la clave `version`
 
 ### Requirement: Servicios del entorno local
-El entorno local SHALL definir exactamente los servicios `db`, `migrate`, `api`, `frontend`, `redis` y `mailpit`, y MUST NOT definir un servicio `worker` ni otro trabajador de aplicación separado de la API; esto no prohíbe los servicios de base de datos, frontend y auxiliares declarados.
+El entorno local SHALL definir exactamente los servicios `db`, `migrate`, `seed`, `api`, `frontend`, `redis` y `mailpit`, y MUST NOT definir un servicio `worker` ni otro trabajador de aplicación separado de la API; esto no prohíbe los servicios de base de datos, inicialización, frontend y auxiliares declarados.
 
 #### Scenario: Conjunto de servicios
 - **WHEN** se listan los servicios de `docker-compose.yml`
-- **THEN** son `db`, `migrate`, `api`, `frontend`, `redis` y `mailpit`
+- **THEN** son `db`, `migrate`, `seed`, `api`, `frontend`, `redis` y `mailpit`
 
 ### Requirement: Base de datos persistente y con healthcheck
 El servicio `db` SHALL usar la imagen oficial de PostgreSQL con versión fija, guardar sus datos en un volumen con nombre, no publicar el puerto 5432 en el host por defecto y declarar un healthcheck con `pg_isready`.
@@ -33,17 +33,18 @@ El servicio `db` SHALL usar la imagen oficial de PostgreSQL con versión fija, g
 - **AND** su healthcheck invoca `pg_isready`
 
 ### Requirement: Migración previa a la API
-El servicio `migrate` SHALL ejecutar `alembic upgrade head` y terminar, y arrancar solo cuando `db` está saludable; el servicio `api` SHALL arrancar solo cuando `migrate` terminó con éxito.
+El servicio `migrate` SHALL ejecutar `alembic upgrade head` y terminar, y arrancar solo cuando `db` está saludable; el servicio `seed` SHALL ejecutar `python -m app.seed` y terminar, arrancando solo cuando `migrate` terminó con éxito; el servicio `api` SHALL arrancar solo cuando `seed` terminó con éxito.
 
 #### Scenario: Orden de arranque
 - **WHEN** se inspeccionan las dependencias
 - **THEN** `migrate` depende de `db` con `condition: service_healthy`
-- **AND** `api` depende de `migrate` con `condition: service_completed_successfully`
+- **AND** `seed` depende de `migrate` con `condition: service_completed_successfully`
+- **AND** `api` depende de `seed` con `condition: service_completed_successfully`
 
 #### Scenario: Migración ejecutada
 - **WHEN** se ejecuta `docker compose up` sobre un volumen vacío
-- **THEN** `migrate` termina con código 0 y `api` queda en estado saludable
-- **AND** el proceso de `api` no corre como root
+- **THEN** `migrate` termina con código 0 y `seed` termina con código 0
+- **AND** `api` queda en estado saludable y su proceso no corre como root
 
 ### Requirement: API resiliente con healthcheck
 El servicio `api` SHALL declarar `restart: unless-stopped` y un healthcheck que consulta `/api/v1/health`; el servicio `frontend` SHALL depender de `api` con `condition: service_healthy`.
@@ -78,7 +79,7 @@ La verificación local y de CI SHALL usar un proyecto Compose descartable con id
 - **AND** los volúmenes habituales y sus datos permanecen intactos
 
 ### Requirement: Secretos como archivos montados y no versionados
-Los valores sensibles SHALL llegar a los contenedores como secretos de Compose montados en `/run/secrets/<nombre>` desde la carpeta `secrets/`, nunca por `env_file` ni por `environment`; `secrets/` y `.env` MUST quedar excluidos de Git, y `.env.example` MUST listar solo variables no sensibles. Cada servicio SHALL recibir únicamente los secretos que usa: `db` recibe `postgres_password`, `migrate` recibe `database_url` y `api` recibe `database_url` y `jwt_secret_key`.
+Los valores sensibles SHALL llegar a los contenedores como secretos de Compose montados en `/run/secrets/<nombre>` desde la carpeta `secrets/`, nunca por `env_file` ni por `environment`; `secrets/` y `.env` MUST quedar excluidos de Git, y `.env.example` MUST listar solo variables no sensibles. Cada servicio SHALL recibir únicamente los secretos que usa: `db` recibe `postgres_password`, `migrate` recibe `database_url`, `seed` recibe `database_url` y `bootstrap_admin_password`, y `api` recibe `database_url` y `jwt_secret_key`.
 
 #### Scenario: Secretos de la API
 - **WHEN** se inspecciona el servicio `api`

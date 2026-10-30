@@ -26,6 +26,7 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://postgres@127.0.0.1:5432/postgres
       DATABASE_URL: postgresql+asyncpg://postgres@127.0.0.1:5432/postgres
+      CONSULTORIO_ACTIVO_ID: 1
     defaults:
       run:
         working-directory: backend

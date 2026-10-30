@@ -13,7 +13,7 @@ def test_services_profiles_and_persistence():
     document = compose()
     assert 'version' not in document
     services = document['services']
-    assert set(services) == {'db', 'migrate', 'api', 'frontend', 'redis', 'mailpit'}
+    assert set(services) == {'db', 'migrate', 'seed', 'api', 'frontend', 'redis', 'mailpit'}
     assert services['db']['volumes'] == ['db_data:/var/lib/postgresql/data']
     assert services['db']['healthcheck']['test'][0:2] == ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-turnos} -d ${POSTGRES_DB:-turnos}']
     assert 'ports' not in services['db']
@@ -27,7 +27,9 @@ def test_startup_dependencies_and_nonroot_api():
     services = compose()['services']
     assert services['migrate']['command'] == 'alembic upgrade head'
     assert services['migrate']['depends_on']['db']['condition'] == 'service_healthy'
-    assert services['api']['depends_on']['migrate']['condition'] == 'service_completed_successfully'
+    assert services['seed']['command'] == 'python -m app.seed'
+    assert services['seed']['depends_on']['migrate']['condition'] == 'service_completed_successfully'
+    assert services['api']['depends_on']['seed']['condition'] == 'service_completed_successfully'
     assert services['frontend']['depends_on']['api']['condition'] == 'service_healthy'
     assert services['api']['restart'] == 'unless-stopped'
     assert '/api/v1/health' in ' '.join(services['api']['healthcheck']['test'])
@@ -38,9 +40,10 @@ def test_secrets_have_service_specific_mounts():
     services = document['services']
     assert services['db']['secrets'] == ['postgres_password']
     assert services['migrate']['secrets'] == ['database_url']
+    assert services['seed']['secrets'] == ['database_url', 'bootstrap_admin_password']
     assert services['api']['secrets'] == ['database_url', 'jwt_secret_key']
     assert services['db']['environment']['POSTGRES_PASSWORD_FILE'] == '/run/secrets/postgres_password'
     for service in services.values():
         environment = service.get('environment', {})
-        assert not {'POSTGRES_PASSWORD', 'DATABASE_URL', 'MIGRATIONS_DATABASE_URL', 'JWT_SECRET_KEY'} & environment.keys()
-    assert document['secrets'] == {name: {'file': './secrets/' + name + '.txt'} for name in ['postgres_password', 'database_url', 'jwt_secret_key']}
+        assert not {'POSTGRES_PASSWORD', 'DATABASE_URL', 'MIGRATIONS_DATABASE_URL', 'JWT_SECRET_KEY', 'BOOTSTRAP_ADMIN_PASSWORD'} & environment.keys()
+    assert document['secrets'] == {name: {'file': './secrets/' + name + '.txt'} for name in ['postgres_password', 'database_url', 'jwt_secret_key', 'bootstrap_admin_password']}
