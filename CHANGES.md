@@ -289,7 +289,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-04] `abac-policies`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado y archivado el 2026-10-31 en [`2026-10-31-c-04-abac-policies`](openspec/changes/archive/2026-10-31-c-04-abac-policies/); 12/12 tareas y especificaciones sincronizadas.
 - **Scope**: Los cuatro atributos ABAC como funciones de política puras en el dominio
   - Dominio puro (sin frameworks): entidad `Turno` mínima, `EstadoTurno`, tabla de transiciones de RN-18, `Intervalo`
   - `domain/policies`: `mismo_consultorio` (A2, siempre primero), `es_dueno_de_agenda` y `es_titular_del_turno` (A1; esta recibe como argumento la ficha vigente de la cuenta, `ficha_vigente_id`, que carga la capa de aplicación porque ni el `Principal` ni el token la traen, RN-06, RN-63), `turno_es_modificable` y `transicion_permitida` (A3), `dentro_de_ventana_paciente` y `hora_de_inicio_alcanzada` (A4), `puede_autorizar_sobreturno`, `puede_ver_paciente`, `puede_ver_ausentismo`
