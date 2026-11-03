@@ -1,4 +1,4 @@
-﻿# Proposal
+﻿# Proposal: C-06 agenda-config
 
 ## Why
 

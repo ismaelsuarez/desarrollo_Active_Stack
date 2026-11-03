@@ -340,7 +340,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 > C-06 corre en paralelo con C-04 y C-05. C-08 corre en paralelo con C-07. C-09, C-10 y C-15 se abren juntos al completar C-07.
 
 ### [C-06] `agenda-config`
-- **Estado**: `[x]` completado y archivado el 2026-11-03 en [`2026-11-03-agenda-config`](openspec/changes/archive/2026-11-03-agenda-config/); 10/10 tareas y seis especificaciones sincronizadas. Verificación: 512 pruebas Linux, sin omisiones.
+- **Estado**: `[x]` completado y archivado el 2026-11-03 en [`2026-11-03-c-06-agenda-config`](openspec/changes/archive/2026-11-03-c-06-agenda-config/); 10/10 tareas y seis especificaciones sincronizadas. Verificación: 512 pruebas Linux, sin omisiones.
 - **Scope**: Configuración de la agenda por el Administrador
   - Migración: `box`, `profesional` (`UNIQUE (box_id)`, `UNIQUE (usuario_id)`), `horario_semanal` (`CHECK hora_inicio < hora_fin`), `bloqueo_agenda` (`profesional_id` nulo = todos), `prestacion` (`CHECK duracion_min > 0`)
   - `GET/POST /api/v1/usuarios`, `PATCH /api/v1/usuarios/{id}` — el Administrador crea y desactiva personal con un único rol; el alta con rol `paciente` se rechaza con 422 (el paciente se autorregistra, RN-01, y toda cuenta de paciente guarda la aceptación del aviso de privacidad, RN-65); un profesional de la agenda se vincula a una cuenta de rol `profesional` o `administrador` (DD-24, US-006)

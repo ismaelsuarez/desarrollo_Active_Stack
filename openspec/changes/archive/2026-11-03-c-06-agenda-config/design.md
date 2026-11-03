@@ -1,4 +1,4 @@
-﻿# Design
+﻿# Design: C-06 agenda-config
 
 ## Context
 
