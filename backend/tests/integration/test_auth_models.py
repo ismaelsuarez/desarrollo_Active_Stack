@@ -116,7 +116,8 @@ async def test_migracion_0003_downgrade_y_upgrade_limpio():
     from sqlalchemy.pool import NullPool
 
     async with base_temporal() as url:
-        alembic(url, "upgrade", "head")
+        # Exercise revision 0003 itself, independently of later change heads.
+        alembic(url, "upgrade", "0003_auth_core")
         engine = create_async_engine(url, poolclass=NullPool)
         try:
             async with engine.connect() as conn:
@@ -125,14 +126,14 @@ async def test_migracion_0003_downgrade_y_upgrade_limpio():
                 )
                 assert existe is True
 
-            alembic(url, "downgrade", "-1")
+            alembic(url, "downgrade", "0002_core_models")
             async with engine.connect() as conn:
                 existe = await conn.scalar(
                     text("SELECT to_regclass('public.intento_ingreso') IS NOT NULL")
                 )
                 assert existe is False
 
-            alembic(url, "upgrade", "head")
+            alembic(url, "upgrade", "0003_auth_core")
             async with engine.connect() as conn:
                 existe = await conn.scalar(
                     text("SELECT to_regclass('public.intento_ingreso') IS NOT NULL")

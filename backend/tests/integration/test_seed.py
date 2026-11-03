@@ -84,6 +84,10 @@ def test_seed_cli_ejecucion_aislada(url_base: str, tmp_path: Path):
         "BOOTSTRAP_ADMIN_EMAIL": "cli-admin@consultorio.com",
         "BOOTSTRAP_ADMIN_PASSWORD": "cli-super-password-456",
     }
+    # Windows needs SystemRoot to initialize Winsock in asyncio's _overlapped.
+    # Keep the child isolated from API settings and all other parent secrets.
+    if os.name == "nt":
+        env["SystemRoot"] = os.environ["SystemRoot"]
     resultado = subprocess.run(
         [sys.executable, "-m", "app.seed"],
         cwd=BACKEND,

@@ -36,10 +36,42 @@ Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de 
 - **C-01 completado y archivado:** entorno local, salud HTTP, configuración, logging y frontend mínimo integrados a `main`, con las 22 tareas completadas y seis especificaciones sincronizadas. El change está en [`2026-10-15-c-01-foundation-setup`](openspec/changes/archive/2026-10-15-c-01-foundation-setup/). La [ejecución de CI de `2c463ad`](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) pasó los cuatro jobs.
 - **C-02 completado y archivado:** modelos troncales con `consultorio_id`, migración de identidad `0002_core_models`, puerto `Reloj`, Value Object `Dni` y servicio de semilla con Argon2 integrados a `main`, con las 23 tareas completadas y cuatro especificaciones sincronizadas. El change está en [`2026-10-30-c-02-core-models`](openspec/changes/archive/2026-10-30-c-02-core-models/).
 - **C-03 completado y archivado:** autenticación JWT HS256 con PyJWT, hash Argon2 con pwdlib, rotación atómica de refresh tokens en cookies HttpOnly SameSite=Strict, RBAC con dependencias FastAPI, rate limiting contra tabla `intento_ingreso` con mitigación de timing attacks dummy, e integración con puerto `Reloj` inyectado, con las 15 tareas completadas y especificaciones sincronizadas. El change está en [`2026-10-30-c-03-auth-core`](openspec/changes/archive/2026-10-30-c-03-auth-core/).
-- **Próximos changes:** C-04 (`abac-policies`), C-05 (`patient-account`) y C-06 (`agenda-config`) en GATE 3, según el orden de construcción de [`CHANGES.md`](CHANGES.md).
-- **Código ejecutable:** backend de C-00, entorno de C-01, modelos relacionales y semilla de C-02, y autenticación completa con RBAC y rate limiting de C-03. Aún no hay pantallas de agenda ni despliegue publicado.
+- **C-05 completado y archivado en el workspace:** cuenta de paciente, aviso versionado, verificación, recuperación y autoservicio, con SMTP y despacho durable. Las 21 tareas y seis especificaciones están cerradas en [`2026-11-03-c-05-patient-account`](openspec/changes/archive/2026-11-03-c-05-patient-account/). Verificación: 465 pruebas completas en Linux y 265 unitarias/API en Windows, sin omisiones. Sin commit ni push de esta sesión.
+- **Próximo change:** C-06 (`agenda-config`), según el orden de construcción de [`CHANGES.md`](CHANGES.md).
+- **Código ejecutable:** backend de C-00, entorno de C-01, modelos y semilla de C-02, autenticación de C-03, políticas ABAC de C-04 y cuenta/correo de C-05. Aún no hay pantallas de agenda ni despliegue publicado.
 
 ## Stack tecnológico
+
+### Cuenta del paciente y correo de C-05
+
+Para instalar las dependencias desde `backend/`, ejecutar `uv sync --locked`. En Windows incluye `tzdata`, que permite resolver la zona del consultorio sin depender de una instalación manual de datos horarios.
+
+En desarrollo, `.env.example` apunta al servicio Mailpit: `SMTP_HOST=mailpit`, `SMTP_PORT=1025` y `SMTP_STARTTLS=false`. Para SMTP externo, configurar host, usuario, remitente y `SMTP_PASSWORD` mediante entorno o archivo de secreto, con `SMTP_PORT=587` y `SMTP_STARTTLS=true`. `SMTP_PASSWORD` se oculta en la configuración y en logs. Esto no agrega secretos obligatorios a `seed` ni a las migraciones.
+
+Los enlaces usan `FRONTEND_BASE_URL`. Verificación vence a las 24 horas y recuperación a los 30 minutos. `EMAIL_DAILY_LIMIT=500` y `EMAIL_DAILY_LIMIT_ACCOUNT=150` reservan parte del cupo para turnos; el cupo de cuenta debe ser menor al total. `EMAIL_DAILY_ALERT_RATIO=0.8` configura la alerta.
+
+Registro admite `REGISTRATION_LIMIT_PER_ORIGIN=10`, `REGISTRATION_LIMIT_GLOBAL=50` y `REGISTRATION_LIMIT_WINDOW_MINUTES=60` (máximo 1440). Recuperación/reenvío usan `ACCOUNT_EMAIL_LIMIT=3` y `ACCOUNT_EMAIL_WINDOW_MINUTES=15`, por cuenta y propósito. `NOTIFICATION_MAX_ATTEMPTS=3`, `NOTIFICATION_CLAIM_TTL_SECONDS=120` y `SMTP_TIMEOUT_SECONDS=30` controlan reintentos: el timeout total de envío debe ser menor que el TTL. Todos los umbrales son positivos y la fracción de alerta debe estar entre cero exclusivo y uno inclusive.
+
+Verificación de la configuración desde `backend/`: `uv run pytest tests/unit/test_account_config.py tests/unit/test_config.py tests/unit/test_logging.py -q`. Las pruebas de persistencia y SMTP real requieren PostgreSQL y Mailpit en contenedores; no se reemplazan por SQLite ni por mocks de la base.
+
+Endpoints de cuenta (prefijo `/api/v1`):
+
+| Ruta | Contrato |
+|------|----------|
+| `GET /publico/aviso-privacidad` | Texto y versión vigente; completa los datos del consultorio. En producción rechaza un aviso que conserva marcadores. |
+| `POST /auth/registro` | Cuenta paciente, ficha o solicitud de vinculación, aceptación y versión del aviso; respuesta 201 idéntica para DNI nuevo o existente. El intento se confirma antes de validar el cuerpo; exceso responde 429. |
+| `POST /auth/verificar-email` | Cuerpo con `token`; verifica y consume el enlace una vez. El consultorio sale de la fila del token. |
+| `POST /auth/reenviar-verificacion` | Cuerpo con `email`; respuesta genérica, con límite durable de envíos. |
+| `POST /auth/recuperar-password` | Cuerpo con `email`; respuesta genérica exista o no, solo envía a cuentas activas verificadas. |
+| `POST /auth/restablecer-password` | Cuerpo con `token` y `password`; consume el enlace y revoca todas las sesiones renovables de esa cuenta. |
+| `PATCH /auth/cambiar-password` | JWT y cuerpo con `password_actual` y `password_nueva`. |
+| `PATCH /auth/actualizar-cuenta` | JWT de paciente y cuerpo con `telefono` y/o `email`; correo diferente exige verificar de nuevo. |
+
+Las entradas rechazan campos no declarados. Los enlaces llevan el token en el fragmento (`#token=`), y sus hashes se almacenan en `token_usuario`. Cambiar el correo invalida los enlaces de verificación y recuperación pendientes enviados a la dirección anterior. Los JWT nunca incluyen la ficha; el vínculo vigente se obtiene de la base. La revocación afecta los refresh tokens; un access token emitido conserva su vencimiento de hasta 15 minutos.
+
+El correo se programa en la misma transacción de la cuenta y se intenta despachar después del commit, con una sesión propia. Una falla SMTP deja trabajo durable para reintento. La reclamación por fila y el resultado condicionado impiden que un envío tardío pise otro resultado; una caída después de enviar puede repetir el correo (entrega al menos una vez). El barrido periódico que retomará esas filas pertenece a C-15.
+
+Las pruebas SMTP reciben `SMTP_TEST_HOST`, `SMTP_TEST_PORT` y `MAILPIT_API_URL`. Sus valores locales son `127.0.0.1`, `11025` y `http://127.0.0.1:18025`; CI usa los puertos `1025/8025`. Mailpit no entrega correo a destinatarios reales. El aviso sigue siendo un borrador que requiere la revisión indicada en KB 13 antes de usarse con pacientes reales.
 
 | Capa | Tecnologías |
 |------|-------------|

@@ -47,6 +47,27 @@ class Settings(DatabaseSettings):
     redis_url: str | None = None
     app_timezone: str = 'America/Argentina/Buenos_Aires'
 
+    email_verification_ttl_hours: int = Field(default=24, gt=0, validation_alias='EMAIL_VERIFICATION_TTL_HOURS')
+    password_reset_ttl_minutes: int = Field(default=30, gt=0, validation_alias='PASSWORD_RESET_TTL_MINUTES')
+    email_daily_limit: int = Field(default=500, gt=0, validation_alias='EMAIL_DAILY_LIMIT')
+    email_daily_limit_account: int = Field(default=150, gt=0, validation_alias='EMAIL_DAILY_LIMIT_ACCOUNT')
+    email_daily_alert_ratio: float = Field(default=0.8, gt=0, le=1, validation_alias='EMAIL_DAILY_ALERT_RATIO')
+    registration_limit_per_origin: int = Field(default=10, gt=0, validation_alias='REGISTRATION_LIMIT_PER_ORIGIN')
+    registration_limit_global: int = Field(default=50, gt=0, validation_alias='REGISTRATION_LIMIT_GLOBAL')
+    registration_limit_window_minutes: int = Field(default=60, gt=0, le=1440, validation_alias='REGISTRATION_LIMIT_WINDOW_MINUTES')
+    account_email_limit: int = Field(default=3, gt=0, validation_alias='ACCOUNT_EMAIL_LIMIT')
+    account_email_window_minutes: int = Field(default=15, gt=0, validation_alias='ACCOUNT_EMAIL_WINDOW_MINUTES')
+    notification_max_attempts: int = Field(default=3, gt=0, validation_alias='NOTIFICATION_MAX_ATTEMPTS')
+    notification_claim_ttl_seconds: int = Field(default=120, gt=0, validation_alias='NOTIFICATION_CLAIM_TTL_SECONDS')
+    smtp_timeout_seconds: float = Field(default=30, gt=0, validation_alias='SMTP_TIMEOUT_SECONDS')
+    smtp_host: str = Field(default='mailpit', validation_alias='SMTP_HOST')
+    smtp_port: int = Field(default=587, gt=0, validation_alias='SMTP_PORT')
+    smtp_starttls: bool = Field(default=True, validation_alias='SMTP_STARTTLS')
+    smtp_user: str | None = Field(default=None, validation_alias='SMTP_USER')
+    smtp_password: SecretStr | None = Field(default=None, validation_alias='SMTP_PASSWORD')
+    smtp_from: str = Field(default='Consultorio <no-reply@example.test>', validation_alias='SMTP_FROM')
+    frontend_base_url: str = Field(default='http://localhost:5173', validation_alias='FRONTEND_BASE_URL')
+
     @field_validator('jwt_secret_key')
     @classmethod
     def validate_signing_key(cls, value: SecretStr) -> SecretStr:
@@ -65,6 +86,14 @@ class Settings(DatabaseSettings):
     def set_default_cookie_secure(self) -> 'Settings':
         if self.cookie_secure is None:
             self.cookie_secure = self.app_env != 'development'
+        return self
+
+    @model_validator(mode='after')
+    def validate_mail_limits(self) -> 'Settings':
+        if self.email_daily_limit_account >= self.email_daily_limit:
+            raise ValueError('EMAIL_DAILY_LIMIT_ACCOUNT must be less than EMAIL_DAILY_LIMIT')
+        if self.smtp_timeout_seconds >= self.notification_claim_ttl_seconds:
+            raise ValueError('SMTP_TIMEOUT_SECONDS must be less than NOTIFICATION_CLAIM_TTL_SECONDS')
         return self
 
 

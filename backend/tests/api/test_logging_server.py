@@ -42,7 +42,11 @@ def test_production_server_logs_are_json_redacted_and_correlated(supplied, tmp_p
         'CONSULTORIO_ACTIVO_ID': '1',
         'SECRETS_DIR': str(tmp_path / 'no-secrets'),
     })
-    process = subprocess.Popen(command, cwd=BACKEND, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    process = subprocess.Popen(
+        command, cwd=BACKEND, env=env, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0,
+    )
     try:
         deadline = time.monotonic() + 10
         while True:
@@ -60,9 +64,16 @@ def test_production_server_logs_are_json_redacted_and_correlated(supplied, tmp_p
                 headers={'X-Request-ID': supplied} if supplied else {},
             )
     finally:
-        process.terminate()
+        if os.name == 'nt':
+            process.send_signal(signal.CTRL_BREAK_EVENT)
+        else:
+            process.terminate()
         stdout, stderr = process.communicate(timeout=10)
-    assert process.returncode in {0, -signal.SIGTERM}
+    # Uvicorn handles SIGBREAK, finishes lifespan shutdown, then re-raises it.
+    # Python's default SIGBREAK handler exits with 3 on Windows. Lifecycle and
+    # request assertions below still reject startup failures or forced kills.
+    expected_returncodes = {0, 3} if os.name == 'nt' else {0, -signal.SIGTERM}
+    assert process.returncode in expected_returncodes
     assert response.status_code == 200
     assert response.json() == {'status': 'ok'}
     identifier = response.headers['X-Request-ID']

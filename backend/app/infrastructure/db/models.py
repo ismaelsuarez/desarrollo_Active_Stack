@@ -20,6 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.value_objects.estado_turno import EstadoTurno
 from app.infrastructure.db.base import Base
+from app.infrastructure.db.account_models import SolicitudVinculacionModel, NotificacionModel, IntentoRegistroModel
 
 RESTRICCION_SIN_SOLAPAMIENTO = "turno_sin_solapamiento"
 

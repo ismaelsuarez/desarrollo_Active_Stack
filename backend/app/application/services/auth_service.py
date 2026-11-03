@@ -68,6 +68,8 @@ class AuthService:
             # Respuesta genérica inmediata sin computar contraseña
             raise CredencialesInvalidasError("Credenciales inválidas")
 
+        # Keep the account locked from password validation through issuance.
+        # Reset either precedes this read or revokes the newly issued session.
         # 2. Búsqueda de usuario por nombre de usuario o email normalizado
         id_norm = identificador.strip().lower()
         stmt = select(UsuarioModel).where(
@@ -76,7 +78,7 @@ class AuthService:
                 UsuarioModel.nombre_usuario == id_norm,
                 UsuarioModel.email == id_norm,
             ),
-        )
+        ).execution_options(populate_existing=True).with_for_update()
         usuario = await self.sesion.scalar(stmt)
 
         # 3. Mitigación de timing si no existe o está inactivo
@@ -97,6 +99,7 @@ class AuthService:
             consultorio_id=consultorio_id,
             identificador_hash=id_hash,
             origen_hash=orig_hash,
+            confirmar=False,
         )
 
         ahora = self.reloj.ahora()
@@ -139,6 +142,28 @@ class AuthService:
         if token_model is None:
             raise SesionInvalidaError("Token de renovación inválido")
 
+        # Password reset and account operations lock the user before its tokens.
+        # Serialize in that same order, then reload the token: the initial read
+        # can predate a reset committed while this request was already in flight.
+        usuario = await self.sesion.scalar(
+            select(UsuarioModel).where(
+                UsuarioModel.id == token_model.usuario_id,
+                UsuarioModel.consultorio_id == token_model.consultorio_id,
+            ).execution_options(populate_existing=True).with_for_update()
+        )
+        if usuario is None or not usuario.activo:
+            raise SesionInvalidaError("Usuario inactivo o inexistente")
+
+        token_model = await self.sesion.scalar(
+            select(RefreshTokenModel).where(
+                RefreshTokenModel.id == token_model.id,
+                RefreshTokenModel.consultorio_id == usuario.consultorio_id,
+                RefreshTokenModel.usuario_id == usuario.id,
+            ).execution_options(populate_existing=True).with_for_update()
+        )
+        if token_model is None:
+            raise SesionInvalidaError("Token de renovación inválido")
+
         ahora = self.reloj.ahora()
 
         # Detección de ataque de reuso: token ya revocado o reemplazado previamente
@@ -148,6 +173,7 @@ class AuthService:
                 update(RefreshTokenModel)
                 .where(
                     RefreshTokenModel.usuario_id == token_model.usuario_id,
+                    RefreshTokenModel.consultorio_id == token_model.consultorio_id,
                     RefreshTokenModel.revocado_en.is_(None),
                 )
                 .values(revocado_en=ahora)
@@ -158,16 +184,6 @@ class AuthService:
         # Expiración
         if token_model.expira_en < ahora:
             raise SesionInvalidaError("Token de renovación expirado")
-
-        # Verificación de usuario y resolución de inquilino (RN-59, Regla Dura 1)
-        usuario = await self.sesion.scalar(
-            select(UsuarioModel).where(
-                UsuarioModel.id == token_model.usuario_id,
-                UsuarioModel.consultorio_id == token_model.consultorio_id,
-            )
-        )
-        if usuario is None or not usuario.activo:
-            raise SesionInvalidaError("Usuario inactivo o inexistente")
 
         # Rotación atómica
         nuevo_raw = generar_token_opaco(32)

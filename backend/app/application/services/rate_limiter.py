@@ -101,8 +101,9 @@ class LoginRateLimiter:
         consultorio_id: int,
         identificador_hash: str,
         origen_hash: str | None,
+        *, confirmar: bool = True,
     ) -> None:
-        """Elimina los intentos acumulados para el par especificado tras un inicio de sesión exitoso."""
+        """Limpia el par; login confirma junto a la emisión para conservar su lock."""
         filtro_origen = (
             IntentoIngresoModel.origen_hash == origen_hash
             if origen_hash is not None
@@ -114,4 +115,5 @@ class LoginRateLimiter:
             filtro_origen,
         )
         await self.sesion.execute(stmt)
-        await self.sesion.commit()
+        if confirmar:
+            await self.sesion.commit()
