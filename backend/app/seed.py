@@ -6,10 +6,22 @@ from sqlalchemy import select, text
 
 from app.core.config import SeedSettings
 from app.domain.ports.reloj import RelojSistema
-from app.infrastructure.db.models import ConsultorioModel, UsuarioModel
+from app.infrastructure.db.models import ConsultorioModel, PrestacionModel, UsuarioModel
 from app.infrastructure.db.sesion import crear_engine, crear_fabrica_de_sesiones
 
 PASSWORD_HASH = PasswordHash.recommended()
+
+PRESTACIONES_SUGERIDAS = (
+    ("Primera consulta y diagnóstico", 30),
+    ("Control de rutina", 20),
+    ("Limpieza dental (profilaxis)", 40),
+    ("Restauración (arreglo de caries)", 45),
+    ("Endodoncia (tratamiento de conducto)", 60),
+    ("Extracción simple", 30),
+    ("Blanqueamiento", 60),
+    ("Control de ortodoncia", 20),
+    ("Urgencia o consulta por dolor", 30),
+)
 
 
 async def sembrar(settings: SeedSettings) -> None:
@@ -84,6 +96,24 @@ async def sembrar(settings: SeedSettings) -> None:
                     actualizado_en=ahora,
                 )
                 sesion.add(admin)
+
+            # 3. Catálogo inicial sugerido: no alterar las decisiones del consultorio.
+            tiene_prestaciones = await sesion.scalar(
+                select(PrestacionModel.id)
+                .where(PrestacionModel.consultorio_id == settings.consultorio_activo_id)
+                .limit(1)
+            )
+            if tiene_prestaciones is None:
+                sesion.add_all(
+                    PrestacionModel(
+                        consultorio_id=settings.consultorio_activo_id,
+                        nombre=nombre,
+                        duracion_min=duracion_min,
+                        activa=True,
+                        sugerida=True,
+                    )
+                    for nombre, duracion_min in PRESTACIONES_SUGERIDAS
+                )
 
             await sesion.commit()
     finally:

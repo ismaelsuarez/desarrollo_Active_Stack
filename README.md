@@ -243,15 +243,23 @@ uv run pytest -m "not integration"
 # 3. Levantar un PostgreSQL descartable para las pruebas de integración
 docker run --rm -d --name tpi-pg-test -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:17
 
-# 4. Pruebas de integración contra PostgreSQL real
+# 4. Levantar Mailpit para las pruebas SMTP
+docker run --rm -d --name tpi-mailpit -p 11025:1025 axllent/mailpit:latest
+
+# 5. Pruebas de integración contra PostgreSQL real y Mailpit
 export TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@127.0.0.1:55432/postgres"
+export SMTP_TEST_PORT=11025
 uv run pytest -m integration
 
-# 5. Detener el contenedor al terminar
-docker stop tpi-pg-test
+# 6. Detener los contenedores al terminar
+docker stop tpi-pg-test tpi-mailpit
 ```
 
 Las pruebas de integración crean una base propia, le aplican las migraciones con `alembic upgrade head` y la eliminan al terminar. Si `TEST_DATABASE_URL` no está definida, fallan con un mensaje explícito: no se omiten.
+
+La semilla agrega nueve prestaciones sugeridas solo cuando el catálogo del consultorio está vacío: primera consulta y diagnóstico (30 min), control de rutina (20), limpieza dental (40), restauración (45), endodoncia (60), extracción simple (30), blanqueamiento (60), control de ortodoncia (20) y urgencia o consulta por dolor (30). Son valores iniciales orientativos; cada consultorio debe confirmarlos con sus profesionales. La semilla no los repone ni modifica si el equipo cambió o desactivó alguno.
+
+Verificación de C-06 (2026-11-03): suite completa del backend en Linux, **512 pruebas aprobadas**; regresión focalizada de agenda, migración, seed y rutas C-06, **313 aprobadas**; contratos OpenAPI tras los últimos ajustes, **2 aprobadas**. PostgreSQL 17 y Mailpit se ejecutaron en contenedores temporales.
 
 ## Documentación
 

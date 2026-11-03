@@ -10,7 +10,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import SeedSettings
-from app.infrastructure.db.models import ConsultorioModel, UsuarioModel
+from app.infrastructure.db.models import ConsultorioModel, PrestacionModel, UsuarioModel
 from tests.integration.conftest import BACKEND
 
 pytestmark = pytest.mark.integration
@@ -48,6 +48,29 @@ async def test_seed_ejecucion_idempotente(url_base: str, sesiones: async_session
         assert admin.aviso_privacidad_aceptado_en is None
         assert PASSWORD_HASH.verify("admin-secure-password-123", admin.password_hash)
 
+        prestaciones = list((await sesion.scalars(
+            select(PrestacionModel)
+            .where(PrestacionModel.consultorio_id == 1)
+            .order_by(PrestacionModel.nombre)
+        )).all())
+        assert [(p.nombre, p.duracion_min, p.sugerida) for p in prestaciones] == [
+            ("Blanqueamiento", 60, True),
+            ("Control de ortodoncia", 20, True),
+            ("Control de rutina", 20, True),
+            ("Endodoncia (tratamiento de conducto)", 60, True),
+            ("Extracción simple", 30, True),
+            ("Limpieza dental (profilaxis)", 40, True),
+            ("Primera consulta y diagnóstico", 30, True),
+            ("Restauración (arreglo de caries)", 45, True),
+            ("Urgencia o consulta por dolor", 30, True),
+        ]
+
+        # Simula ajustes del consultorio: la semilla no debe restaurar datos
+        # ni reactivar una prestación que el administrador desactivó.
+        prestaciones[0].duracion_min = 75
+        prestaciones[0].activa = False
+        await sesion.commit()
+
         # Verificar que la secuencia de consultorio no choca con inserciones futuras
         nuevo_id = await sesion.scalar(
             text(
@@ -73,6 +96,56 @@ async def test_seed_ejecucion_idempotente(url_base: str, sesiones: async_session
             text("SELECT count(*) FROM usuario WHERE consultorio_id = 1 AND rol = 'administrador'")
         )
         assert conteo_admins == 1
+
+        prestaciones = list((await sesion.scalars(
+            select(PrestacionModel)
+            .where(PrestacionModel.consultorio_id == 1)
+            .order_by(PrestacionModel.nombre)
+        )).all())
+        assert len(prestaciones) == 9
+        assert prestaciones[0].nombre == "Blanqueamiento"
+        assert prestaciones[0].duracion_min == 75
+        assert prestaciones[0].activa is False
+
+
+async def test_seed_no_completa_un_catalogo_que_ya_tiene_prestaciones(
+    url_base: str,
+    sesiones: async_sessionmaker[AsyncSession],
+):
+    from app.seed import sembrar
+
+    settings = SeedSettings(
+        database_url=url_base,
+        consultorio_activo_id=1,
+        bootstrap_admin_email="admin@test.com",
+        bootstrap_admin_password=SecretStr("admin-secure-password-123"),
+    )
+    await sembrar(settings)
+
+    async with sesiones() as sesion:
+        await sesion.execute(
+            PrestacionModel.__table__.delete().where(PrestacionModel.consultorio_id == 1)
+        )
+        sesion.add(
+            PrestacionModel(
+                consultorio_id=1,
+                nombre="Catálogo propio",
+                duracion_min=35,
+                activa=True,
+                sugerida=False,
+            )
+        )
+        await sesion.commit()
+
+    await sembrar(settings)
+
+    async with sesiones() as sesion:
+        prestaciones = list((await sesion.scalars(
+            select(PrestacionModel).where(PrestacionModel.consultorio_id == 1)
+        )).all())
+        assert [(p.nombre, p.duracion_min, p.sugerida) for p in prestaciones] == [
+            ("Catálogo propio", 35, False)
+        ]
 
 
 def test_seed_cli_ejecucion_aislada(url_base: str, tmp_path: Path):

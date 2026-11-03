@@ -68,14 +68,18 @@ async def test_la_migracion_crea_las_tablas_del_turno(engine: AsyncEngine):
         "id": "bigint",
         "consultorio_id": "bigint",
         "box_id": "bigint",
+        "usuario_id": "bigint",
         "nombre": "text",
         "apellido": "text",
+        "activo": "boolean",
     }
     assert await columnas(engine, "prestacion") == {
         "id": "bigint",
         "consultorio_id": "bigint",
         "nombre": "text",
         "duracion_min": "integer",
+        "activa": "boolean",
+        "sugerida": "boolean",
     }
     assert await columnas(engine, "turno") == {
         "id": "bigint",
@@ -95,7 +99,7 @@ async def test_la_migracion_crea_las_tablas_del_turno(engine: AsyncEngine):
 def test_alembic_tiene_un_unico_head():
     scripts = ScriptDirectory.from_config(Config(str(BACKEND / "alembic.ini")))
 
-    assert scripts.get_heads() == ["0006_intento_registro"]
+    assert scripts.get_heads() == ["0007_agenda_config"]
 
 
 INSERTAR_TURNO = text(
@@ -106,6 +110,21 @@ INSERTAR_TURNO = text(
 
 
 async def profesional_y_prestacion(conexion) -> dict[str, int]:
+    await conexion.execute(text("""
+        INSERT INTO consultorio (id, nombre, zona_horaria, modo_liberacion,
+          horas_confirmacion, horas_recordatorio, horas_liberacion,
+          horas_limite_paciente, minutos_granularidad, dias_anticipacion_maxima,
+          max_turnos_activos_paciente, activo, creado_en, actualizado_en)
+        OVERRIDING SYSTEM VALUE
+        VALUES (1, 'Consultorio de migración', 'America/Argentina/Buenos_Aires',
+          'automatico', 48, 24, 12, 24, 15, 60, 2, true, now(), now())
+        ON CONFLICT (id) DO NOTHING
+    """))
+    await conexion.execute(text("""
+        INSERT INTO box (id, consultorio_id, nombre)
+        OVERRIDING SYSTEM VALUE VALUES (1, 1, 'Box 1')
+        ON CONFLICT (id) DO NOTHING
+    """))
     profesional_id = await conexion.scalar(
         text(
             "INSERT INTO profesional (consultorio_id, box_id, nombre, apellido) "
@@ -175,6 +194,7 @@ async def test_la_base_rechaza_un_turno_que_termina_antes_de_empezar(
 
 async def test_la_base_rechaza_una_prestacion_sin_duracion(engine: AsyncEngine):
     async with engine.connect() as conexion:
+        await profesional_y_prestacion(conexion)
         with pytest.raises(IntegrityError) as error:
             await conexion.execute(
                 text(

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 
 from sqlalchemy import (
     BigInteger,
@@ -7,10 +7,12 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Identity,
     Index,
     Integer,
     Text,
+    Time,
     UniqueConstraint,
     func,
     text,
@@ -51,6 +53,10 @@ class ConsultorioModel(Base):
             "modo_liberacion IN ('automatico', 'manual')",
             name="ck_consultorio_modo_liberacion_valido",
         ),
+        CheckConstraint(
+            "telefono IS NULL OR length(btrim(telefono)) BETWEEN 1 AND 40",
+            name="ck_consultorio_telefono_valido",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
@@ -76,6 +82,7 @@ class UsuarioModel(Base):
     __table_args__ = (
         UniqueConstraint("consultorio_id", "nombre_usuario", name="uq_usuario_consultorio_nombre_usuario"),
         UniqueConstraint("consultorio_id", "email", name="uq_usuario_consultorio_email"),
+        UniqueConstraint("consultorio_id", "id", name="uq_usuario_consultorio_id"),
         CheckConstraint("nombre_usuario = lower(btrim(nombre_usuario))", name="ck_usuario_nombre_usuario_normalizado"),
         CheckConstraint("email = lower(btrim(email))", name="ck_usuario_email_normalizado"),
         CheckConstraint(
@@ -190,13 +197,70 @@ class IntentoIngresoModel(Base):
 
 class ProfesionalModel(Base):
     __tablename__ = "profesional"
-    __table_args__ = (UniqueConstraint("box_id", name="profesional_box_unico"),)
+    __table_args__ = (
+        UniqueConstraint("consultorio_id", "id", name="uq_profesional_consultorio_id"),
+        UniqueConstraint("usuario_id", name="uq_profesional_usuario"),
+        UniqueConstraint("box_id", name="profesional_box_unico"),
+        ForeignKeyConstraint(["consultorio_id", "usuario_id"], ["usuario.consultorio_id", "usuario.id"]),
+        ForeignKeyConstraint(["consultorio_id", "box_id"], ["box.consultorio_id", "box.id"]),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    consultorio_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("consultorio.id"), index=True)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     box_id: Mapped[int] = mapped_column(BigInteger)
     nombre: Mapped[str] = mapped_column(Text)
     apellido: Mapped[str] = mapped_column(Text)
+    activo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+
+
+class BoxModel(Base):
+    __tablename__ = "box"
+    __table_args__ = (
+        UniqueConstraint("consultorio_id", "nombre", name="uq_box_consultorio_nombre"),
+        UniqueConstraint("consultorio_id", "id", name="uq_box_consultorio_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("consultorio.id"), index=True)
+    nombre: Mapped[str] = mapped_column(Text)
+    activo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+
+
+class HorarioSemanalModel(Base):
+    __tablename__ = "horario_semanal"
+    __table_args__ = (
+        CheckConstraint("dia_semana BETWEEN 1 AND 7", name="horario_semanal_dia_valido"),
+        CheckConstraint("hora_inicio < hora_fin", name="horario_semanal_intervalo_valido"),
+        ForeignKeyConstraint(["consultorio_id", "profesional_id"], ["profesional.consultorio_id", "profesional.id"]),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    profesional_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    dia_semana: Mapped[int] = mapped_column(Integer)
+    hora_inicio: Mapped[time] = mapped_column(Time)
+    hora_fin: Mapped[time] = mapped_column(Time)
+
+
+class BloqueoAgendaModel(Base):
+    __tablename__ = "bloqueo_agenda"
+    __table_args__ = (
+        CheckConstraint("inicio < fin", name="bloqueo_agenda_intervalo_valido"),
+        CheckConstraint("tipo IN ('feriado', 'vacaciones', 'ausencia', 'bloqueo')", name="bloqueo_agenda_tipo_valido"),
+        ForeignKeyConstraint(["consultorio_id", "profesional_id"], ["profesional.consultorio_id", "profesional.id"]),
+        ForeignKeyConstraint(["consultorio_id", "creado_por_id"], ["usuario.consultorio_id", "usuario.id"]),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    profesional_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    tipo: Mapped[str] = mapped_column(Text)
+    inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    fin: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    creado_por_id: Mapped[int] = mapped_column(BigInteger)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class PrestacionModel(Base):
@@ -207,9 +271,11 @@ class PrestacionModel(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    consultorio_id: Mapped[int] = mapped_column(BigInteger)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("consultorio.id"), index=True)
     nombre: Mapped[str] = mapped_column(Text)
     duracion_min: Mapped[int] = mapped_column(Integer)
+    activa: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    sugerida: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
 
 class TurnoModel(Base):

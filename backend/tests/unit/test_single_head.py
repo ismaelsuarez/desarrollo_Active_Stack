@@ -21,4 +21,4 @@ def test_head_check_reports_linear_and_branched_histories(fixture, expected, hea
 def test_current_project_has_one_head():
     result = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True)
     assert result.returncode == 0
-    assert '0006_intento_registro' in result.stdout
+    assert '0007_agenda_config' in result.stdout

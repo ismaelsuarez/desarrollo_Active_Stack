@@ -18,6 +18,25 @@ async def crear_profesional(
     engine: AsyncEngine, *, consultorio_id: int = 1, box_id: int = 1
 ) -> int:
     async with engine.begin() as conexion:
+        await conexion.execute(text("""
+            INSERT INTO consultorio (id, nombre, zona_horaria, modo_liberacion,
+              horas_confirmacion, horas_recordatorio, horas_liberacion,
+              horas_limite_paciente, minutos_granularidad, dias_anticipacion_maxima,
+              max_turnos_activos_paciente, activo, creado_en, actualizado_en)
+            OVERRIDING SYSTEM VALUE
+            VALUES (:cid, 'Consultorio de prueba', 'America/Argentina/Buenos_Aires',
+              'automatico', 48, 24, 12, 24, 15, 60, 2, true, now(), now())
+            ON CONFLICT (id) DO NOTHING
+        """), {"cid": consultorio_id})
+        await conexion.execute(text("""
+            INSERT INTO box (id, consultorio_id, nombre)
+            OVERRIDING SYSTEM VALUE VALUES (:bid, :cid, :nombre)
+            ON CONFLICT (id) DO NOTHING
+        """), {"bid": box_id, "cid": consultorio_id, "nombre": f"Box {box_id}"})
+        await conexion.execute(text("""
+            SELECT setval(pg_get_serial_sequence('box', 'id'),
+              GREATEST((SELECT coalesce(max(id), 1) FROM box), 1))
+        """))
         return await conexion.scalar(
             text(
                 "INSERT INTO profesional (consultorio_id, box_id, nombre, apellido) "
@@ -31,6 +50,16 @@ async def crear_prestacion(
     engine: AsyncEngine, *, consultorio_id: int = 1, duracion_min: int = 30
 ) -> int:
     async with engine.begin() as conexion:
+        await conexion.execute(text("""
+            INSERT INTO consultorio (id, nombre, zona_horaria, modo_liberacion,
+              horas_confirmacion, horas_recordatorio, horas_liberacion,
+              horas_limite_paciente, minutos_granularidad, dias_anticipacion_maxima,
+              max_turnos_activos_paciente, activo, creado_en, actualizado_en)
+            OVERRIDING SYSTEM VALUE
+            VALUES (:cid, 'Consultorio de prueba', 'America/Argentina/Buenos_Aires',
+              'automatico', 48, 24, 12, 24, 15, 60, 2, true, now(), now())
+            ON CONFLICT (id) DO NOTHING
+        """), {"cid": consultorio_id})
         return await conexion.scalar(
             text(
                 "INSERT INTO prestacion (consultorio_id, nombre, duracion_min) "
