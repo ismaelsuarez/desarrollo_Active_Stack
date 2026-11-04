@@ -1,6 +1,9 @@
 from collections.abc import Callable
 from types import TracebackType
 from typing import Protocol, Self
+from app.application.ports.vinculacion import RepositorioVinculacion
+from app.infrastructure.db.cuentas import RepositorioCuentas
+from app.application.ports.pacientes import RepositorioPacientes
 
 from app.application.ports.repositorios import (
     RepositorioPrestaciones,
@@ -19,6 +22,9 @@ class UnidadDeTrabajo(Protocol):
     turnos: RepositorioTurnos
     historial: RepositorioHistorial
     agenda: RepositorioAgendaTurnos
+    vinculos: RepositorioVinculacion
+    cuentas: RepositorioCuentas
+    pacientes: RepositorioPacientes
 
     async def __aenter__(self) -> Self: ...
 

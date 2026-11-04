@@ -15,10 +15,14 @@ from app.api.v1.routers.prestaciones import router as prestaciones_router
 from app.api.v1.routers.personal import router as personal_router
 from app.api.v1.routers.turnos import router as turnos_router
 from app.api.v1.routers.agenda_turnos import router as agenda_turnos_router
+from app.api.v1.routers.vinculacion import router as vinculacion_router
+from app.api.v1.routers.pacientes import router as pacientes_router
+from app.api.v1.routers.reactivacion import router as reactivacion_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.application.errors_turnos import RechazoDeTurno
+from app.application.errors_pacientes import RechazoPaciente
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -32,6 +36,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(RechazoDeTurno)
     async def rechazo_turno(request: Request, error: RechazoDeTurno) -> JSONResponse:
+        return JSONResponse(status_code=error.codigo, content={"detail": error.motivo})
+
+    @app.exception_handler(RechazoPaciente)
+    async def rechazo_paciente(request: Request, error: RechazoPaciente) -> JSONResponse:
         return JSONResponse(status_code=error.codigo, content={"detail": error.motivo})
 
     @app.exception_handler(RequestValidationError)
@@ -55,4 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(prestaciones_router)
     app.include_router(turnos_router)
     app.include_router(agenda_turnos_router)
+    app.include_router(vinculacion_router)
+    app.include_router(pacientes_router)
+    app.include_router(reactivacion_router)
     return app

@@ -385,7 +385,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-08] `patient-records`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[ ]` apply y verificación local completados en `openspec/changes/c-08-patient-records/`: 36/36 tareas, 408 pruebas sin integración y 753 con PostgreSQL/Mailpit, OpenAPI y validación estricta aprobados; head único 0008, sin migración nueva. Ver [evidencia y trazabilidad](openspec/changes/c-08-patient-records/evidence.md), incluidos los límites de RED histórico. Pendiente revisión/cierre y archivo; sin commit ni push.
 - **Scope**: Fichas de paciente gestionadas por Recepción
   - `GET /api/v1/pacientes` — búsqueda por apellido, DNI o teléfono, paginada; `POST /api/v1/pacientes` — ficha mínima (nombre, apellido, teléfono, correo, DNI obligatorios; obra social y notas opcionales; el formulario de la ficha muestra junto a las notas la leyenda que pide no cargar datos de salud, RN-65, que arma C-13); DNI duplicado responde 409
   - `GET/PATCH /api/v1/pacientes/{id}`; sin borrado físico (RN-58). El detalle (`GET`) incluye, solo para Recepción y Administrador, un bloque `cuenta` con el identificador del usuario, su nombre de usuario, su correo y si está verificado, o nulo si la ficha no tiene cuenta, para que puedan actuar sobre el vínculo (RN-63): el Profesional y el Paciente no lo reciben y no se devuelve otro dato de la cuenta (minimización, RN-58). `PATCH` no modifica `activo`: la v1 no tiene ninguna acción que desactive una ficha (SU-47)

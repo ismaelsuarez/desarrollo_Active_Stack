@@ -8,6 +8,9 @@ from app.domain.ports.reloj import Reloj
 
 from app.infrastructure.db.historial import RepositorioHistorialSQL
 from app.infrastructure.db.agenda_turnos import RepositorioAgendaTurnosSQL
+from app.infrastructure.db.vinculacion import RepositorioVinculacionSQL
+from app.infrastructure.db.cuentas import RepositorioCuentas
+from app.infrastructure.db.pacientes import RepositorioPacientesSQL
 
 from app.infrastructure.db.repositorios import (
     RepositorioPrestacionesSQL,
@@ -31,6 +34,9 @@ class UnidadDeTrabajoSQL:
         self.turnos = RepositorioTurnosSQL(self._sesion, self._reloj)
         self.historial = RepositorioHistorialSQL(self._sesion)
         self.agenda = RepositorioAgendaTurnosSQL(self._sesion)
+        self.vinculos = RepositorioVinculacionSQL(self._sesion)
+        self.cuentas = RepositorioCuentas(self._sesion)
+        self.pacientes = RepositorioPacientesSQL(self._sesion)
         return self
 
     async def __aexit__(

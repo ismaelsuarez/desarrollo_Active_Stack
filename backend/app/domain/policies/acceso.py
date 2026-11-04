@@ -159,6 +159,8 @@ def autorizar(
             return Decision(permitido=True)
         if usuario.rol == RolUsuario.PACIENTE:
             return Decision(permitido=False, motivo="paciente_ajeno", codigo_http=404)
+        if usuario.rol == RolUsuario.PROFESIONAL:
+            return Decision(permitido=False, motivo="paciente_no_asignado", codigo_http=404)
         return Decision(permitido=False, motivo="paciente_no_asignado", codigo_http=403)
 
     elif accion == Accion.PACIENTE_EDITAR:

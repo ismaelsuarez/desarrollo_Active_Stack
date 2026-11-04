@@ -1,10 +1,25 @@
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+import pytest
 from app.domain.entities.auth import Principal, RolUsuario
 from app.domain.entities.turno import Turno
 from app.domain.value_objects.accion import Accion
 from app.domain.value_objects.estado_turno import EstadoTurno
 from app.domain.value_objects.contexto_acceso import ContextoAcceso
 from app.domain.policies.acceso import autorizar
+
+
+@pytest.mark.parametrize("asignados,permitido,codigo", [
+    (frozenset(), False, 404), (frozenset({22}), True, None),
+])
+def test_c08_ficha_profesional_fuera_de_agenda_es_404(asignados, permitido, codigo):
+    profesional = Principal(3, 1, RolUsuario.PROFESIONAL)
+    ficha = SimpleNamespace(id=22, consultorio_id=1)
+    decision = autorizar(profesional, Accion.PACIENTE_VER, ficha,
+                         ContextoAcceso(ahora=datetime(2026, 11, 6, tzinfo=timezone.utc),
+                                        turnos_del_profesional=asignados))
+    assert decision.permitido is permitido
+    assert decision.codigo_http == codigo
 
 
 def _crear_turno(

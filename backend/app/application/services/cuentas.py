@@ -56,7 +56,6 @@ class ServicioCuentas:
             calcular_token_hash(raw), ahora + timedelta(hours=self.settings.email_verification_ttl_hours), cuerpo, ahora)
         await self.sesion.commit()
         return nid
-
     async def _token_valido(self, raw: str, tipo: str):
         token, user = await self.repo.token_y_usuario_bloqueados(calcular_token_hash(raw))
         if token is None or user is None or token.tipo != tipo or token.usado_en is not None or token.expira_en <= self.reloj.ahora():
@@ -123,27 +122,60 @@ class ServicioCuentas:
 
     @revertir_conflicto
     async def actualizar_cuenta(self, principal, telefono: str | None, email: str | None) -> int | None:
-        user = await self.repo.usuario_por_id(principal.consultorio_id, principal.usuario_id)
-        if user is None:
-            raise ErrorCuenta(401, 'Cuenta no disponible')
-        patient = await self.repo.ficha_de_usuario(principal.consultorio_id, principal.usuario_id)
-        ahora = self.reloj.ahora()
-        if patient is not None and telefono is not None:
-            patient.telefono = telefono
-            patient.actualizado_en = ahora
-        nid = None
-        if email is not None and email.strip().lower() != user.email:
-            user.email = email.strip().lower()
-            user.email_verificado = False
-            user.email_verificado_en = None
-            user.actualizado_en = ahora
-            if patient is not None:
-                patient.email = user.email
-                patient.actualizado_en = ahora
-            await self.repo.invalidar_enlaces_correo(user.consultorio_id, user.id, ahora)
-            raw = generar_token_opaco()
-            _, cuerpo = correo_cuenta('verificacion_email', raw, self.settings.frontend_base_url)
-            nid = await self.repo.programar_token(user, 'verificar_email', calcular_token_hash(raw),
-                ahora+timedelta(hours=self.settings.email_verification_ttl_hours), cuerpo, ahora)
+        try:
+            nid = await actualizar_contacto_transaccional(
+                self.repo, self.reloj, self.settings, principal, telefono, email,
+            )
+        except ErrorCuenta:
+            await self.sesion.rollback()
+            raise
         await self.sesion.commit()
         return nid
+
+
+async def _actualizar_contacto_transaccional(repo: RepositorioCuentas, reloj: Reloj,
+        settings: Settings, principal, telefono: str | None, email: str | None,
+        paciente_id_esperado: int | None = None) -> int | None:
+    """Actualiza contacto y programa verificación sin confirmar la transacción."""
+    user = await repo.usuario_por_id(principal.consultorio_id, principal.usuario_id)
+    if user is None:
+        raise ErrorCuenta(401, 'Cuenta no disponible')
+    patient = await repo.ficha_de_usuario(principal.consultorio_id, principal.usuario_id)
+    if paciente_id_esperado is not None and (patient is None or patient.id != paciente_id_esperado):
+        raise ErrorCuenta(404, 'Ficha no encontrada')
+    ahora = reloj.ahora()
+    if patient is not None and telefono is not None:
+        patient.telefono = telefono
+        patient.actualizado_en = ahora
+    nid = None
+    if email is not None and email.strip().lower() != user.email:
+        user.email = email.strip().lower()
+        user.email_verificado = False
+        user.email_verificado_en = None
+        user.actualizado_en = ahora
+        if patient is not None:
+            patient.email = user.email
+            patient.actualizado_en = ahora
+        await repo.invalidar_enlaces_correo(user.consultorio_id, user.id, ahora)
+        raw = generar_token_opaco()
+        _, cuerpo = correo_cuenta('verificacion_email', raw, settings.frontend_base_url)
+        nid = await repo.programar_token(user, 'verificar_email', calcular_token_hash(raw),
+            ahora + timedelta(hours=settings.email_verification_ttl_hours), cuerpo, ahora)
+    return nid
+
+
+async def actualizar_contacto_transaccional(repo: RepositorioCuentas, reloj: Reloj,
+        settings: Settings, principal, telefono: str | None, email: str | None,
+        paciente_id_esperado: int | None = None) -> int | None:
+    try:
+        return await _actualizar_contacto_transaccional(
+            repo, reloj, settings, principal, telefono, email, paciente_id_esperado,
+        )
+    except IntegrityError as error:
+        causa = error.orig
+        while causa is not None:
+            if (getattr(causa, 'sqlstate', None) == '23505'
+                    and getattr(causa, 'constraint_name', None) == 'uq_usuario_consultorio_email'):
+                raise ErrorCuenta(409, 'El correo de la cuenta no está disponible') from None
+            causa = getattr(causa, '__cause__', None)
+        raise
