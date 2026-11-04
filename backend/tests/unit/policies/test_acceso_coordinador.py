@@ -83,10 +83,10 @@ def test_autorizar_profesional_turno_ver_agenda_propia_y_ajena():
     d_ok = autorizar(prof, Accion.TURNO_VER, recurso=turno_propio, contexto=ctx)
     assert d_ok.permitido is True
 
-    # Agenda ajena -> 403
+    # Turno ajeno por identificador -> 404 (la agenda ajena conserva 403)
     d_ajeno = autorizar(prof, Accion.TURNO_VER, recurso=turno_ajeno, contexto=ctx)
     assert d_ajeno.permitido is False
-    assert d_ajeno.codigo_http == 403
+    assert d_ajeno.codigo_http == 404
 
 
 def test_autorizar_cancelar_paciente_dentro_y_fuera_de_ventana():

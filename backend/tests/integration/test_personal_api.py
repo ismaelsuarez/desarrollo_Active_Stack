@@ -3,6 +3,7 @@
 import httpx
 import pytest
 from sqlalchemy import select
+from app.api.deps import get_reloj
 
 from app.application.services.token_service import AuthTokenService
 from app.core.config import Settings
@@ -35,7 +36,7 @@ async def personal_app(sesiones, url_base):
     if not any(getattr(route, "path", "").startswith("/api/v1/usuarios") for route in app.routes):
         app.include_router(router)
     app.state.session_factory = sesiones
-    app.state.token_service = AuthTokenService(RelojSimulado(AHORA), "j" * 32)
+    app.dependency_overrides[get_reloj] = lambda: RelojSimulado(AHORA)
     return app
 
 

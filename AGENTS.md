@@ -76,11 +76,21 @@ Esta tabla solo mapea skill a rol. Las excepciones específicas del proyecto sig
 | **Frontend** | React, TypeScript, Vite, pruebas de componentes, accesibilidad | `vercel-react-best-practices`, `typescript-react-reviewer`, `vitest`, `react-testing`, `accessibility` |
 | **Infraestructura** | Docker, Compose, despliegue gratuito | `docker-compose-patterns`, `docker-build-strategies` |
 | **Pruebas / TDD** | Ciclo de TDD estricto | `tdd` (cede ante el ciclo de TDD estricto del orquestador) |
+| **Revisión de dominio de turnos** | Explorar, especificar y diseñar C-07; revisar conflictos y escenarios antes de implementar | `appointment-conflict-reviewer` |
 | **Orquestación** | Fundación, SDD / OPSX, commits | `kb-creator`, `roadmap-generator`, `skill-registry`, `work-unit-commits`, `chained-pr` |
 
 Cargá la skill correspondiente al contexto ANTES de escribir código. Las [aclaraciones de uso](#aclaraciones-de-uso-de-las-skills) de más abajo **mandan sobre el `SKILL.md`** cuando se contradicen.
 
 Huecos sin skill madura (usar el MCP de Context7 y [la KB 11](knowledge-base/11_politicas_de_acceso_abac.md)): restricción de exclusión con `btree_gist` y `23P01`, ABAC con funciones puras, reloj inyectado y zona horaria, `aiosmtplib`, PyJWT con pwdlib, Ley 25.326 y cálculo de disponibilidad de agenda.
+
+### Revisión de dominio para C-07
+
+Al explorar, especificar o diseñar C-07 (`turnos-core`), cargar el archivo completo [appointment-conflict-reviewer/SKILL.md](.agents/skills/appointment-conflict-reviewer/SKILL.md) y usarlo para revisar reservas, horarios, profesionales, disponibilidad y prevención de solapamientos antes de implementar. Repetir la revisión cuando cambien las reglas o los escenarios de ese alcance. Es una revisión de dominio que complementa el flujo OPSX existente.
+
+- **Entradas**: objetivo y alcance de la consulta; entrada C-07 de `CHANGES.md` con dependencias y «Leer antes»; estas instrucciones y el registro local; secciones pertinentes de `knowledge-base/04` a `11` según las rutas completas indicadas en la skill; specs y artefactos del change solo si existen, con su estado consultado mediante la CLI de OpenSpec. Para escenarios concretos, aportar o explicitar datos sintéticos: profesional, consultorio, intervalos, duración, estado, horarios, bloqueos, zona y parámetros aplicables. Declarar datos faltantes sin inventar decisiones.
+- **Activación**: usarla durante la exploración y antes de incorporar requisitos o escenarios a la propuesta, las especificaciones y el diseño de C-07. Si se delega esa revisión, pasar la ruta canónica del `SKILL.md` para su lectura completa, respetando el protocolo local. En revisiones de solo lectura, consultar el registro existente y declarar que no se refrescó; la invocación de esta skill no autoriza escrituras.
+- **Revisión del resultado contra la KB**: exigir una fuente con ruta, sección e identificador RN/US/DD/SU/Q para cada conclusión; contrastar escenarios con reglas (`05`), modelo y restricciones (`04`), historias y flujos (`06`/`07`), arquitectura y pruebas (`08`), vigencia de decisiones y preguntas (`09`/`10`), y permisos y códigos de rechazo (`11`). Distinguir permitidos, rechazados y ambiguos; comprobar solapamientos, límites, duración, estados y concurrencia. Las reglas duras prevalecen ante conflicto con la KB, pero la discrepancia debe señalarse; los supuestos no confirmados y las expectativas ambiguas quedan pendientes de decisión humana.
+- **Uso del informe**: revisar escenarios, pruebas propuestas, riesgos y recomendaciones antes de preparar o ajustar `proposal.md`, `design.md`, `tasks.md` y specs mediante el flujo autorizado. El informe no aprueba reglas nuevas ni demuestra pruebas ejecutadas. La skill no escribe esos artefactos, implementa ni archiva C-07, y no opera datos reales; tampoco amplía su alcance a C-09, C-10 o C-16.
 
 ### Aclaraciones de uso de las skills
 

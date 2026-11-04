@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
+from app.api.deps import get_reloj
 from app.application.services.token_service import AuthTokenService
 from app.core.config import Settings
 from app.domain.entities.auth import Principal, RolUsuario
@@ -32,6 +33,7 @@ async def consultorio_app(sesiones, url_base):
     )
     app = create_app(settings)
     app.state.session_factory = sesiones
+    app.dependency_overrides[get_reloj] = lambda: RelojSimulado(AHORA)
     return app
 
 

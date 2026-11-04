@@ -1,4 +1,7 @@
-from sqlalchemy import select
+from dataclasses import fields
+from datetime import datetime
+
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,6 +9,8 @@ from app.domain.entities.prestacion import Prestacion
 from app.domain.entities.profesional import Profesional
 from app.domain.entities.turno import NuevoTurno, Turno
 from app.domain.errors import HorarioOcupado
+from app.domain.errors_turnos import ConflictoDeTurno
+from app.domain.ports.reloj import Reloj, RelojSistema
 from app.infrastructure.db.models import (
     RESTRICCION_SIN_SOLAPAMIENTO,
     PrestacionModel,
@@ -31,14 +36,15 @@ class RepositorioProfesionalesSQL:
         self._sesion = sesion
 
     async def obtener(
-        self, consultorio_id: int, profesional_id: int
+        self, consultorio_id: int, profesional_id: int, *, incluir_inactivos: bool = False
     ) -> Profesional | None:
-        modelo = await self._sesion.scalar(
-            select(ProfesionalModel).where(
-                ProfesionalModel.id == profesional_id,
-                ProfesionalModel.consultorio_id == consultorio_id,
-            )
+        consulta = select(ProfesionalModel).where(
+            ProfesionalModel.id == profesional_id,
+            ProfesionalModel.consultorio_id == consultorio_id,
         )
+        if not incluir_inactivos:
+            consulta = consulta.where(ProfesionalModel.activo.is_(True))
+        modelo = await self._sesion.scalar(consulta)
         if modelo is None:
             return None
         return Profesional(
@@ -55,14 +61,15 @@ class RepositorioPrestacionesSQL:
         self._sesion = sesion
 
     async def obtener(
-        self, consultorio_id: int, prestacion_id: int
+        self, consultorio_id: int, prestacion_id: int, *, incluir_inactivos: bool = False
     ) -> Prestacion | None:
-        modelo = await self._sesion.scalar(
-            select(PrestacionModel).where(
-                PrestacionModel.id == prestacion_id,
-                PrestacionModel.consultorio_id == consultorio_id,
-            )
+        consulta = select(PrestacionModel).where(
+            PrestacionModel.id == prestacion_id,
+            PrestacionModel.consultorio_id == consultorio_id,
         )
+        if not incluir_inactivos:
+            consulta = consulta.where(PrestacionModel.activa.is_(True))
+        modelo = await self._sesion.scalar(consulta)
         if modelo is None:
             return None
         return Prestacion(
@@ -74,8 +81,70 @@ class RepositorioPrestacionesSQL:
 
 
 class RepositorioTurnosSQL:
-    def __init__(self, sesion: AsyncSession) -> None:
+    def __init__(self, sesion: AsyncSession, reloj: Reloj | None = None) -> None:
         self._sesion = sesion
+        self._reloj = reloj or RelojSistema()
+
+    @staticmethod
+    def _entidad(modelo: TurnoModel) -> Turno:
+        return Turno(**{campo.name: getattr(modelo, campo.name) for campo in fields(Turno)})
+
+    async def obtener(self, consultorio_id: int, turno_id: int) -> Turno | None:
+        modelo = await self._sesion.scalar(select(TurnoModel).where(
+            TurnoModel.id == turno_id, TurnoModel.consultorio_id == consultorio_id,
+        ))
+        return self._entidad(modelo) if modelo is not None else None
+
+    async def listar(
+        self, consultorio_id: int, profesional_id: int | None = None,
+        paciente_id: int | None = None, desde: datetime | None = None,
+        hasta: datetime | None = None,
+    ) -> list[Turno]:
+        consulta = select(TurnoModel).where(TurnoModel.consultorio_id == consultorio_id)
+        if profesional_id is not None:
+            consulta = consulta.where(TurnoModel.profesional_id == profesional_id)
+        if paciente_id is not None:
+            consulta = consulta.where(TurnoModel.paciente_id == paciente_id)
+        if desde is not None:
+            consulta = consulta.where(TurnoModel.inicio >= desde)
+        if hasta is not None:
+            consulta = consulta.where(TurnoModel.inicio < hasta)
+        filas = await self._sesion.scalars(consulta.order_by(TurnoModel.inicio, TurnoModel.id))
+        return [self._entidad(modelo) for modelo in filas]
+
+    async def hay_solapamiento(
+        self, consultorio_id: int, profesional_id: int, inicio: datetime,
+        fin: datetime, excluir_id: int | None = None,
+    ) -> bool:
+        consulta = select(TurnoModel.id).where(
+            TurnoModel.consultorio_id == consultorio_id,
+            TurnoModel.profesional_id == profesional_id,
+            TurnoModel.estado.in_(("pendiente", "confirmado", "atendido", "ausente")),
+            TurnoModel.inicio < fin, TurnoModel.fin > inicio,
+        )
+        if excluir_id is not None:
+            consulta = consulta.where(TurnoModel.id != excluir_id)
+        return await self._sesion.scalar(consulta.limit(1)) is not None
+
+    async def actualizar(self, original: Turno, cambios: dict[str, object]) -> Turno:
+        consulta = update(TurnoModel).where(
+            TurnoModel.id == original.id,
+            TurnoModel.consultorio_id == original.consultorio_id,
+            TurnoModel.estado == original.estado,
+            TurnoModel.ciclo_confirmacion == original.ciclo_confirmacion,
+            TurnoModel.inicio == original.inicio,
+            TurnoModel.fin == original.fin,
+            TurnoModel.marcado_sin_confirmar_en.is_not_distinct_from(original.marcado_sin_confirmar_en),
+        ).values(**cambios).returning(TurnoModel).execution_options(populate_existing=True)
+        try:
+            modelo = await self._sesion.scalar(consulta)
+        except IntegrityError as error:
+            if es_solapamiento_de_turnos(error):
+                raise HorarioOcupado() from error
+            raise
+        if modelo is None:
+            raise ConflictoDeTurno()
+        return self._entidad(modelo)
 
     async def guardar(self, turno: NuevoTurno) -> Turno:
         modelo = TurnoModel(
@@ -86,6 +155,12 @@ class RepositorioTurnosSQL:
             prestacion_id=turno.prestacion_id,
             inicio=turno.inicio,
             fin=turno.fin,
+            estado=turno.estado,
+            origen=turno.origen,
+            creado_por_id=turno.creado_por_id,
+            creado_en=turno.creado_en or self._reloj.ahora(),
+            actualizado_en=turno.actualizado_en,
+            confirmado_en=turno.confirmado_en,
         )
         self._sesion.add(modelo)
         try:
@@ -95,15 +170,4 @@ class RepositorioTurnosSQL:
                 raise HorarioOcupado() from error
             raise
         await self._sesion.refresh(modelo)
-        return Turno(
-            id=modelo.id,
-            consultorio_id=modelo.consultorio_id,
-            paciente_id=modelo.paciente_id,
-            profesional_id=modelo.profesional_id,
-            box_id=modelo.box_id,
-            prestacion_id=modelo.prestacion_id,
-            inicio=modelo.inicio,
-            fin=modelo.fin,
-            estado=modelo.estado,
-            es_sobreturno=modelo.es_sobreturno,
-        )
+        return self._entidad(modelo)

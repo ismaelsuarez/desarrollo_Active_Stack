@@ -93,19 +93,33 @@ async def test_la_migracion_crea_las_tablas_del_turno(engine: AsyncEngine):
         "estado": "USER-DEFINED",
         "es_sobreturno": "boolean",
         "creado_en": "timestamp with time zone",
+        "origen": "text",
+        "ciclo_confirmacion": "integer",
+        "confirmacion_solicitada_en": "timestamp with time zone",
+        "recordatorio_enviado_en": "timestamp with time zone",
+        "confirmado_en": "timestamp with time zone",
+        "marcado_sin_confirmar_en": "timestamp with time zone",
+        "liberado_en": "timestamp with time zone",
+        "cancelado_en": "timestamp with time zone",
+        "cancelado_por_id": "bigint",
+        "motivo_cancelacion": "text",
+        "reprogramado_de_inicio": "timestamp with time zone",
+        "notas": "text",
+        "creado_por_id": "bigint",
+        "actualizado_en": "timestamp with time zone",
     }
 
 
 def test_alembic_tiene_un_unico_head():
     scripts = ScriptDirectory.from_config(Config(str(BACKEND / "alembic.ini")))
 
-    assert scripts.get_heads() == ["0007_agenda_config"]
+    assert scripts.get_heads() == ["0008_turnos_core"]
 
 
 INSERTAR_TURNO = text(
     "INSERT INTO turno (consultorio_id, paciente_id, profesional_id, box_id, "
-    "prestacion_id, inicio, fin) "
-    "VALUES (1, 1, :profesional_id, 1, :prestacion_id, :inicio, :fin)"
+    "prestacion_id, inicio, fin, creado_en) "
+    "VALUES (1, 1, :profesional_id, 1, :prestacion_id, :inicio, :fin, :inicio)"
 )
 
 
@@ -125,6 +139,11 @@ async def profesional_y_prestacion(conexion) -> dict[str, int]:
         OVERRIDING SYSTEM VALUE VALUES (1, 1, 'Box 1')
         ON CONFLICT (id) DO NOTHING
     """))
+    await conexion.execute(text("""
+        INSERT INTO paciente (id, consultorio_id,nombre,apellido,dni,activo,creado_en,actualizado_en)
+        VALUES (1,1,'Paciente','Sintetico','30123456',true,:ahora,:ahora)
+        ON CONFLICT (id) DO NOTHING
+    """), {"ahora": hora(8, 0)})
     profesional_id = await conexion.scalar(
         text(
             "INSERT INTO profesional (consultorio_id, box_id, nombre, apellido) "

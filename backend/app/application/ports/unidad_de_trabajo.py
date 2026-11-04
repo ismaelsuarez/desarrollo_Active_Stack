@@ -6,6 +6,8 @@ from app.application.ports.repositorios import (
     RepositorioPrestaciones,
     RepositorioProfesionales,
     RepositorioTurnos,
+    RepositorioHistorial,
+    RepositorioAgendaTurnos,
 )
 
 
@@ -15,6 +17,8 @@ class UnidadDeTrabajo(Protocol):
     profesionales: RepositorioProfesionales
     prestaciones: RepositorioPrestaciones
     turnos: RepositorioTurnos
+    historial: RepositorioHistorial
+    agenda: RepositorioAgendaTurnos
 
     async def __aenter__(self) -> Self: ...
 

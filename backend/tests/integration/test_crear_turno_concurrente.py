@@ -12,10 +12,16 @@ from tests.integration.fabricas import (
     contar_turnos,
     crear_prestacion,
     crear_profesional,
+    crear_paciente,
     hora,
 )
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+async def ficha_existente(engine):
+    await crear_paciente(engine)
 
 
 @pytest.mark.parametrize("reservas", [2, 10])

@@ -73,6 +73,24 @@ async def crear_prestacion(
         )
 
 
+async def crear_paciente(engine: AsyncEngine, *, consultorio_id: int = 1) -> int:
+    """Ficha sintética sin cuenta para pruebas que antes usaban un id sin FK."""
+    async with engine.begin() as conexion:
+        await conexion.execute(text("""
+            INSERT INTO consultorio (id,nombre,zona_horaria,modo_liberacion,
+              horas_confirmacion,horas_recordatorio,horas_liberacion,horas_limite_paciente,
+              minutos_granularidad,dias_anticipacion_maxima,max_turnos_activos_paciente,
+              activo,creado_en,actualizado_en)
+            VALUES (:cid,'Consultorio de prueba','America/Argentina/Buenos_Aires','automatico',
+              48,24,12,24,15,60,2,true,:ahora,:ahora) ON CONFLICT (id) DO NOTHING
+        """), {"cid": consultorio_id, "ahora": hora(8)})
+        return await conexion.scalar(text("""
+            INSERT INTO paciente (consultorio_id,nombre,apellido,dni,activo,creado_en,actualizado_en)
+            VALUES (:cid,'Paciente','Sintetico','30123456',true,:ahora,:ahora)
+            ON CONFLICT (consultorio_id,dni) DO UPDATE SET dni=EXCLUDED.dni RETURNING id
+        """), {"cid": consultorio_id, "ahora": hora(8)})
+
+
 async def crear_turno(
     engine: AsyncEngine,
     *,
@@ -85,15 +103,27 @@ async def crear_turno(
 ) -> int:
     """Inserta un turno en el estado pedido; ningún caso de uso cancela ni libera todavía."""
     async with engine.begin() as conexion:
+        paciente_id = await conexion.scalar(text("""
+            SELECT id FROM paciente WHERE consultorio_id=:cid AND dni='30123456'
+        """), {"cid": consultorio_id})
+        if paciente_id is None:
+            paciente_id = await conexion.scalar(text("""
+                INSERT INTO paciente (consultorio_id,nombre,apellido,dni,activo,creado_en,actualizado_en)
+                VALUES (:cid,'Paciente','Sintetico','30123456',true,:ahora,:ahora) RETURNING id
+            """), {"cid": consultorio_id, "ahora": hora(8)})
+        box_id = await conexion.scalar(text("SELECT box_id FROM profesional WHERE id=:id"), {"id": profesional_id})
         return await conexion.scalar(
             text(
                 "INSERT INTO turno (consultorio_id, paciente_id, profesional_id, "
-                "box_id, prestacion_id, inicio, fin, estado) "
-                "VALUES (:consultorio_id, 1, :profesional_id, 1, :prestacion_id, "
-                ":inicio, :fin, CAST(:estado AS estado_turno)) RETURNING id"
+                "box_id, prestacion_id, inicio, fin, estado, creado_en) "
+                "VALUES (:consultorio_id, :paciente_id, :profesional_id, :box_id, :prestacion_id, "
+                ":inicio, :fin, CAST(:estado AS estado_turno), :ahora) RETURNING id"
             ),
             {
                 "consultorio_id": consultorio_id,
+                "paciente_id": paciente_id,
+                "box_id": box_id,
+                "ahora": hora(8),
                 "profesional_id": profesional_id,
                 "prestacion_id": prestacion_id,
                 "inicio": inicio,

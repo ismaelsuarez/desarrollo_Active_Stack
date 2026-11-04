@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 from sqlalchemy import select
+from app.api.deps import get_reloj
 
 from app.application.services.token_service import AuthTokenService
 from app.core.config import Settings
@@ -33,7 +34,7 @@ async def prestaciones_app(sesiones, url_base):
     )
     app = create_app(settings)
     app.state.session_factory = sesiones
-    app.state.token_service = AuthTokenService(RelojSimulado(AHORA), "j" * 32)
+    app.dependency_overrides[get_reloj] = lambda: RelojSimulado(AHORA)
     return app
 
 

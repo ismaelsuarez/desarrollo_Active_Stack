@@ -13,9 +13,12 @@ from app.api.v1.routers.consultorio import router as consultorio_router
 from app.api.v1.routers.health import router as health_router
 from app.api.v1.routers.prestaciones import router as prestaciones_router
 from app.api.v1.routers.personal import router as personal_router
+from app.api.v1.routers.turnos import router as turnos_router
+from app.api.v1.routers.agenda_turnos import router as agenda_turnos_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
+from app.application.errors_turnos import RechazoDeTurno
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -26,6 +29,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
 
     app = FastAPI(title='Sistema de Turnos y Agenda Odontológica', lifespan=lifespan)
+
+    @app.exception_handler(RechazoDeTurno)
+    async def rechazo_turno(request: Request, error: RechazoDeTurno) -> JSONResponse:
+        return JSONResponse(status_code=error.codigo, content={"detail": error.motivo})
 
     @app.exception_handler(RequestValidationError)
     async def validacion_sin_datos_privados(request: Request, error: RequestValidationError) -> JSONResponse:
@@ -46,4 +53,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(personal_router)
     app.include_router(consultorio_router)
     app.include_router(prestaciones_router)
+    app.include_router(turnos_router)
+    app.include_router(agenda_turnos_router)
     return app

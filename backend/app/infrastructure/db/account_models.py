@@ -50,7 +50,7 @@ class NotificacionModel(Base):
     )
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     consultorio_id: Mapped[int] = mapped_column(ForeignKey('consultorio.id'), index=True)
-    turno_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
+    turno_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey('turno.id'), index=True)
     usuario_id: Mapped[int | None] = mapped_column(ForeignKey('usuario.id'), index=True)
     tipo: Mapped[str] = mapped_column(Text)
     canal: Mapped[str] = mapped_column(Text)

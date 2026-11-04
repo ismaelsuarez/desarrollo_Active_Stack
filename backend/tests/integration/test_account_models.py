@@ -135,7 +135,7 @@ async def test_migraciones_de_cuenta_reversibles_y_un_solo_head():
     from sqlalchemy.pool import NullPool
     from tests.integration.conftest import BACKEND, alembic, base_temporal
     script = ScriptDirectory.from_config(Config(str(BACKEND / 'alembic.ini')))
-    assert script.get_heads() == ['0007_agenda_config']
+    assert script.get_heads() == ['0008_turnos_core']
     async with base_temporal() as url:
         alembic(url, 'upgrade', 'head')
         engine = create_async_engine(url, poolclass=NullPool)
@@ -143,7 +143,7 @@ async def test_migraciones_de_cuenta_reversibles_y_un_solo_head():
             names = set((await connection.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'"))).scalars())
             assert {'solicitud_vinculacion', 'notificacion', 'intento_registro'} <= names
             assert not await connection.scalar(text("SELECT count(*) FROM information_schema.columns WHERE table_name='notificacion' AND column_name='ciclo'"))
-            assert not await connection.scalar(text("SELECT count(*) FROM pg_constraint WHERE conrelid='notificacion'::regclass AND contype='f' AND confrelid='turno'::regclass"))
+            assert await connection.scalar(text("SELECT count(*) FROM pg_constraint WHERE conrelid='notificacion'::regclass AND contype='f' AND confrelid='turno'::regclass")) == 1
         alembic(url, 'downgrade', '0003_auth_core')
         async with engine.connect() as connection:
             assert not await connection.scalar(text("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('notificacion','solicitud_vinculacion','intento_registro')"))

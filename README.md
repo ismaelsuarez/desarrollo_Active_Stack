@@ -4,6 +4,12 @@ Sistema web para que un consultorio odontológico de 2 a 5 profesionales reduzca
 
 Trabajo Práctico Integrador de la materia Metodología I (UTN), desarrollado en equipo.
 
+## TP de Skills y MCP — Parte 2
+
+[Aplicación y resultados](docs/skills-mcp/aplicacion.md) · [Configuración reproducible de Context7](docs/skills-mcp/context7.md) · [Revisión crítica e inventario de cambios](docs/skills-mcp/revision-critica.md) · [Evidencias y pendientes](docs/skills-mcp/evidencias/README.md).
+
+Al preparar este TP, C-07 tenía planificación validada y 36 tareas pendientes. La implementación posterior quedó completada y archivada: 36/36 tareas y 906 pruebas aprobadas. Su evidencia se registra en [las tareas del change archivado](openspec/changes/archive/2026-11-03-c-07-turnos-core/tasks.md); el informe del TP conserva su contexto documental original. La guía de Context7 contiene ejemplos sin credenciales y no requiere regenerar la fundación.
+
 ## Equipo
 
 | Integrante |
@@ -230,6 +236,72 @@ Las migraciones cargan únicamente la configuración de conexión: usan `MIGRATI
 `.github/workflows/ci.yml` define verificaciones gratuitas de backend con PostgreSQL real, frontend, imágenes y arranque de Compose en cada push y pull request a `main`. La [ejecución de C-01 para `2c463ad`](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) terminó correctamente en los jobs `backend`, `frontend`, `images` y `compose-smoke`. La validación local del workflow no sustituye GitHub Actions; cada cambio posterior requiere su propia comprobación.
 
 ## Cómo correr las pruebas del backend
+
+### API de turnos por personal
+
+`POST /api/v1/turnos` requiere un token de Recepción o Administrador. Ejemplo con identificadores sintéticos:
+
+```json
+{
+  "paciente_id": 1,
+  "profesional_id": 1,
+  "prestacion_id": 1,
+  "inicio": "2026-11-09T10:00:00-03:00",
+  "duracion_min": 45,
+  "confirmar": false
+}
+```
+
+`duracion_min` y `confirmar` son opcionales. Sin ajuste, se conserva la duración del catálogo; un ajuste debe ser positivo y múltiplo de la grilla. El intervalo completo debe caber en un bloque semanal y evitar bloqueos. El consultorio y el fin los resuelve el servidor: enviarlos, o enviar otro campo desconocido, produce 422.
+
+La respuesta 201 contiene identificadores operativos, inicio/fin, estado, indicador de sobreturno y ciclo de confirmación. La fila y su historial ya están confirmados al responder. Una ficha sin cuenta puede reservar y el personal puede superar los límites de anticipación y cantidad del paciente. A menos de 48 horas —o del umbral configurado— el turno nace confirmado; en el umbral exacto queda pendiente, salvo confirmación manual. El historial distingue ambos motivos.
+
+Errores: 401 sin autenticación; 403 por rol; 404 por referencias inexistentes o ajenas; 409 por horario ocupado; 422 por entrada o agenda inválidas. Dos reservas regulares concurrentes del mismo hueco dejan un solo turno con su historial y un conflicto 409. Un regular también rechaza un sobreturno activo existente; la carrera de alta simultánea con sobreturnos conserva el riesgo residual documentado. La reserva pública se implementa en C-09.
+
+### Reprogramación y acciones del turno
+
+`PATCH /api/v1/turnos/{id}` admite `inicio` con zona y, opcionalmente, `duracion_min`. Recepción o Administrador pueden mover un turno modificable conservando el identificador y su duración actual salvo ajuste explícito. El destino se valida contra bloques, grilla, excepciones y turnos activos. Al confirmar el cambio se incrementa el ciclo una sola vez, se limpian las marcas e hitos anteriores y se aplica el umbral temporal de confirmación. Un conflicto 409 o un fallo del historial revierte todos los valores del movimiento.
+
+Las acciones `POST /api/v1/turnos/{id}/{confirmar|cancelar|liberar|atendido|ausente}` reciben un objeto vacío, salvo `cancelar`, que admite `motivo` opcional. También admiten omitir el cuerpo; los campos extra producen 422. Confirmar sólo acepta pendientes. Liberar requiere pendiente y modo manual o marca sin confirmar. Cancelar conserva fila, actor, fecha y motivo y libera el hueco.
+
+Recepción, Administrador y Profesional de la propia agenda pueden marcar atendido o ausente desde el instante exacto de inicio (`ahora >= inicio`); antes reciben 403. La acción `atendido` sobre un ausente es una corrección reservada a Recepción/Administrador, registrada como `corregir` sin cambiar hechos anteriores. Atendido es inmutable. Los estados o roles inválidos producen 403, el turno ajeno 404, y una lectura obsoleta 409. Cada transición y su historial se confirman o revierten juntos.
+
+El puerto de planificación de hitos se invoca dentro de esa misma unidad de trabajo al crear o reprogramar. Su implementación de C-07 no tiene efectos; el contrato permite a C-15/C-16 sumar escrituras transaccionales y exige revertir el turno si el colaborador falla. En este change no programa hitos, ni omite avisos, ni ejecuta barridos, ni envía SMTP o WhatsApp.
+
+### Consultas de turnos y agenda
+
+| Ruta GET | Resultado |
+| --- | --- |
+| `/api/v1/turnos` | Turnos ordenados por inicio e identificador. |
+| `/api/v1/turnos/{id}` | Detalle operativo del turno. |
+| `/api/v1/turnos/{id}/historial` | Actor, acción, estados y fecha de los hechos, en orden. |
+| `/api/v1/agenda?profesional_id=<id>&fecha=AAAA-MM-DD` | Agenda del día local del consultorio, con marca de sobreturno. |
+| `/api/v1/pacientes/{id}/turnos` | Turnos pasados y futuros de una ficha, incluso sin cuenta vinculada. |
+
+Recepción y Administrador leen su consultorio; el Profesional ve únicamente su agenda y sus propios turnos de una ficha compartida. Un turno, historial o ficha fuera de alcance devuelve 404; la agenda de un colega del mismo consultorio devuelve 403 y un profesional de otro consultorio, 404. La fecha de agenda abarca de medianoche a medianoche en `zona_horaria`, no el día UTC. Identificadores, fechas o parámetros adicionales inválidos producen 422; el consultorio siempre proviene del Principal.
+
+Las lecturas incluyen identificadores, nombres operativos del paciente y de la prestación, horario, estado y marcas. Excluyen DNI, contacto, obra social, notas y cuenta; el historial tampoco expone JSON arbitrario de detalle. Esos datos privados no se incluyen en logs de lecturas ni rechazos. El historial sólo ofrece GET, sin modificación ni borrado. El adaptador `pacientes_de_profesional` restringe la carga de fichas por agenda para C-08 sin adelantar su CRUD.
+
+Desactivar una prestación o un profesional conserva las lecturas de turnos y agendas existentes con el mismo alcance de rol y consultorio (RN-15, US-008). Las nuevas altas siguen rechazando referencias inactivas. Un intervalo que desborda la representación de fecha/hora se rechaza con 422, sin fijar un máximo nuevo de duración ni persistir efectos parciales.
+
+Los bloqueos globales o propios de C-06 que interceptan turnos activos devuelven 409 con `turnos_afectados`, sin guardar el bloqueo ni cambiar los turnos. En un hueco libre se guardan con 201. Esto no amplía la garantía a una carrera simultánea entre bloqueo y alta. Verificación: `uv run pytest tests/integration/test_c07_agenda.py -q` con PostgreSQL descartable.
+
+### Migración de Turnos Core (C-07)
+
+`0008_turnos_core` sucede a `0007_agenda_config`: conserva identificadores, intervalos y la exclusión de C-00. Inicializa el ciclo en 1 y deja nulos el origen, actor y fechas históricas desconocidas; no fabrica eventos anteriores. `creado_en` pierde el default SQL: las nuevas escrituras reciben la fecha desde `Reloj`.
+
+El upgrade aborta con un diagnóstico de tabla y columna si encuentra referencias huérfanas en turno, tokens o notificaciones. No borra ni reasigna registros: cualquier corrección de datos requiere un procedimiento revisado antes de reintentar.
+
+Para verificarlo, usar exclusivamente un servidor PostgreSQL descartable en `TEST_DATABASE_URL` y ejecutar desde `backend/`:
+
+```bash
+uv run pytest tests/integration/test_c07_migration.py tests/integration/test_migracion.py tests/integration/test_account_models.py tests/integration/test_migrations.py -q
+uv run alembic heads
+```
+
+Las pruebas crean y eliminan sus propias bases e incluyen upgrade desde C-06 con filas sintéticas y downgrade a `0007_agenda_config` seguido de upgrade. Debe existir un único head, `0008_turnos_core`. El downgrade elimina el historial y las columnas nuevas: el upgrade posterior no recupera esa información. Requiere revisión humana antes de usarse en un entorno con datos; se prefiere una corrección hacia adelante. Esta verificación no ejecutó restauraciones ni migraciones sobre datos reales.
+
+En Windows, las pruebas de esta migración se ejecutaron en un contenedor Linux con Python 3.13 y uv 0.13.1, contra PostgreSQL 17 sin volumen persistente. Se usó una copia descartable de las fuentes, con los scripts en LF según `.gitattributes`; el repositorio original se montó en solo lectura. No se copiaron secretos, `.env`, `.git`, `node_modules` ni el entorno virtual de Windows.
 
 Requisitos: [uv](https://docs.astral.sh/uv/) y Docker. Los comandos se ejecutan desde `backend/`.
 

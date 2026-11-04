@@ -19,6 +19,21 @@ class Turno:
     fin: datetime
     estado: EstadoTurno
     es_sobreturno: bool
+    ciclo_confirmacion: int = 1
+    origen: str | None = None
+    confirmacion_solicitada_en: datetime | None = None
+    recordatorio_enviado_en: datetime | None = None
+    confirmado_en: datetime | None = None
+    marcado_sin_confirmar_en: datetime | None = None
+    liberado_en: datetime | None = None
+    cancelado_en: datetime | None = None
+    cancelado_por_id: int | None = None
+    motivo_cancelacion: str | None = None
+    reprogramado_de_inicio: datetime | None = None
+    notas: str | None = None
+    creado_por_id: int | None = None
+    creado_en: datetime | None = None
+    actualizado_en: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +47,12 @@ class NuevoTurno:
     prestacion_id: int
     inicio: datetime
     fin: datetime
+    estado: EstadoTurno = EstadoTurno.PENDIENTE
+    origen: str | None = None
+    creado_por_id: int | None = None
+    creado_en: datetime | None = None
+    actualizado_en: datetime | None = None
+    confirmado_en: datetime | None = None
 
 
 def calcular_fin(inicio: datetime, duracion_min: int) -> datetime:

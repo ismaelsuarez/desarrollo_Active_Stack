@@ -105,3 +105,36 @@ def test_motivos_de_rechazo_no_contienen_datos_personales():
     assert "dni" not in motivo.lower()
     assert "nombre" not in motivo.lower()
     assert "@" not in motivo
+
+
+@pytest.mark.parametrize("accion", [Accion.TURNO_VER, Accion.TURNO_ATENDIDO, Accion.TURNO_AUSENTE])
+def test_profesional_turno_ajeno_por_identificador_devuelve_404(accion):
+    usuario = Principal(1, 1, RolUsuario.PROFESIONAL)
+    turno = _crear_turno(profesional_id=99)
+    contexto = ContextoAcceso(ahora=turno.inicio, profesional_vinculado_id=20)
+    decision = autorizar(usuario, accion, turno, contexto)
+    assert not decision.permitido
+    assert decision.codigo_http == 404
+
+
+@pytest.mark.parametrize("profesional_id,permitido,codigo", [(20, True, None), (99, False, 403)])
+def test_consulta_de_agenda_conserva_403_para_colega(profesional_id, permitido, codigo):
+    usuario = Principal(1, 1, RolUsuario.PROFESIONAL)
+    contexto = ContextoAcceso(ahora=datetime(2026, 11, 9, tzinfo=timezone.utc), profesional_vinculado_id=20)
+    decision = autorizar(usuario, Accion.AGENDA_VER, profesional_id, contexto)
+    assert decision.permitido is permitido
+    assert decision.codigo_http == codigo
+
+
+@pytest.mark.parametrize("rol", [RolUsuario.PROFESIONAL, RolUsuario.RECEPCION, RolUsuario.ADMINISTRADOR])
+@pytest.mark.parametrize("accion", [Accion.TURNO_ATENDIDO, Accion.TURNO_AUSENTE])
+@pytest.mark.parametrize("estado", [EstadoTurno.PENDIENTE, EstadoTurno.CONFIRMADO])
+@pytest.mark.parametrize("segundos,permitido", [(-1, False), (0, True), (1, True)])
+def test_atencion_y_ausencia_desde_inicio_exacto(rol, accion, estado, segundos, permitido):
+    usuario = Principal(1, 1, rol)
+    turno = _crear_turno(estado=estado)
+    contexto = ContextoAcceso(ahora=turno.inicio + timedelta(seconds=segundos), profesional_vinculado_id=20)
+    decision = autorizar(usuario, accion, turno, contexto)
+    assert decision.permitido is permitido
+    if not permitido:
+        assert decision.codigo_http == 403

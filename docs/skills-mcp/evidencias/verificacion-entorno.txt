@@ -1,0 +1,17 @@
+# Comprobación ejecutada 2026-11-03 22:52:31 UTC
+
+Salida real de comprobaciones de solo lectura. Valores de credenciales no exportados.
+No se instalaron ni reconfiguraron Context7 o Gentle AI durante esta comprobación.
+
+{"Check":"Context7_config","UserConfigExists":true,"Context7Section":true,"HttpUrlPresent":true,"OfficialEndpointMatches":true,"ProjectConfigExists":false,"CredentialValues":"not exported"}
+{"Check":"GentleAI","FoundInPath":true,"Executable":"C:\\Users\\holac\\go\\bin\\gentle-ai.exe"}
+gentle-ai 4.3.1
+v24.19.0
+11.17.0
+{"Check":"CodexCLI","FoundInPath":false}
+DEFAULT DECODING:
+| `appointment-conflict-reviewer` | Revisar reglas de turnos odontolÃ³gicos, solapamientos y escenarios faltantes antes de implementar C-07 (turnos-core). Usar al explorar, especificar o diseÃ±ar cambios de reservas, horarios, profesionales o disponibilidad; entregar escenarios trazables y decisiones pendientes, sin implementar ni modificar artefactos. | project | `.agents/skills/appointment-conflict-reviewer/SKILL.md` |
+EXPLICIT UTF8 DECODING:
+| `appointment-conflict-reviewer` | Revisar reglas de turnos odontológicos, solapamientos y escenarios faltantes antes de implementar C-07 (turnos-core). Usar al explorar, especificar o diseñar cambios de reservas, horarios, profesionales o disponibilidad; entregar escenarios trazables y decisiones pendientes, sin implementar ni modificar artefactos. | project | `.agents/skills/appointment-conflict-reviewer/SKILL.md` |
+STRICT UTF8: valid
+{"Check":"AgentInstructions","Identical":true}

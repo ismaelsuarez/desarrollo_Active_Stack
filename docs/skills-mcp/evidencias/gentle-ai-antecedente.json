@@ -1,0 +1,11 @@
+{
+  "kind": "exportacion_de_memoria_historica",
+  "source": "Engram mem_get_observation(id=110)",
+  "note": "Registro de sesión anterior, no captura de terminal ni reproducción del fallo. No documenta cómo se incorporó posteriormente gentle-ai al PATH.",
+  "response": {
+    "project": "desarrollo_active_stack",
+    "project_path": "C:/Users/holac/Desktop/ACTIVE-STACK-ULTIMO/desarrollo_Active_Stack",
+    "project_source": "git_remote",
+    "result": "#110 [session_summary] Session summary: desarrollo_active_stack\n## Goal\nIntegrar appointment-conflict-reviewer en la fundación existente para C-07.\n## Instructions\nNo regenerar fundación ni tocar código, implementar o archivar C-07. Usar mecanismo generado de registro sin entradas manuales; mantener AGENTS y CLAUDE coherentes.\n## Discoveries\n- Skill-registry local prevalece sobre global y usa refresh.py con Gentle AI nativo; prohíbe fallback manual/global.\n- Ejecutado refresh.py --force con Python313 fuera del sandbox: falla Cannot execute gentle-ai [WinError 2]. No binario localizado en PATH ni ubicaciones habituales; solo distro docker-desktop en WSL.\n## Accomplished\n- Actualizados AGENTS.md y CLAUDE.md con la misma fila de rol y sección de C-07: entradas, activación explore/spec/design, trazabilidad y validación KB, límites de lectura.\n- git diff --check aprobado, hashes SHA256 idénticos; sin cambios en registro/cache, estado de fundación, CHANGES, KB, openspec ni producción.\n- Pedida ruta de Gentle AI mediante pregunta asincrónica; registro pendiente sin afirmar éxito.\n## Next Steps\n- Resolver disponibilidad de Gentle AI. Ejecutar actualizador existente, verificar entrada, actualizar solo metadatos registry del estado y espejar índice en Engram como requiere skill local.\n## Relevant Files\n- AGENTS.md y CLAUDE.md — instrucciones de integración agregadas, 10 líneas por archivo.\n- .agents/skills/skill-registry/scripts/refresh.py — mecanismo existente, no modificado.\n- .atl/skill-registry.md — sin cambios por falta de ejecutable nativo.\nSession: manual-save-desarrollo_active_stack\nProject: desarrollo_active_stack\nScope: project\nDuplicates: 1\nRevisions: 1\nCreated: 2026-11-03 18:52:49"
+  }
+}

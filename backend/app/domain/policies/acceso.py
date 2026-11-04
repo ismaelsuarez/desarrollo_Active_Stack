@@ -76,7 +76,7 @@ def autorizar(
         if usuario.rol == RolUsuario.PROFESIONAL:
             if es_dueno_de_agenda(usuario, recurso, profesional_id=profesional_id):
                 return Decision(permitido=True)
-            return Decision(permitido=False, motivo="agenda_ajena", codigo_http=403)
+            return Decision(permitido=False, motivo="turno_ajeno", codigo_http=404)
         if usuario.rol == RolUsuario.PACIENTE:
             if es_titular_del_turno(usuario, recurso, ficha_vigente_id=ficha_vigente_id):
                 return Decision(permitido=True)
@@ -123,7 +123,7 @@ def autorizar(
         if usuario.rol in (RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION, RolUsuario.PROFESIONAL):
             if usuario.rol == RolUsuario.PROFESIONAL:
                 if not es_dueno_de_agenda(usuario, recurso, profesional_id=profesional_id):
-                    return Decision(permitido=False, motivo="agenda_ajena", codigo_http=403)
+                    return Decision(permitido=False, motivo="turno_ajeno", codigo_http=404)
             if recurso is None or recurso.estado not in (EstadoTurno.PENDIENTE, EstadoTurno.CONFIRMADO):
                 return Decision(permitido=False, motivo="estado_invalido_para_atendido_o_ausente", codigo_http=403)
             if ahora is not None and not hora_de_inicio_alcanzada(recurso, ahora=ahora):

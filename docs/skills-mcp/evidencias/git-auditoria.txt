@@ -1,0 +1,55 @@
+AUDITORIA GIT — 2026-11-03 22:58:49 UTC
+
+Comandos ejecutados (sin stage, commit ni limpieza):
+1. git -c core.quotepath=false status --short --untracked-files=all
+2. git diff --stat
+3. git diff --name-only -- knowledge-base backend frontend .active-orchestrator-state.json openspec/config.yaml .agents/skills/skill-registry/scripts/refresh.py
+4. git diff --check
+
+Los comandos 3 y 4 no produjeron rutas/errores; el código final fue 0.
+Los avisos LF/CRLF son de Git sobre archivos previos. El diff stat no incluye untracked.
+
+SALIDA REAL:
+ M .atl/.skill-registry.cache.json
+ M .atl/skill-registry.md
+ M AGENTS.md
+ M CHANGES.md
+ M CLAUDE.md
+ M README.md
+?? .agents/skills/appointment-conflict-reviewer/SKILL.md
+?? docs/skills-mcp/aplicacion.md
+?? docs/skills-mcp/context7.md
+?? docs/skills-mcp/evidencias/README.md
+?? docs/skills-mcp/evidencias/Skill-creada.png
+?? docs/skills-mcp/evidencias/context7-ejecucion.json
+?? docs/skills-mcp/evidencias/creacion-skill.png
+?? "docs/skills-mcp/evidencias/escenarios A, B y C con sus reglas.png"
+?? docs/skills-mcp/evidencias/gentle-ai-antecedente.json
+?? docs/skills-mcp/evidencias/git-auditoria.txt
+?? docs/skills-mcp/evidencias/incvocacion_skill-creator.png
+?? docs/skills-mcp/evidencias/openspec-validacion.json
+?? docs/skills-mcp/evidencias/skill-resultado.png
+?? docs/skills-mcp/evidencias/verificacion-entorno.txt
+?? docs/skills-mcp/investigacion.md
+?? docs/skills-mcp/revision-critica.md
+?? openspec/changes/c-07-turnos-core/.openspec.yaml
+?? openspec/changes/c-07-turnos-core/design.md
+?? openspec/changes/c-07-turnos-core/proposal.md
+?? openspec/changes/c-07-turnos-core/specs/appointment-agenda/spec.md
+?? openspec/changes/c-07-turnos-core/specs/appointment-booking/spec.md
+?? openspec/changes/c-07-turnos-core/specs/appointment-lifecycle/spec.md
+?? openspec/changes/c-07-turnos-core/specs/attribute-based-access-control/spec.md
+?? openspec/changes/c-07-turnos-core/specs/core-data-models/spec.md
+?? openspec/changes/c-07-turnos-core/tasks.md
+?? skills-lock.json
+warning: in the working copy of '.atl/.skill-registry.cache.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.atl/skill-registry.md', LF will be replaced by CRLF the next time Git touches it
+ .atl/.skill-registry.cache.json |  2 +-
+ .atl/skill-registry.md          |  1 +
+ AGENTS.md                       | 10 ++++++++++
+ CHANGES.md                      |  2 +-
+ CLAUDE.md                       | 10 ++++++++++
+ README.md                       |  6 ++++++
+ 6 files changed, 29 insertions(+), 2 deletions(-)
+warning: in the working copy of '.atl/.skill-registry.cache.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.atl/skill-registry.md', LF will be replaced by CRLF the next time Git touches it

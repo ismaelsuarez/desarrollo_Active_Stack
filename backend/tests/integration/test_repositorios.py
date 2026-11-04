@@ -19,10 +19,16 @@ from tests.integration.fabricas import (
     crear_prestacion,
     crear_profesional,
     crear_turno,
+    crear_paciente,
     hora,
 )
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+async def ficha_existente(engine):
+    await crear_paciente(engine)
 
 
 async def test_obtiene_un_profesional_de_su_consultorio(
@@ -118,6 +124,7 @@ async def test_un_turno_guardado_es_visible_desde_otra_unidad_de_trabajo(
         fin=hora(10, 30),
         estado=EstadoTurno.PENDIENTE,
         es_sobreturno=False,
+        creado_en=turno.creado_en,
     )
     assert turno.id > 0
     assert await contar_turnos(engine, profesional_id) == 1

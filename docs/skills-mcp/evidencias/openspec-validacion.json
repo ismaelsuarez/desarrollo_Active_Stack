@@ -1,0 +1,56 @@
+{
+  "captured_at_utc": "2026-11-03 22:53:12 UTC",
+  "validation": {
+    "command": "node_modules/.bin/openspec.cmd validate c-07-turnos-core --strict --no-interactive --json",
+    "exit_code": 0,
+    "stdout": {
+      "items": [
+        {
+          "id": "c-07-turnos-core",
+          "type": "change",
+          "valid": true,
+          "issues": [],
+          "durationMs": 54
+        }
+      ],
+      "summary": {
+        "totals": {
+          "items": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        "byType": {
+          "change": {
+            "items": 1,
+            "passed": 1,
+            "failed": 0
+          }
+        }
+      },
+      "version": "1.0",
+      "root": {
+        "path": "C:\\Users\\holac\\Desktop\\ACTIVE-STACK-ULTIMO\\desarrollo_Active_Stack",
+        "source": "nearest"
+      }
+    }
+  },
+  "state": {
+    "command": "node_modules/.bin/openspec.cmd list --json",
+    "exit_code": 0,
+    "stdout": {
+      "changes": [
+        {
+          "name": "c-07-turnos-core",
+          "completedTasks": 0,
+          "totalTasks": 36,
+          "lastModified": "2026-11-03T22:46:10.035Z",
+          "status": "in-progress"
+        }
+      ],
+      "root": {
+        "path": "C:\\Users\\holac\\Desktop\\ACTIVE-STACK-ULTIMO\\desarrollo_Active_Stack",
+        "source": "nearest"
+      }
+    }
+  }
+}

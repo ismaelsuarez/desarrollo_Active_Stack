@@ -14,10 +14,9 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
-    func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ExcludeConstraint
+from sqlalchemy.dialects.postgresql import ExcludeConstraint, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.value_objects.estado_turno import EstadoTurno
@@ -156,7 +155,7 @@ class TokenUsuarioModel(Base):
     consultorio_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("consultorio.id"), index=True)
     usuario_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuario.id"))
     ciclo: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    turno_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    turno_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("turno.id"), nullable=True)
     tipo: Mapped[str] = mapped_column(Text)
     token_hash: Mapped[str] = mapped_column(Text)
     expira_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
@@ -282,6 +281,11 @@ class TurnoModel(Base):
     __tablename__ = "turno"
     __table_args__ = (
         CheckConstraint("inicio < fin", name="turno_inicio_antes_de_fin"),
+        CheckConstraint("origen IN ('online','recepcion')", name="origen_valido"),
+        CheckConstraint("ciclo_confirmacion >= 1", name="ciclo_positivo"),
+        Index("ix_turno_consultorio_profesional_inicio", "consultorio_id", "profesional_id", "inicio"),
+        Index("ix_turno_consultorio_paciente_inicio", "consultorio_id", "paciente_id", "inicio"),
+        Index("ix_turno_estado_inicio", "estado", "inicio"),
         # La restricción real la crea a mano la migración; se declara acá para
         # que el modelo documente el esquema (RN-17, DD-08).
         ExcludeConstraint(
@@ -298,10 +302,10 @@ class TurnoModel(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    consultorio_id: Mapped[int] = mapped_column(BigInteger)
-    paciente_id: Mapped[int] = mapped_column(BigInteger)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("consultorio.id"))
+    paciente_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("paciente.id"))
     profesional_id: Mapped[int] = mapped_column(ForeignKey("profesional.id"))
-    box_id: Mapped[int] = mapped_column(BigInteger)
+    box_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("box.id"))
     prestacion_id: Mapped[int] = mapped_column(ForeignKey("prestacion.id"))
     inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     fin: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -315,6 +319,39 @@ class TurnoModel(Base):
         server_default=EstadoTurno.PENDIENTE.value,
     )
     es_sobreturno: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    creado_en: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+    origen: Mapped[str | None] = mapped_column(Text)
+    ciclo_confirmacion: Mapped[int] = mapped_column(Integer, server_default="1")
+    confirmacion_solicitada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    recordatorio_enviado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    confirmado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    marcado_sin_confirmar_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    liberado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelado_por_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuario.id"))
+    motivo_cancelacion: Mapped[str | None] = mapped_column(Text)
+    reprogramado_de_inicio: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notas: Mapped[str | None] = mapped_column(Text)
+    creado_por_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuario.id"))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    actualizado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TurnoHistorialModel(Base):
+    __tablename__ = "turno_historial"
+    __table_args__ = (
+        Index("ix_turno_historial_turno_fecha", "turno_id", "ocurrido_en"),
+        Index("ix_turno_historial_consultorio_fecha", "consultorio_id", "ocurrido_en"),
+        CheckConstraint("accion IN ('crear','confirmar','cancelar','liberar','atendido','ausente','reprogramar','sobreturno','marcar_sin_confirmar','corregir')", name="accion_valida"),
+        CheckConstraint("estado_anterior IN ('pendiente','confirmado','ausente','atendido','cancelado','liberado')", name="estado_anterior_valido"),
+        CheckConstraint("estado_nuevo IN ('pendiente','confirmado','ausente','atendido','cancelado','liberado')", name="estado_nuevo_valido"),
     )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    consultorio_id: Mapped[int] = mapped_column(ForeignKey("consultorio.id"))
+    turno_id: Mapped[int] = mapped_column(ForeignKey("turno.id"))
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
+    accion: Mapped[str] = mapped_column(Text)
+    estado_anterior: Mapped[str | None] = mapped_column(Text)
+    estado_nuevo: Mapped[str] = mapped_column(Text)
+    detalle: Mapped[dict | None] = mapped_column(JSONB)
+    ocurrido_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
