@@ -9,6 +9,12 @@ def compose():
     return yaml.safe_load((ROOT / 'docker-compose.yml').read_text())
 
 
+def test_ci_builds_api_from_root_context():
+    workflow = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())
+    commands = [step.get('run', '') for step in workflow['jobs']['images']['steps']]
+    assert 'docker build -f backend/Dockerfile .' in commands
+
+
 def test_services_profiles_and_persistence():
     document = compose()
     assert 'version' not in document

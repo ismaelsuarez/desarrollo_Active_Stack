@@ -1,0 +1,4 @@
+.role-layout { display: grid; grid-template-columns: minmax(12rem, 15rem) 1fr; gap: 1.5rem; }
+.role-layout nav, .role-layout__content { display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: #fff; border: 1px solid #c8d7d0; border-radius: 1rem; }
+.role-layout a { color: #125e55; }
+@media (max-width: 640px) { .role-layout { grid-template-columns: 1fr; } }

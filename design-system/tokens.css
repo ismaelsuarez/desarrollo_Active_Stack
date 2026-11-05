@@ -1,0 +1,30 @@
+:root {
+  color-scheme: light;
+  --color-canvas: #f4f6f3;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e8f0ec;
+  --color-ink: #19342f;
+  --color-muted: #526b65;
+  --color-border: #cad8d1;
+  --color-primary: #2a9d8f;
+  --color-primary-hover: #47b6a8;
+  --color-on-primary: #0b2722;
+  --color-link: #145e56;
+  --color-warning: #835200;
+  --color-warning-bg: #fff2d5;
+  --color-error: #a32f2f;
+  --color-error-bg: #fff0ed;
+  --color-success: #1b6844;
+  --color-success-bg: #e6f5e9;
+  --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+  --radius-sm: 7px; --radius-md: 12px; --radius-lg: 20px; --radius-pill: 999px;
+  --shadow-soft: 0 12px 34px rgba(25, 52, 47, .07);
+  --focus-ring: 3px solid #b7790b;
+  --motion-fast: 140ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; }
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

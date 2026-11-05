@@ -1,12 +1,13 @@
 import logging
 import asyncio
+from pathlib import Path
 from contextlib import suppress
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.v1.routers.auth import router as auth_router
 from app.api.v1.routers.agenda import router as agenda_router
@@ -29,6 +30,8 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.application.errors_turnos import RechazoDeTurno
 from app.application.errors_pacientes import RechazoPaciente
+
+SPA_DIR = Path(__file__).resolve().parent.parent / 'static'
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -76,7 +79,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = configured
     configure_logging(configured)
     logger = logging.getLogger('tpi.api')
-    app.add_middleware(RequestIdMiddleware, logger=logger)
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(cuentas_router)
@@ -93,4 +95,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(publico_router)
     app.include_router(barrido_router)
     app.include_router(notificaciones_router)
+
+    @app.middleware('http')
+    async def spa(request: Request, call_next):
+        response = await call_next(request)
+        if request.method != 'GET' or response.status_code != 404 or request.scope.get('route'):
+            return response
+        path = request.url.path.lstrip('/')
+        root = SPA_DIR.resolve()
+        target = (root / path).resolve()
+        if not target.is_relative_to(root) or path.split('/')[0] in {'api', 'internal'}:
+            return response
+        if target.is_file():
+            return FileResponse(target)
+        if path.split('/')[0] == 'assets' or Path(path).suffix:
+            return response
+        index = root / 'index.html'
+        if not index.is_file():
+            return response
+        return FileResponse(index)
+
+    app.add_middleware(RequestIdMiddleware, logger=logger)
     return app

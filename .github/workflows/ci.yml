@@ -74,7 +74,7 @@ jobs:
           scripts/dev_secrets.sh
           test -f .env || cp .env.example .env
       - run: docker compose config --quiet
-      - run: docker build backend
+      - run: docker build -f backend/Dockerfile .
       - run: docker build --target build frontend
 
   compose-smoke:

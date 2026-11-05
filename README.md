@@ -195,7 +195,11 @@ python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.
 docker compose --profile redis config --services
 ```
 
-Mailpit captura los correos locales; su interfaz está en `http://localhost:8025`. Redis es opcional y no se necesita para arrancar C-01. El frontend de C-01 solo muestra el nombre del sistema; no implementa aún pantallas ni el proxy de C-11.
+Mailpit captura los correos locales; su interfaz está en `http://localhost:8025`. Redis es opcional. En desarrollo el navegador usa `/api/v1` en el mismo origen; Vite reenvía `/api` a `http://localhost:8000` por defecto. Para otro destino local, definir `VITE_DEV_PROXY_TARGET` en el entorno del servidor Vite; Compose utiliza `http://api:8000`. Esta variable no se expone al navegador.
+
+La imagen de la API incorpora el build del frontend mediante una etapa Node. Se construye desde la raíz del repositorio con `docker build -f backend/Dockerfile -t turnos-api .` o con `docker compose build api`; `.dockerignore` excluye secretos y dependencias locales. Con el entorno y la base configurados, iniciar con `docker compose up -d api` y abrir `http://localhost:8000/`: la interfaz y `/api/v1` comparten origen. Los enlaces directos del frontend devuelven el HTML, mientras los archivos ausentes y las rutas de API no existentes conservan su 404. No publicar el servidor Vite de desarrollo como frontend de producción.
+
+Para revertir un despliegue, conservar una etiqueta inmutable de la imagen anterior y volver a desplegarla con la configuración y secretos anteriores, sin borrar el volumen de la base. Comprobar la compatibilidad de las migraciones de base antes de revertir; una imagen anterior puede no ser compatible con un esquema posterior.
 
 Verificación integrada en un único comando:
 

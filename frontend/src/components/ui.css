@@ -1,0 +1,16 @@
+.ui-button { border: 1px solid #167a70; border-radius: 6px; padding: 0.75rem 1rem; min-height: 44px; font: inherit; font-weight: 700; cursor: pointer; }
+.ui-button--primary { color: #0b2722; background: #2a9d8f; }
+.ui-button--secondary { color: #18352f; background: #fff; border-color: #8ca9a0; }
+.ui-button:disabled { color: #667c75; background: #edf3f0; border-color: #c8d7d0; cursor: not-allowed; }
+.ui-button:focus-visible, .ui-field input:focus-visible { outline: 3px solid #125e55; outline-offset: 2px; }
+.ui-field { display: grid; gap: 0.45rem; }
+.ui-field label { font-weight: 700; }
+.ui-field input { box-sizing: border-box; min-height: 44px; width: 100%; border: 1px solid #8ca9a0; border-radius: 6px; padding: 0.75rem; font: inherit; }
+.ui-field input[aria-invalid="true"] { border-color: #a9272e; }
+.ui-field__error { color: #9c2027; }
+.ui-field__hint { color: #405e54; }
+.ui-notice { padding: 1rem; border-left: 4px solid #167a70; border-radius: 6px; background: #e5efeb; color: #18352f; }
+.ui-notice--success { background: #e4f4e8; border-color: #216d48; }
+.ui-notice--warning { background: #fff2d6; border-color: #9a6200; }
+.ui-notice--error { background: #fff0ef; border-color: #ad2931; }
+.ui-page { width: min(100% - 2rem, 75rem); margin-inline: auto; padding-block: 2rem; }

@@ -1,0 +1,9 @@
+:root { color: #19342f; background: #f2f5f2; font-family: Arial, sans-serif; }
+body { margin: 0; }
+a { color: #125e55; }
+.app-header { background: #fff; border-bottom: 1px solid #c8d7d0; padding: .8rem max(1rem, calc((100vw - 75rem)/2)); }
+.app-brand { display: flex; align-items: center; gap: .75rem; color: inherit; text-decoration: none; }
+.app-brand h1 { font-size: 1rem; max-width: 15rem; }
+.app-logo { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: .8rem; background: #2a9d8f; color: #0b2722; font-size: 1.3rem; }
+.app-logo-label { font-size: .6rem; line-height: 1.1; }
+@media (max-width: 390px) { .app-brand { gap: .4rem; } .app-brand h1 { font-size: .85rem; } }

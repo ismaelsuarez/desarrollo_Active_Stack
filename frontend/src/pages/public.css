@@ -1,0 +1,5 @@
+.public-card { background: #fff; border: 1px solid #c8d7d0; border-radius: 18px; padding: clamp(1.25rem, 4vw, 2rem); max-width: 40rem; }
+.public-form { display: grid; gap: 1rem; margin-block: 1.25rem; }
+.public-form .ui-button { justify-self: start; }
+.public-form a, .public-card a { color: #125e55; }
+.privacy-text { white-space: pre-wrap; }
