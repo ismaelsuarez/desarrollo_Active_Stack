@@ -46,9 +46,11 @@ async def test_resultados_compatibles_con_bool(sesiones, falla, intentos, estado
 
 
 @pytest.mark.parametrize('tipo,estado,ciclo,desfase,esperado', [
-    ('solicitud_confirmacion','pendiente',1,1,'enviada'),
+    ('solicitud_confirmacion','pendiente',1,1,'omitida'),
+    ('solicitud_confirmacion','pendiente',1,48*3600,'enviada'),
     ('solicitud_confirmacion','confirmado',1,1,'omitida'),
-    ('recordatorio','confirmado',1,1,'enviada'),
+    ('recordatorio','confirmado',1,1,'omitida'),
+    ('recordatorio','confirmado',1,24*3600,'enviada'),
     ('recordatorio','pendiente',1,0,'omitida'),
     ('recordatorio','pendiente',1,-1,'omitida'),
     ('recordatorio','cancelado',1,1,'omitida'),
@@ -68,7 +70,7 @@ async def test_vigencia_portipo_en_primera_toma_y_recuperacion(sesiones,url_base
     now = escenario.reloj.ahora()
     async with sesiones() as session, session.begin():
         await session.execute(update(TurnoModel).where(TurnoModel.id==tid).values(
-            estado=estado,inicio=now+timedelta(seconds=desfase),fin=now+timedelta(minutes=30)))
+            estado=estado,inicio=now+timedelta(seconds=desfase),fin=now+timedelta(seconds=desfase,minutes=30)))
     identifier = await preparar(sesiones,tipo=tipo,turno_id=tid,ciclo=ciclo,
         programada_para=now,estado='enviando' if vencida else 'programada',
         reclamada_en=now-timedelta(seconds=121) if vencida else None)

@@ -6,6 +6,7 @@ class Accion(StrEnum):
 
     AGENDA_VER = "agenda.ver"
     TURNO_VER = "turno.ver"
+    TURNO_SIN_CONFIRMAR_VER = "turno.sin_confirmar_ver"
     TURNO_CREAR = "turno.crear"
     TURNO_REPROGRAMAR = "turno.reprogramar"
     TURNO_CANCELAR = "turno.cancelar"

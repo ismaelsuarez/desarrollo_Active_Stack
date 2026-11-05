@@ -98,9 +98,12 @@ class ConsultarTurnos:
             turno, contexto = await self._turno_autorizado(unidad, principal, turno_id, ahora)
             return await self._presentar(unidad, turno, principal, contexto)
 
-    async def listar(self, principal: Principal) -> list[TurnoConsultado]:
+    async def listar(self, principal: Principal, sin_confirmar: bool = False) -> list[TurnoConsultado]:
         ahora = self._reloj.ahora()
         async with self._unidades() as unidad:
+            if sin_confirmar:
+                self._autorizar(principal, Accion.TURNO_SIN_CONFIRMAR_VER,
+                                None, ContextoAcceso(ahora=ahora))
             if principal.rol == RolUsuario.PACIENTE:
                 ficha = await unidad.pacientes.de_usuario(principal.consultorio_id, principal.usuario_id)
                 if ficha is None:
@@ -123,7 +126,8 @@ class ConsultarTurnos:
                 self._rechazar(principal, Accion.AGENDA_VER, 404, "Agenda no encontrada")
             contexto = ContextoAcceso(ahora=ahora, profesional_vinculado_id=profesional_id)
             self._autorizar(principal, Accion.AGENDA_VER, recurso, contexto)
-            turnos = await unidad.turnos.listar(principal.consultorio_id, profesional_id=profesional_id)
+            turnos = await unidad.turnos.listar(principal.consultorio_id, profesional_id=profesional_id,
+                                               sin_confirmar=sin_confirmar)
             return [await self._presentar(unidad, turno) for turno in turnos]
 
     async def historial(self, principal: Principal, turno_id: int) -> list[HechoDeTurno]:

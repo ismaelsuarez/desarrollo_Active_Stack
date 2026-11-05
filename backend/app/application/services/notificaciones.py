@@ -11,7 +11,8 @@ from app.core.config import Settings
 from app.domain.ports.correo import EnviadorCorreo
 from app.domain.ports.reloj import Reloj
 from app.infrastructure.db.account_models import NotificacionModel, TIPOS_CUENTA
-from app.infrastructure.db.models import ConsultorioModel, UsuarioModel, TurnoModel
+from app.infrastructure.db.models import ConsultorioModel, UsuarioModel, TurnoModel, PacienteModel, TokenUsuarioModel
+from app.domain.services.auth_crypto import calcular_token_hash, generar_token_opaco
 
 logger = logging.getLogger(__name__)
 
@@ -52,16 +53,19 @@ class DespacharNotificacion:
             ).with_for_update(skip_locked=True))
             if row is None:
                 return ResultadoDespacho()
+            consultorio = await session.get(ConsultorioModel, consultorio_id)
             if row.tipo in ('solicitud_confirmacion', 'recordatorio'):
                 estados = ('pendiente',) if row.tipo == 'solicitud_confirmacion' else ('pendiente', 'confirmado')
-                vigente = await session.scalar(select(TurnoModel.id).where(
+                turno = await session.scalar(select(TurnoModel).where(
                     TurnoModel.id == row.turno_id,
                     TurnoModel.consultorio_id == consultorio_id,
                     TurnoModel.estado.in_(estados),
                     TurnoModel.ciclo_confirmacion == row.ciclo,
                     TurnoModel.inicio > ahora,
                 )) if row.ciclo is not None else None
-                if vigente is None:
+                siguiente_hito = (consultorio.horas_recordatorio if row.tipo == 'solicitud_confirmacion'
+                                  else consultorio.horas_liberacion)
+                if turno is None or ahora >= turno.inicio - timedelta(hours=siguiente_hito):
                     await self._cerrar_sin_envio(session, row, 'omitida')
                     return ResultadoDespacho(estado='omitida', motivo='no_vigente')
             if row.tipo == 'vinculacion_rechazada':
@@ -75,7 +79,6 @@ class DespacharNotificacion:
             if row.intentos >= self.settings.notification_max_attempts:
                 await self._cerrar_sin_envio(session, row, 'fallida')
                 return ResultadoDespacho(estado='fallida', motivo='intentos_agotados')
-            consultorio = await session.get(ConsultorioModel, consultorio_id)
             zona = ZoneInfo(consultorio.zona_horaria)
             fecha = ahora.astimezone(zona).date()
             inicio_dia = datetime.combine(fecha, time.min, zona)
@@ -103,6 +106,33 @@ class DespacharNotificacion:
             row.intentos += 1
             destinatario, cuerpo = row.destinatario, row.mensaje or ''
             intentos = row.intentos
+            if row.tipo == 'solicitud_confirmacion':
+                paciente = await session.scalar(select(PacienteModel).where(
+                    PacienteModel.id == turno.paciente_id,
+                    PacienteModel.consultorio_id == consultorio_id))
+                raw = generar_token_opaco()
+                session.add(TokenUsuarioModel(consultorio_id=consultorio_id,
+                    usuario_id=paciente.usuario_id, tipo='confirmar_turno',
+                    token_hash=calcular_token_hash(raw), turno_id=turno.id,
+                    ciclo=row.ciclo, creado_en=ahora, expira_en=turno.inicio))
+                horario = turno.inicio.astimezone(zona).strftime('%d/%m/%Y %H:%M')
+                enlace = f'{self.settings.frontend_base_url.rstrip("/")}/confirmar-turno#token={raw}'
+                cuerpo = f'Tu turno es el {horario}. Confirmá tu asistencia: {enlace}'
+            elif row.tipo == 'recordatorio':
+                horario = turno.inicio.astimezone(zona).strftime('%d/%m/%Y %H:%M')
+                cuerpo = f'Recordatorio de tu turno: {horario}.'
+                if turno.estado == 'pendiente':
+                    cuerpo += ' Confirmá tu asistencia.'
+                    enviada = await session.scalar(select(NotificacionModel.id).where(
+                        NotificacionModel.consultorio_id == consultorio_id,
+                        NotificacionModel.turno_id == turno.id,
+                        NotificacionModel.tipo == 'solicitud_confirmacion',
+                        NotificacionModel.canal == 'email',
+                        NotificacionModel.ciclo == turno.ciclo_confirmacion,
+                        NotificacionModel.estado == 'enviada'))
+                    if consultorio.modo_liberacion == 'automatico' and enviada is not None and turno.marcado_sin_confirmar_en is None:
+                        cuerpo += f' Si no confirmás será liberado {consultorio.horas_liberacion} horas antes del inicio.'
+            tipo, turno_id, ciclo = row.tipo, row.turno_id, row.ciclo
 
         error = None
         try:
@@ -115,17 +145,24 @@ class DespacharNotificacion:
             'fallida' if intentos >= self.settings.notification_max_attempts else 'programada')
 
         async with self.sesiones() as session, session.begin():
+            registrada_en = self.reloj.ahora()
             result = await session.execute(update(NotificacionModel).where(
                 NotificacionModel.id == notificacion_id,
                 NotificacionModel.consultorio_id == consultorio_id,
                 NotificacionModel.estado == 'enviando',
                 NotificacionModel.reclamada_en == ahora,
             ).values(estado=estado,
-                     enviada_en=self.reloj.ahora() if error is None else None,
+                     enviada_en=registrada_en if error is None else None,
                      reclamada_en=None, ultimo_error=error))
             if result.rowcount != 1:
                 logger.warning('reclamacion_perdida')
                 return ResultadoDespacho(True, motivo='reclamacion_perdida')
+            if error is None and tipo in ('solicitud_confirmacion', 'recordatorio'):
+                campo = 'confirmacion_solicitada_en' if tipo == 'solicitud_confirmacion' else 'recordatorio_enviado_en'
+                await session.execute(update(TurnoModel).where(
+                    TurnoModel.id == turno_id, TurnoModel.consultorio_id == consultorio_id,
+                    TurnoModel.ciclo_confirmacion == ciclo,
+                ).values(**{campo: registrada_en}))
             return ResultadoDespacho(True, estado, 'entregada' if error is None else 'error_transporte')
 
     @staticmethod

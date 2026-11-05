@@ -6,9 +6,9 @@ from app.domain.entities.turno import Turno
 
 
 class PlanificadorDeHitos(Protocol):
-    """Contrato transaccional para C-15/C-16, invocado antes de confirmar.
+    """Contrato transaccional de C-16, invocado antes del commit.
 
-    Una implementación futura recibe la misma unidad de trabajo para que sus
+    La implementación recibe la misma unidad de trabajo para que sus
     escrituras se confirmen o reviertan junto al turno y su historial. No debe
     hacer commit, enviar correo ni abrir una transacción independiente.
     """

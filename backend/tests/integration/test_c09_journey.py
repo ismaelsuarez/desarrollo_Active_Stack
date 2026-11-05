@@ -92,6 +92,13 @@ async def test_public_to_verified_booking_and_self_service_with_real_mailpit(ses
     async with sesiones() as sesion:
         assert await sesion.scalar(text('SELECT count(*) FROM turno')) == 1
         assert (await sesion.execute(text('SELECT accion FROM turno_historial ORDER BY id'))).scalars().all() == ['crear', 'confirmar', 'reprogramar', 'cancelar']
-        assert await sesion.scalar(text("SELECT count(*) FROM notificacion WHERE tipo <> 'verificacion_email'")) == 0
+        # C16 preserves facts and omits both generations of obsolete milestones.
+        comunicaciones=(await sesion.execute(text("SELECT tipo,ciclo,estado FROM notificacion WHERE tipo <> 'verificacion_email' ORDER BY tipo,ciclo"))).all()
+        assert comunicaciones == [
+            ('cancelacion_por_paciente',2,'programada'),
+            ('recordatorio',1,'omitida'), ('recordatorio',2,'omitida'),
+            ('resumen_reserva',1,'programada'),
+            ('solicitud_confirmacion',1,'omitida'), ('solicitud_confirmacion',2,'omitida'),
+        ]
         assert await sesion.scalar(text("SELECT count(*) FROM notificacion WHERE estado='enviada'")) == 1
     assert all(privado not in caplog.text for privado in [email, password, dni, token])

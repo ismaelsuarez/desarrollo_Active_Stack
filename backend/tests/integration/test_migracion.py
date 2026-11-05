@@ -113,7 +113,7 @@ async def test_la_migracion_crea_las_tablas_del_turno(engine: AsyncEngine):
 def test_alembic_tiene_un_unico_head():
     scripts = ScriptDirectory.from_config(Config(str(BACKEND / "alembic.ini")))
 
-    assert scripts.get_heads() == ["0009_notifications_outbox_sweep"]
+    assert scripts.get_heads() == ["0010_confirmation_tokens"]
 
 
 INSERTAR_TURNO = text(

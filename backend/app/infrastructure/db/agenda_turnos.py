@@ -27,6 +27,8 @@ class RepositorioAgendaTurnosSQL:
         return ParametrosAgenda(
             id=modelo.id, consultorio_id=modelo.id, zona_horaria=modelo.zona_horaria,
             horas_confirmacion=modelo.horas_confirmacion,
+            horas_recordatorio=modelo.horas_recordatorio,
+            horas_liberacion=modelo.horas_liberacion,
             horas_limite_paciente=modelo.horas_limite_paciente,
             minutos_granularidad=modelo.minutos_granularidad,
             modo_liberacion=modelo.modo_liberacion,

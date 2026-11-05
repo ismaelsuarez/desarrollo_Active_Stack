@@ -59,7 +59,12 @@ def autorizar(
     sin_confirmar = ctx.turno_sin_confirmar if ctx else False
 
     # 3. Evaluación de acciones según matriz de decisión
-    if accion == Accion.AGENDA_VER:
+    if accion == Accion.TURNO_SIN_CONFIRMAR_VER:
+        if usuario.rol in (RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION):
+            return Decision(permitido=True)
+        return Decision(permitido=False, motivo="rol_no_autorizado", codigo_http=403)
+
+    elif accion == Accion.AGENDA_VER:
         if usuario.rol in (RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION):
             return Decision(permitido=True)
         if usuario.rol == RolUsuario.PROFESIONAL:

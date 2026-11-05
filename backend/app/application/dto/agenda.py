@@ -13,6 +13,8 @@ class ParametrosAgenda:
     telefono: str | None = None
     dias_anticipacion_maxima: int = 60
     max_turnos_activos_paciente: int = 2
+    horas_recordatorio: int = 24
+    horas_liberacion: int = 12
 
 
 @dataclass(frozen=True, slots=True)

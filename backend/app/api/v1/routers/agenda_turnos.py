@@ -24,6 +24,15 @@ UsuarioTurnos = Annotated[Principal, Depends(requiere_rol(
 ))]
 
 
+def usuario_para_lista(principal: UsuarioTurnos, sin_confirmar: bool = False) -> Principal:
+    if sin_confirmar:
+        return requiere_rol(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION)(principal)
+    return principal
+
+
+UsuarioLista = Annotated[Principal, Depends(usuario_para_lista)]
+
+
 def get_consulta(request: Request, reloj: Annotated[Reloj, Depends(get_reloj)],
                  settings: Annotated[Settings, Depends(get_settings)]) -> ConsultarTurnos:
     if not hasattr(request.app.state, "session_factory"):
@@ -37,8 +46,9 @@ Consulta = Annotated[ConsultarTurnos, Depends(get_consulta)]
 
 @router.get("/turnos", response_model=list[TurnoPaciente | TurnoOperativo],
     description="Paciente: sólo turnos de su ficha vigente, pasados y futuros; sin ficha devuelve []. Incluye acciones_permitidas calculadas con reloj/políticas. Personal conserva su agenda y contrato operativo.")
-async def listar_turnos(principal: UsuarioTurnos, consulta: Consulta):
-    return await consulta.listar(principal)
+async def listar_turnos(principal: UsuarioLista, consulta: Consulta,
+                        sin_confirmar: Annotated[bool, Query(description="Sólo pendientes marcados para Recepción/Administrador")] = False):
+    return await consulta.listar(principal, sin_confirmar=sin_confirmar)
 
 
 @router.get("/turnos/{turno_id}", response_model=TurnoPaciente | TurnoOperativo,

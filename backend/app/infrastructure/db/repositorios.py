@@ -104,9 +104,11 @@ class RepositorioTurnosSQL:
     async def listar(
         self, consultorio_id: int, profesional_id: int | None = None,
         paciente_id: int | None = None, desde: datetime | None = None,
-        hasta: datetime | None = None,
+        hasta: datetime | None = None, sin_confirmar: bool = False,
     ) -> list[Turno]:
         consulta = select(TurnoModel).where(TurnoModel.consultorio_id == consultorio_id)
+        if sin_confirmar:
+            consulta = consulta.where(TurnoModel.estado == "pendiente", TurnoModel.marcado_sin_confirmar_en.is_not(None))
         if profesional_id is not None:
             consulta = consulta.where(TurnoModel.profesional_id == profesional_id)
         if paciente_id is not None:

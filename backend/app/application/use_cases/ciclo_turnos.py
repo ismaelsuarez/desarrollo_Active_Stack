@@ -3,6 +3,8 @@ import logging
 from app.application.errors_turnos import RechazoDeTurno
 from app.application.ports.unidad_de_trabajo import FabricaDeUnidadesDeTrabajo
 from app.application.ports.avisos_turno import ProgramadorAvisosDeTurno, ProgramadorAvisosStaff
+from app.application.ports.hitos import PlanificadorDeHitos
+from app.application.services.hitos import ProgramadorHitos
 from app.domain.entities.auth import Principal, RolUsuario
 from app.domain.entities.historial import HechoDeTurno
 from app.domain.entities.turno import Turno
@@ -17,10 +19,12 @@ class CicloTurnos:
     """Transiciones autorizadas con turno e historial en una sola transacción."""
 
     def __init__(self, unidades: FabricaDeUnidadesDeTrabajo, reloj: Reloj,
-                 avisos: ProgramadorAvisosDeTurno | None = None) -> None:
+                 avisos: ProgramadorAvisosDeTurno | None = None,
+                 hitos: PlanificadorDeHitos | None = None) -> None:
         self._unidades = unidades
         self._reloj = reloj
         self._avisos = avisos if avisos is not None else ProgramadorAvisosStaff()
+        self._hitos = hitos if hitos is not None else ProgramadorHitos()
 
     async def ejecutar(self, principal: Principal, turno_id: int, accion: str,
                        motivo: str | None = None) -> Turno:
@@ -79,6 +83,7 @@ class CicloTurnos:
                 estado_anterior=turno.estado, estado_nuevo=actualizado.estado,
                 detalle={"motivo": motivo} if motivo is not None else None, ocurrido_en=ahora,
             ))
-            if accion == "cancelar":
+            if accion in ("cancelar", "liberar"):
+                await self._hitos.planificar(unidad, actualizado, accion, ahora)
                 await self._avisos.programar(unidad, principal, actualizado, accion, ahora)
         return actualizado

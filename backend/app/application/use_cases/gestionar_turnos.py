@@ -4,7 +4,8 @@ from zoneinfo import ZoneInfo
 
 from app.application.errors_turnos import RechazoDeTurno
 from app.application.ports.unidad_de_trabajo import FabricaDeUnidadesDeTrabajo
-from app.application.ports.hitos import PlanificadorDeHitos, PlanificadorSinEfectos
+from app.application.ports.hitos import PlanificadorDeHitos
+from app.application.services.hitos import ProgramadorHitos
 from app.application.ports.avisos_turno import ProgramadorAvisosDeTurno, ProgramadorAvisosStaff
 from app.domain.entities.auth import Principal, RolUsuario
 from app.domain.entities.historial import HechoDeTurno
@@ -25,7 +26,7 @@ class GestionTurnos:
                  avisos: ProgramadorAvisosDeTurno | None = None) -> None:
         self._unidades = unidades
         self._reloj = reloj
-        self._hitos = hitos if hitos is not None else PlanificadorSinEfectos()
+        self._hitos = hitos if hitos is not None else ProgramadorHitos()
         self._avisos = avisos if avisos is not None else ProgramadorAvisosStaff()
 
     @staticmethod
@@ -122,6 +123,7 @@ class GestionTurnos:
                 ocurrido_en=ahora,
             ))
             await self._hitos.planificar(unidad, turno, "crear", ahora)
+            await self._avisos.programar(unidad, principal, turno, "crear", ahora)
         return turno
 
     async def reprogramar(self, principal: Principal, turno_id: int, inicio: datetime,

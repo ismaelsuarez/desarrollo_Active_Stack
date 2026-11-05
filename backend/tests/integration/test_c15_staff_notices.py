@@ -36,7 +36,7 @@ async def test_staff_reschedule_saves_notice_with_new_cycle_in_same_transaction(
                                       json={"inicio": (INICIO+timedelta(days=1)).isoformat()})
     assert response.status_code == 200, response.text
     async with sesiones() as session:
-        notice = (await session.scalars(select(NotificacionModel))).one()
+        notice = (await session.scalars(select(NotificacionModel).where(NotificacionModel.tipo == "reprogramacion_por_personal"))).one()
         assert (notice.turno_id, notice.tipo, notice.ciclo, notice.estado) == (tid, "reprogramacion_por_personal", 2, "programada")
         assert notice.destinatario == "ana@example.test"
         assert notice.intentos == 0
@@ -51,7 +51,7 @@ async def test_staff_cancellation_saves_notice_for_current_cycle(escenario, sesi
         response = await client.post(f"/api/v1/turnos/{tid}/cancelar", headers=escenario.headers(rol), json={"motivo": "dato clínico interno"})
     assert response.status_code == 200, response.text
     async with sesiones() as session:
-        notice = (await session.scalars(select(NotificacionModel))).one()
+        notice = (await session.scalars(select(NotificacionModel).where(NotificacionModel.tipo == "cancelacion_por_personal"))).one()
         assert (notice.turno_id, notice.tipo, notice.ciclo) == (tid, "cancelacion_por_personal", 1)
         assert "cancelado" in notice.mensaje
         assert "dato clínico" not in notice.mensaje
@@ -65,6 +65,7 @@ async def test_notice_failure_rolls_back_turn_and_history(escenario, sesiones, m
         tid = created.json()["id"]
         async with sesiones() as session:
             original = await session.scalar(text("SELECT row_to_json(t) FROM turno t WHERE id=:id"), {"id": tid})
+            avisos_originales = (await session.execute(text("SELECT id,estado,ciclo FROM notificacion ORDER BY id"))).all()
         async def fallar(*args, **kwargs):
             raise RuntimeError("fallo controlado sin datos")
         if fallo == "insertar":
@@ -81,7 +82,7 @@ async def test_notice_failure_rolls_back_turn_and_history(escenario, sesiones, m
     async with sesiones() as session:
         assert await session.scalar(text("SELECT row_to_json(t) FROM turno t WHERE id=:id"), {"id": tid}) == original
         assert await session.scalar(text("SELECT count(*) FROM turno_historial WHERE turno_id=:id"), {"id": tid}) == 1
-        assert await session.scalar(text("SELECT count(*) FROM notificacion")) == 0
+        assert (await session.execute(text("SELECT id,estado,ciclo FROM notificacion ORDER BY id"))).all() == avisos_originales
 
 
 @pytest.mark.parametrize("accion", ["cancelar", "reprogramar"])
@@ -122,7 +123,7 @@ async def test_patient_change_does_not_create_staff_notice(escenario, sesiones, 
             response = await client.patch(f"/api/v1/turnos/{tid}", headers=escenario.headers("paciente"), json={"inicio": (INICIO+timedelta(days=1)).isoformat()})
     assert response.status_code == 200
     async with sesiones() as session:
-        assert await session.scalar(text("SELECT count(*) FROM notificacion")) == 0
+        assert await session.scalar(text("SELECT count(*) FROM notificacion WHERE tipo IN ('cancelacion_por_personal','reprogramacion_por_personal')")) == 0
 
 
 async def test_reschedule_notice_keeps_snapshot_after_later_change(escenario, sesiones):
@@ -137,7 +138,7 @@ async def test_reschedule_notice_keeps_snapshot_after_later_change(escenario, se
             response = await client.patch(f"/api/v1/turnos/{tid}", headers=escenario.headers("administrador"), json={"inicio": (INICIO+timedelta(days=dia)).isoformat()})
             assert response.status_code == 200
     async with sesiones() as session:
-        rows = (await session.scalars(select(NotificacionModel).order_by(NotificacionModel.id))).all()
+        rows = (await session.scalars(select(NotificacionModel).where(NotificacionModel.tipo == "reprogramacion_por_personal").order_by(NotificacionModel.id))).all()
         assert [row.ciclo for row in rows] == [2, 3]
         assert "10/11/2026 10:00" in rows[0].mensaje
         assert "11/11/2026 10:00" in rows[1].mensaje
@@ -161,7 +162,7 @@ async def test_exact_duplicate_programming_is_noop_with_two_connections(escenari
     assert len(pids) == 2
     assert sum(result is not None for result in results) == 1
     async with sesiones() as session:
-        assert await session.scalar(text("SELECT count(*) FROM notificacion")) == 1
+        assert await session.scalar(text("SELECT count(*) FROM notificacion WHERE tipo='cancelacion_por_personal'")) == 1
 
 
 async def test_programmer_does_not_commit_and_does_not_hide_real_fk_errors(escenario, sesiones):
@@ -174,7 +175,7 @@ async def test_programmer_does_not_commit_and_does_not_hide_real_fk_errors(escen
             await unidad.notificaciones.programar_aviso_personal(turno, "cancelar", escenario.reloj.ahora())
             raise RuntimeError("fallo despues de programar")
     async with sesiones() as session:
-        assert await session.scalar(text("SELECT count(*) FROM notificacion")) == 0
+        assert await session.scalar(text("SELECT count(*) FROM notificacion WHERE tipo='cancelacion_por_personal'")) == 0
     with pytest.raises(IntegrityError):
         async with UnidadDeTrabajoSQL(sesiones) as unidad:
             turno = await unidad.turnos.obtener(1, tid)

@@ -148,12 +148,17 @@ class TokenUsuarioModel(Base):
             "tipo IN ('verificar_email', 'recuperar_password', 'confirmar_turno')",
             name="ck_token_usuario_tipo_valido",
         ),
+        CheckConstraint(
+            "(tipo = 'confirmar_turno' AND turno_id IS NOT NULL AND ciclo IS NOT NULL AND ciclo > 0) "
+            "OR (tipo <> 'confirmar_turno' AND usuario_id IS NOT NULL)",
+            name="proposito_coherente",
+        ),
         Index("ix_token_usuario_usuario_id_tipo", "usuario_id", "tipo"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     consultorio_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("consultorio.id"), index=True)
-    usuario_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuario.id"))
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuario.id"), nullable=True)
     ciclo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     turno_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("turno.id"), nullable=True)
     tipo: Mapped[str] = mapped_column(Text)

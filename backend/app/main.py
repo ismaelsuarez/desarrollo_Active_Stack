@@ -16,6 +16,7 @@ from app.api.v1.routers.health import router as health_router
 from app.api.v1.routers.prestaciones import router as prestaciones_router
 from app.api.v1.routers.personal import router as personal_router
 from app.api.v1.routers.turnos import router as turnos_router
+from app.api.v1.routers.confirmacion_turno import router as confirmacion_turno_router
 from app.api.v1.routers.agenda_turnos import router as agenda_turnos_router
 from app.api.v1.routers.vinculacion import router as vinculacion_router
 from app.api.v1.routers.pacientes import router as pacientes_router
@@ -84,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(consultorio_router)
     app.include_router(prestaciones_router)
     app.include_router(turnos_router)
+    app.include_router(confirmacion_turno_router)
     app.include_router(agenda_turnos_router)
     app.include_router(vinculacion_router)
     app.include_router(pacientes_router)

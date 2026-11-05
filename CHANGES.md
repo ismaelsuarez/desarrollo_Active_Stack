@@ -559,7 +559,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-16] `milestones-confirmation-release`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado y archivado el 2026-11-05 en [`2026-11-05-c-16-milestones-confirmation-release`](openspec/changes/archive/2026-11-05-c-16-milestones-confirmation-release/); 35/35 tareas, 1661 pruebas aprobadas, head único `0010_confirmation_tokens` y seis especificaciones sincronizadas (12 requisitos añadidos y 4 modificados). Ver [evidencia](openspec/changes/archive/2026-11-05-c-16-milestones-confirmation-release/evidence.md).
 - **Scope**: Hitos de 48/24/12 horas, confirmación por enlace y liberación automática o manual (procesados por el barrido de C-15)
   - Implementación real de `ProgramadorHitos`: al reservar o reprogramar calcula los hitos desde `inicio` y programa las notificaciones en `notificacion`; reprogramar incrementa `ciclo_confirmacion`, pasa a `omitida` las notificaciones `programada` o `preparada`, de cualquier canal, de solicitud de confirmación y de recordatorio del ciclo anterior (la regla no distingue canal; las `preparada` de WhatsApp las crea C-17, que prueba esa parte; no el aviso de reprogramación por el personal, que se programa con el ciclo nuevo, ver "Vigencia por tipo" en `04`) y limpia `marcado_sin_confirmar_en` (RN-32). Cancelar o liberar un turno omite del mismo modo las de su ciclo vigente (flujo 6 y "Vigencia por tipo" en `04`)
   - Barrido T-48 h: solicitud de confirmación por correo a turnos `pendiente`, con enlace de un solo uso (`token_usuario` tipo `confirmar_turno`, que guarda el `ciclo_confirmacion` del turno al emitirse; la migración agrega la columna `ciclo` a `token_usuario`)

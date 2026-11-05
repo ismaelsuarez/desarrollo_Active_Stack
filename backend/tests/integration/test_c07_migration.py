@@ -189,7 +189,7 @@ async def test_token_y_notificacion_admiten_referencia_a_turno_existente(engine,
         turno_id = await legado(conexion)
     async with sesiones() as sesion:
         token = TokenUsuarioModel(consultorio_id=1, usuario_id=usuario_id, turno_id=turno_id,
-            tipo="confirmar_turno", token_hash="hash-valido", expira_en=AHORA, creado_en=AHORA)
+            tipo="confirmar_turno", ciclo=1, token_hash="hash-valido", expira_en=AHORA, creado_en=AHORA)
         aviso = NotificacionModel(consultorio_id=1, usuario_id=usuario_id, turno_id=turno_id,
             tipo="recordatorio", canal="whatsapp", estado="preparada",
             destinatario="sintetico", programada_para=AHORA, intentos=0)

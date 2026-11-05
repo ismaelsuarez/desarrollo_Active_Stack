@@ -10,7 +10,7 @@ from app.domain.value_objects.contexto_acceso import ContextoAcceso
 def test_accion_enum_contains_all_canonical_actions():
     acciones_esperadas = {
         "agenda.ver",
-        "turno.ver",
+        "turno.ver", "turno.sin_confirmar_ver",
         "turno.crear",
         "turno.reprogramar",
         "turno.cancelar",

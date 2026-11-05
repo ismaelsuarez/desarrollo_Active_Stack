@@ -36,7 +36,7 @@ class RepositorioTurnos(Protocol):
     async def listar(
         self, consultorio_id: int, profesional_id: int | None = None,
         paciente_id: int | None = None, desde: datetime | None = None,
-        hasta: datetime | None = None,
+        hasta: datetime | None = None, sin_confirmar: bool = False,
     ) -> list[Turno]: ...
 
     async def hay_solapamiento(
