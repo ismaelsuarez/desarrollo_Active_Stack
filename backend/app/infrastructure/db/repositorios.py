@@ -1,7 +1,7 @@
 from dataclasses import fields
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -94,6 +94,12 @@ class RepositorioTurnosSQL:
             TurnoModel.id == turno_id, TurnoModel.consultorio_id == consultorio_id,
         ))
         return self._entidad(modelo) if modelo is not None else None
+
+    async def contar_futuros_activos(self, consultorio_id: int, paciente_id: int, ahora: datetime) -> int:
+        return await self._sesion.scalar(select(func.count()).select_from(TurnoModel).where(
+            TurnoModel.consultorio_id == consultorio_id, TurnoModel.paciente_id == paciente_id,
+            TurnoModel.inicio > ahora, TurnoModel.estado.in_(("pendiente", "confirmado")),
+        ))
 
     async def listar(
         self, consultorio_id: int, profesional_id: int | None = None,

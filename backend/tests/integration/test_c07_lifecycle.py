@@ -70,7 +70,7 @@ async def test_confirmar_rol_no_autorizado_rechaza(sesiones, escenario, rol):
     identificador = await turno(sesiones, escenario)
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=escenario.app), base_url="http://test") as cliente:
         respuesta = await cliente.post(f"/api/v1/turnos/{identificador}/confirmar", headers=escenario.headers(rol), json={})
-    assert respuesta.status_code == 403
+    assert respuesta.status_code == (404 if rol == "paciente" else 403)
     assert await hechos(sesiones, identificador) == []
 
 

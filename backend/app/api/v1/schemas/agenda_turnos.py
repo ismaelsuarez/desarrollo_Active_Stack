@@ -23,6 +23,10 @@ class TurnoOperativo(BaseModel):
     marcado_sin_confirmar_en: datetime | None
 
 
+class TurnoPaciente(TurnoOperativo):
+    acciones_permitidas: list[str]
+
+
 class HechoOperativo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -8,6 +8,7 @@ class ContextoAcceso:
 
     ahora: datetime
     ficha_vigente_id: int | None = None
+    correo_verificado: bool = False
     profesional_vinculado_id: int | None = None
     ficha_usuario_id: int | None = None
     horas_limite_cancelacion: int = 24

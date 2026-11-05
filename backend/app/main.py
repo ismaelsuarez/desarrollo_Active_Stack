@@ -18,6 +18,7 @@ from app.api.v1.routers.agenda_turnos import router as agenda_turnos_router
 from app.api.v1.routers.vinculacion import router as vinculacion_router
 from app.api.v1.routers.pacientes import router as pacientes_router
 from app.api.v1.routers.reactivacion import router as reactivacion_router
+from app.api.v1.routers.publico import router as publico_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
@@ -66,4 +67,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(vinculacion_router)
     app.include_router(pacientes_router)
     app.include_router(reactivacion_router)
+    app.include_router(publico_router)
     return app

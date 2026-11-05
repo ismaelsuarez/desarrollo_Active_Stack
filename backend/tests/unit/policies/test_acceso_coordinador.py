@@ -133,7 +133,7 @@ def test_autorizar_triangulacion_acciones_diversas():
     assert d_anon.codigo_http == 401
 
     # Turno crear: paciente con y sin ficha
-    assert autorizar(pac, Accion.TURNO_CREAR, contexto=ContextoAcceso(ahora=datetime.now(timezone.utc), ficha_vigente_id=10)).permitido is True
+    assert autorizar(pac, Accion.TURNO_CREAR, contexto=ContextoAcceso(ahora=datetime.now(timezone.utc), ficha_vigente_id=10, correo_verificado=True)).permitido is True
     assert autorizar(pac, Accion.TURNO_CREAR, contexto=ContextoAcceso(ahora=datetime.now(timezone.utc), ficha_vigente_id=None)).permitido is False
     assert autorizar(prof, Accion.TURNO_CREAR).permitido is False
 

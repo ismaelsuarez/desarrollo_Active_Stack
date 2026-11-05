@@ -86,6 +86,8 @@ def autorizar(
         if usuario.rol in (RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION):
             return Decision(permitido=True)
         if usuario.rol == RolUsuario.PACIENTE:
+            if ctx is not None and not ctx.correo_verificado:
+                return Decision(permitido=False, motivo="correo_no_verificado", codigo_http=403)
             if ficha_vigente_id is not None:
                 return Decision(permitido=True)
             return Decision(permitido=False, motivo="paciente_sin_ficha_vigente", codigo_http=403)

@@ -70,7 +70,7 @@ async def test_recepcion_consulta_detalle_operativo_de_su_consultorio(cliente, e
 @pytest.mark.parametrize("rol,objetivo,codigo", [
     ("administrador", "propio", 200), ("profesional", "propio", 200),
     ("profesional", "colega", 404), ("recepcion", "extranjero", 404),
-    ("administrador", "inexistente", 404), ("paciente", "propio", 403),
+    ("administrador", "inexistente", 404), ("paciente", "propio", 404),
     ("administrativo", "propio", 403),
 ])
 async def test_detalle_respeta_rol_agenda_y_consultorio(cliente, escenario, sesiones, rol, objetivo, codigo):
@@ -113,7 +113,9 @@ async def test_listado_vacio_y_rechazos_de_autenticacion(cliente, escenario):
     assert respuesta.status_code == 200
     assert respuesta.json() == []
     assert (await cliente.get("/api/v1/turnos")).status_code == 401
-    assert (await cliente.get("/api/v1/turnos", headers=escenario.headers("paciente"))).status_code == 403
+    sin_ficha = await cliente.get("/api/v1/turnos", headers=escenario.headers("paciente"))
+    assert sin_ficha.status_code == 200
+    assert sin_ficha.json() == []
 
 
 async def test_historial_propio_muestra_actor_fecha_y_estados(cliente, escenario, sesiones):
@@ -412,4 +414,4 @@ async def test_lecturas_de_inactivos_preservan_rol_agenda_y_consultorio(cliente,
         assert [turno["id"] for turno in respuesta.json()] == [propio]
     assert (await cliente.get(f"/api/v1/turnos/{turno_colega}", headers=escenario.headers("administrador"))).status_code == 200
     for rol in ("paciente", "administrativo"):
-        assert (await cliente.get(f"/api/v1/turnos/{propio}", headers=escenario.headers(rol))).status_code == 403
+        assert (await cliente.get(f"/api/v1/turnos/{propio}", headers=escenario.headers(rol))).status_code == (404 if rol == "paciente" else 403)

@@ -32,6 +32,7 @@ class TurnoConsultado:
     estado: EstadoTurno
     es_sobreturno: bool
     marcado_sin_confirmar_en: datetime | None
+    acciones_permitidas: tuple[str, ...] | None = None
 
 
 class ConsultarTurnos:
@@ -53,18 +54,25 @@ class ConsultarTurnos:
             self._rechazar(principal, accion, decision.codigo_http, decision.motivo)
 
     async def _turno_autorizado(self, unidad: UnidadDeTrabajo, principal: Principal,
-                                turno_id: int, ahora: datetime) -> Turno:
+                                turno_id: int, ahora: datetime) -> tuple[Turno, ContextoAcceso]:
         turno = await unidad.turnos.obtener(principal.consultorio_id, turno_id)
         if turno is None:
             self._rechazar(principal, Accion.TURNO_VER, 404, "Turno no encontrado")
         profesional_id = await unidad.agenda.profesional_vinculado(principal.consultorio_id, principal.usuario_id,
                                                                  incluir_inactivos=True)
-        contexto = ContextoAcceso(ahora=ahora, profesional_vinculado_id=profesional_id)
+        ficha = (await unidad.pacientes.de_usuario(principal.consultorio_id, principal.usuario_id)
+                 if principal.rol == RolUsuario.PACIENTE else None)
+        config = await unidad.agenda.obtener_configuracion(principal.consultorio_id)
+        contexto = ContextoAcceso(ahora=ahora, profesional_vinculado_id=profesional_id,
+                                 ficha_vigente_id=ficha.id if ficha else None,
+                                 horas_limite_cancelacion=config.horas_limite_paciente if config else 24)
         self._autorizar(principal, Accion.TURNO_VER, turno, contexto)
-        return turno
+        return turno, contexto
 
     @staticmethod
-    async def _presentar(unidad: UnidadDeTrabajo, turno: Turno) -> TurnoConsultado:
+    async def _presentar(unidad: UnidadDeTrabajo, turno: Turno,
+                         principal: Principal | None = None,
+                         contexto: ContextoAcceso | None = None) -> TurnoConsultado:
         paciente = await unidad.agenda.obtener_paciente(turno.consultorio_id, turno.paciente_id)
         prestacion = await unidad.prestaciones.obtener(turno.consultorio_id, turno.prestacion_id,
                                                        incluir_inactivos=True)
@@ -76,17 +84,34 @@ class ConsultarTurnos:
             box_id=turno.box_id, prestacion_id=prestacion.id, prestacion_nombre=prestacion.nombre,
             inicio=turno.inicio, fin=turno.fin, estado=turno.estado,
             es_sobreturno=turno.es_sobreturno, marcado_sin_confirmar_en=turno.marcado_sin_confirmar_en,
+            acciones_permitidas=tuple(
+                nombre for nombre, accion in (
+                    ("confirmar", Accion.TURNO_CONFIRMAR), ("cancelar", Accion.TURNO_CANCELAR),
+                    ("reprogramar", Accion.TURNO_REPROGRAMAR),
+                ) if autorizar(principal, accion, turno, contexto).permitido
+            ) if principal is not None and principal.rol == RolUsuario.PACIENTE else None,
         )
 
     async def detalle(self, principal: Principal, turno_id: int) -> TurnoConsultado:
         ahora = self._reloj.ahora()
         async with self._unidades() as unidad:
-            turno = await self._turno_autorizado(unidad, principal, turno_id, ahora)
-            return await self._presentar(unidad, turno)
+            turno, contexto = await self._turno_autorizado(unidad, principal, turno_id, ahora)
+            return await self._presentar(unidad, turno, principal, contexto)
 
     async def listar(self, principal: Principal) -> list[TurnoConsultado]:
         ahora = self._reloj.ahora()
         async with self._unidades() as unidad:
+            if principal.rol == RolUsuario.PACIENTE:
+                ficha = await unidad.pacientes.de_usuario(principal.consultorio_id, principal.usuario_id)
+                if ficha is None:
+                    return []
+                turnos = await unidad.turnos.listar(principal.consultorio_id, paciente_id=ficha.id)
+                config = await unidad.agenda.obtener_configuracion(principal.consultorio_id)
+                contexto = ContextoAcceso(ahora=ahora, ficha_vigente_id=ficha.id,
+                    horas_limite_cancelacion=config.horas_limite_paciente if config else 24)
+                for turno in turnos:
+                    self._autorizar(principal, Accion.TURNO_VER, turno, contexto)
+                return [await self._presentar(unidad, turno, principal, contexto) for turno in turnos]
             profesional_id = None
             recurso = await unidad.agenda.obtener_configuracion(principal.consultorio_id)
             if principal.rol == RolUsuario.PROFESIONAL:
@@ -104,7 +129,7 @@ class ConsultarTurnos:
     async def historial(self, principal: Principal, turno_id: int) -> list[HechoDeTurno]:
         ahora = self._reloj.ahora()
         async with self._unidades() as unidad:
-            turno = await self._turno_autorizado(unidad, principal, turno_id, ahora)
+            turno, _ = await self._turno_autorizado(unidad, principal, turno_id, ahora)
             return await unidad.historial.listar(principal.consultorio_id, turno.id)
 
     async def agenda(self, principal: Principal, profesional_id: int, fecha: date) -> list[TurnoConsultado]:

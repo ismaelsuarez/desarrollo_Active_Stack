@@ -406,7 +406,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-09] `availability-public-booking`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado y archivado el 2026-11-05 en [`2026-11-05-c-09-availability-public-booking`](openspec/changes/archive/2026-11-05-c-09-availability-public-booking/), 33/33 tareas y especificaciones sincronizadas (11 requisitos añadidos y 1 modificado). Suite completa Linux: 1308 pruebas aprobadas; postrefactor final: 86/86 (solapadas). Validación estricta del change sin issues; ver [evidencia archivada](openspec/changes/archive/2026-11-05-c-09-availability-public-booking/evidence.md) para alcance exacto de las ejecuciones.
 - **Scope**: Disponibilidad pública y autogestión del turno por el paciente
   - Servicio de dominio puro `disponibilidad`: horario semanal − excepciones − turnos activos (los sobreturnos activos cuentan como ocupado), duración de la prestación elegida, horarios de inicio cada `minutos_granularidad` desde el inicio de cada bloque (RN-64) y zona horaria del consultorio; no ofrece horarios más allá de `dias_anticipacion_maxima`; un turno nunca se parte entre bloques (RN-14)
   - `GET /api/v1/publico/consultorio`, `/publico/prestaciones`, `/publico/profesionales`, `/publico/disponibilidad` — sin ingreso, sin datos de otros pacientes, con límite de solicitudes (adaptador en memoria por proceso para estas lecturas; Redis opcional); el consultorio lo resuelve `consultorio_sin_token` (C-03), nunca el cliente (RN-59)

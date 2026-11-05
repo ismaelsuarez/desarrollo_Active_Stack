@@ -2,7 +2,7 @@ import logging
 
 from app.application.errors_turnos import RechazoDeTurno
 from app.application.ports.unidad_de_trabajo import FabricaDeUnidadesDeTrabajo
-from app.domain.entities.auth import Principal
+from app.domain.entities.auth import Principal, RolUsuario
 from app.domain.entities.historial import HechoDeTurno
 from app.domain.entities.turno import Turno
 from app.domain.ports.reloj import Reloj
@@ -27,8 +27,16 @@ class CicloTurnos:
             config = await unidad.agenda.obtener_configuracion(principal.consultorio_id)
             if turno is None or config is None:
                 raise RechazoDeTurno(404, "Turno no encontrado")
+            ficha = None
+            if principal.rol == RolUsuario.PACIENTE:
+                ficha = await unidad.cuentas.ficha_de_usuario(principal.consultorio_id, principal.usuario_id)
+                cuenta = await unidad.cuentas.usuario_por_id(principal.consultorio_id, principal.usuario_id)
+                if cuenta is None:
+                    ficha = None
             contexto = ContextoAcceso(
                 ahora=ahora,
+                ficha_vigente_id=ficha.id if ficha else None,
+                horas_limite_cancelacion=config.horas_limite_paciente,
                 profesional_vinculado_id=await unidad.agenda.profesional_vinculado(
                     principal.consultorio_id, principal.usuario_id),
                 consultorio_modo_manual=config.modo_liberacion == "manual",
@@ -42,7 +50,13 @@ class CicloTurnos:
                     "usuario_id": principal.usuario_id, "accion": accion_politica.value,
                     "motivo": decision.motivo,
                 })
-                raise RechazoDeTurno(decision.codigo_http, decision.motivo)
+                motivo_rechazo = decision.motivo
+                if decision.motivo == "fuera_de_ventana_paciente":
+                    telefono = config.telefono or "teléfono no configurado"
+                    motivo_rechazo = (
+                        f"fuera_de_ventana_paciente. Comunicate con el consultorio: {telefono}"
+                    )
+                raise RechazoDeTurno(decision.codigo_http, motivo_rechazo)
             cambios = {"actualizado_en": ahora}
             if accion == "cancelar":
                 cambios.update(estado=EstadoTurno.CANCELADO, cancelado_en=ahora,

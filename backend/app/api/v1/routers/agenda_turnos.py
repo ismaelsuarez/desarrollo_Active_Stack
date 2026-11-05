@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_reloj, get_settings, requiere_rol
-from app.api.v1.schemas.agenda_turnos import ConsultaAgenda, HechoOperativo, TurnoOperativo
+from app.api.v1.schemas.agenda_turnos import ConsultaAgenda, HechoOperativo, TurnoOperativo, TurnoPaciente
 from app.application.use_cases.consultar_turnos import ConsultarTurnos
 from app.core.config import Settings
 from app.domain.entities.auth import Principal, RolUsuario
@@ -19,6 +19,9 @@ router = APIRouter(prefix="/api/v1", tags=["Agenda de turnos"], responses={
 PersonalAgenda = Annotated[Principal, Depends(requiere_rol(
     RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION, RolUsuario.PROFESIONAL,
 ))]
+UsuarioTurnos = Annotated[Principal, Depends(requiere_rol(
+    RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION, RolUsuario.PROFESIONAL, RolUsuario.PACIENTE,
+))]
 
 
 def get_consulta(request: Request, reloj: Annotated[Reloj, Depends(get_reloj)],
@@ -32,18 +35,21 @@ def get_consulta(request: Request, reloj: Annotated[Reloj, Depends(get_reloj)],
 Consulta = Annotated[ConsultarTurnos, Depends(get_consulta)]
 
 
-@router.get("/turnos", response_model=list[TurnoOperativo])
-async def listar_turnos(principal: PersonalAgenda, consulta: Consulta):
+@router.get("/turnos", response_model=list[TurnoPaciente | TurnoOperativo],
+    description="Paciente: sólo turnos de su ficha vigente, pasados y futuros; sin ficha devuelve []. Incluye acciones_permitidas calculadas con reloj/políticas. Personal conserva su agenda y contrato operativo.")
+async def listar_turnos(principal: UsuarioTurnos, consulta: Consulta):
     return await consulta.listar(principal)
 
 
-@router.get("/turnos/{turno_id}", response_model=TurnoOperativo)
-async def detalle_turno(turno_id: int, principal: PersonalAgenda, consulta: Consulta):
+@router.get("/turnos/{turno_id}", response_model=TurnoPaciente | TurnoOperativo,
+    description="Paciente: detalle propio con acciones_permitidas. El vínculo se consulta en cada solicitud; un JWT anterior a desvincular no conserva acceso. Ajeno o sin vínculo:404.")
+async def detalle_turno(turno_id: int, principal: UsuarioTurnos, consulta: Consulta):
     return await consulta.detalle(principal, turno_id)
 
 
 @router.get("/turnos/{turno_id}/historial", response_model=list[HechoOperativo])
-async def historial_turno(turno_id: int, principal: PersonalAgenda, consulta: Consulta):
+async def historial_turno(turno_id: int, principal: UsuarioTurnos, consulta: Consulta):
+    """Historial operativo propio según vínculo actual, sin datos clínicos ni contacto."""
     return await consulta.historial(principal, turno_id)
 
 

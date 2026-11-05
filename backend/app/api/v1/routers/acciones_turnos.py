@@ -21,6 +21,9 @@ router = APIRouter(prefix="/turnos", tags=["Ciclo de turnos"], responses={
     422: {"description": "Entrada inválida o campos no declarados"},
 })
 Personal = Annotated[Principal, Depends(requiere_rol(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION))]
+TitularOPersonal = Annotated[Principal, Depends(requiere_rol(
+    RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION, RolUsuario.PACIENTE,
+))]
 Atencion = Annotated[Principal, Depends(requiere_rol(
     RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION, RolUsuario.PROFESIONAL,
 ))]
@@ -38,16 +41,16 @@ Ciclo = Annotated[CicloTurnos, Depends(get_ciclo)]
 
 
 @router.post("/{turno_id}/confirmar", response_model=TurnoRespuesta)
-async def confirmar(turno_id: int, principal: Personal, ciclo: Ciclo,
+async def confirmar(turno_id: int, principal: TitularOPersonal, ciclo: Ciclo,
                     payload: AccionTurnoEntrada = AccionTurnoEntrada()):
-    """Confirma un pendiente por teléfono o WhatsApp, con actor y fecha."""
+    """Confirma un pendiente propio desde cuenta o por personal, con actor e historial. Ajeno404 y estado incompatible403; no implementa enlace de correo."""
     return await ejecutar_operacion(ciclo.ejecutar(principal, turno_id, "confirmar"))
 
 
 @router.post("/{turno_id}/cancelar", response_model=TurnoRespuesta)
-async def cancelar(turno_id: int, principal: Personal, ciclo: Ciclo,
+async def cancelar(turno_id: int, principal: TitularOPersonal, ciclo: Ciclo,
                    payload: CancelarTurnoEntrada = CancelarTurnoEntrada()):
-    """Cancela conservando el turno, motivo opcional y trazabilidad del personal."""
+    """Paciente titular: cancela pendiente/confirmado hasta el límite inclusivo de horas_limite_paciente. Fuera de plazo403 con teléfono; ajeno404. Personal conserva su autoridad. Turno e historial son atómicos."""
     return await ejecutar_operacion(ciclo.ejecutar(principal, turno_id, "cancelar", payload.motivo))
 
 

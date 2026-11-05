@@ -16,6 +16,14 @@ class TurnoEntrada(BaseModel):
     confirmar: bool = False
 
 
+class TurnoOnlineEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    profesional_id: int = Field(gt=0)
+    prestacion_id: int = Field(gt=0)
+    inicio: AwareDatetime
+
+
 class TurnoRespuesta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -36,3 +44,9 @@ class ReprogramacionEntrada(BaseModel):
 
     inicio: AwareDatetime
     duracion_min: int | None = Field(default=None, gt=0)
+
+
+class ReprogramacionOnlineEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    inicio: AwareDatetime

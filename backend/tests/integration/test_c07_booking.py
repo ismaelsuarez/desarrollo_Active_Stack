@@ -38,7 +38,7 @@ async def test_staff_creates_turn_for_unlinked_patient_with_atomic_history(escen
         assert hecho.ocurrido_en == escenario.reloj.ahora()
 
 
-@pytest.mark.parametrize("rol,esperado", [("administrador", 201), ("profesional", 403), ("paciente", 403), ("administrativo", 403), (None, 401)])
+@pytest.mark.parametrize("rol,esperado", [("administrador", 201), ("profesional", 403), ("paciente", 422), ("administrativo", 403), (None, 401)])
 async def test_booking_is_restricted_to_authenticated_staff(escenario, sesiones, rol, esperado):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=escenario.app), base_url="http://test") as client:
         respuesta = await client.post("/api/v1/turnos", headers=escenario.headers(rol) if rol else {}, json=escenario.payload())

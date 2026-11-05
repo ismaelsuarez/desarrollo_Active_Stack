@@ -140,7 +140,7 @@ async def test_patch_has_strict_payload_and_keeps_original_on_validation_failure
         assert await sesion.scalar(text("SELECT count(*) FROM turno_historial WHERE turno_id=:id"), {"id": identificador}) == 1
 
 
-@pytest.mark.parametrize("rol,expected", [("administrador", 200), ("profesional", 403), ("paciente", 403), ("administrativo", 403), (None, 401)])
+@pytest.mark.parametrize("rol,expected", [("administrador", 200), ("profesional", 403), ("paciente", 404), ("administrativo", 403), (None, 401)])
 async def test_patch_authorization_uses_staff_roles_and_tenant_scope(escenario, sesiones, rol, expected):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=escenario.app), base_url="http://test") as client:
         alta = await client.post("/api/v1/turnos", headers=escenario.headers(), json=escenario.payload())
