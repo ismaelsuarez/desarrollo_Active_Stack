@@ -67,6 +67,9 @@ class Settings(DatabaseSettings):
     smtp_password: SecretStr | None = Field(default=None, validation_alias='SMTP_PASSWORD')
     smtp_from: str = Field(default='Consultorio <no-reply@example.test>', validation_alias='SMTP_FROM')
     frontend_base_url: str = Field(default='http://localhost:5173', validation_alias='FRONTEND_BASE_URL')
+    sweep_shared_secret: SecretStr | None = Field(default=None, validation_alias='SWEEP_SHARED_SECRET')
+    sweep_in_process_enabled: bool = Field(default=False, validation_alias='SWEEP_IN_PROCESS_ENABLED')
+    sweeper_interval_seconds: int = Field(default=300, gt=0, validation_alias='SWEEPER_INTERVAL_SECONDS')
 
     @field_validator('jwt_secret_key')
     @classmethod

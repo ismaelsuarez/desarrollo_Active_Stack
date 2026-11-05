@@ -25,7 +25,7 @@ async def test_migration_reads_database_secret_file(tmp_path):
         assert result.returncode == 0, result.stderr
         engine = create_async_engine(url, poolclass=NullPool)
         async with engine.connect() as connection:
-            assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0008_turnos_core'
+            assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0009_notifications_outbox_sweep'
         await engine.dispose()
 
 
@@ -43,7 +43,7 @@ async def test_shared_helper_does_not_follow_inherited_migration_url(monkeypatch
         alembic(url, 'upgrade', 'head')
         engine = create_async_engine(url, poolclass=NullPool)
         async with engine.connect() as connection:
-            assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0008_turnos_core'
+            assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0009_notifications_outbox_sweep'
         await engine.dispose()
 
 

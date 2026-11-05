@@ -1,9 +1,11 @@
 """Persistencia de cuenta y comunicaciones (C-05)."""
 from datetime import datetime
+from uuid import UUID
 
 from sqlalchemy import (BigInteger, CheckConstraint, DateTime, ForeignKey,
-                        Identity, Index, Integer, Text)
+                        Identity, Index, Integer, Text, UniqueConstraint)
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Uuid
 
 from app.infrastructure.db.base import Base
 
@@ -40,6 +42,7 @@ TIPOS_CUENTA = TIPOS_NOTIFICACION[:3]
 class NotificacionModel(Base):
     __tablename__ = 'notificacion'
     __table_args__ = (
+        UniqueConstraint('turno_id', 'tipo', 'canal', 'ciclo', name='uq_notificacion_turno_tipo_canal_ciclo'),
         CheckConstraint(f"tipo IN {TIPOS_NOTIFICACION!r}", name='tipo_valido'),
         CheckConstraint("canal IN ('email', 'whatsapp')", name='canal_valido'),
         CheckConstraint("estado IN ('programada','enviando','enviada','fallida','preparada','enviada_manual','omitida')", name='estado_valido'),
@@ -56,6 +59,7 @@ class NotificacionModel(Base):
     canal: Mapped[str] = mapped_column(Text)
     estado: Mapped[str] = mapped_column(Text)
     destinatario: Mapped[str] = mapped_column(Text)
+    ciclo: Mapped[int | None] = mapped_column(Integer)
     programada_para: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     reclamada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     enviada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -76,3 +80,24 @@ class IntentoRegistroModel(Base):
     consultorio_id: Mapped[int] = mapped_column(ForeignKey('consultorio.id'), index=True)
     origen_hash: Mapped[str | None] = mapped_column(Text)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class BarridoEstadoModel(Base):
+    """Última ejecución iniciada; metadatos técnicos sin datos personales."""
+    __tablename__ = 'barrido_estado'
+    __table_args__ = (
+        CheckConstraint("estado IN ('en_curso','exitoso','error')", name='estado_valido'),
+        CheckConstraint("(estado = 'en_curso') = (finalizado_en IS NULL)", name='fin_consistente'),
+        CheckConstraint("finalizado_en IS NULL OR finalizado_en >= iniciado_en", name='fechas_ordenadas'),
+        CheckConstraint("reclamadas >= 0 AND enviadas >= 0 AND reintentadas >= 0 AND omitidas >= 0 AND fallidas >= 0", name='conteos_no_negativos'),
+    )
+    consultorio_id: Mapped[int] = mapped_column(ForeignKey('consultorio.id'), primary_key=True)
+    ejecucion_id: Mapped[UUID] = mapped_column(Uuid)
+    iniciado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finalizado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    estado: Mapped[str] = mapped_column(Text)
+    reclamadas: Mapped[int] = mapped_column(Integer, default=0)
+    enviadas: Mapped[int] = mapped_column(Integer, default=0)
+    reintentadas: Mapped[int] = mapped_column(Integer, default=0)
+    omitidas: Mapped[int] = mapped_column(Integer, default=0)
+    fallidas: Mapped[int] = mapped_column(Integer, default=0)

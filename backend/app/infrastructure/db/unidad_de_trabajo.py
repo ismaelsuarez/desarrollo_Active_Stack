@@ -11,6 +11,7 @@ from app.infrastructure.db.agenda_turnos import RepositorioAgendaTurnosSQL
 from app.infrastructure.db.vinculacion import RepositorioVinculacionSQL
 from app.infrastructure.db.cuentas import RepositorioCuentas
 from app.infrastructure.db.pacientes import RepositorioPacientesSQL
+from app.infrastructure.db.avisos_turno import RepositorioAvisosDeTurnoSQL
 
 from app.infrastructure.db.repositorios import (
     RepositorioPrestacionesSQL,
@@ -37,6 +38,7 @@ class UnidadDeTrabajoSQL:
         self.vinculos = RepositorioVinculacionSQL(self._sesion)
         self.cuentas = RepositorioCuentas(self._sesion)
         self.pacientes = RepositorioPacientesSQL(self._sesion)
+        self.notificaciones = RepositorioAvisosDeTurnoSQL(self._sesion)
         return self
 
     async def __aexit__(

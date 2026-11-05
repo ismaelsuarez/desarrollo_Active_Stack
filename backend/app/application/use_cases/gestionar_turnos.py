@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from app.application.errors_turnos import RechazoDeTurno
 from app.application.ports.unidad_de_trabajo import FabricaDeUnidadesDeTrabajo
 from app.application.ports.hitos import PlanificadorDeHitos, PlanificadorSinEfectos
+from app.application.ports.avisos_turno import ProgramadorAvisosDeTurno, ProgramadorAvisosStaff
 from app.domain.entities.auth import Principal, RolUsuario
 from app.domain.entities.historial import HechoDeTurno
 from app.domain.entities.turno import NuevoTurno, Turno
@@ -20,10 +21,12 @@ class GestionTurnos:
     """Operaciones de turnos con una transacción para reserva e historia."""
 
     def __init__(self, unidades: FabricaDeUnidadesDeTrabajo, reloj: Reloj,
-                 hitos: PlanificadorDeHitos | None = None) -> None:
+                 hitos: PlanificadorDeHitos | None = None,
+                 avisos: ProgramadorAvisosDeTurno | None = None) -> None:
         self._unidades = unidades
         self._reloj = reloj
         self._hitos = hitos if hitos is not None else PlanificadorSinEfectos()
+        self._avisos = avisos if avisos is not None else ProgramadorAvisosStaff()
 
     @staticmethod
     def _validar_horizonte(inicio, ahora, config):
@@ -180,4 +183,5 @@ class GestionTurnos:
                 ocurrido_en=ahora,
             ))
             await self._hitos.planificar(unidad, turno, "reprogramar", ahora)
+            await self._avisos.programar(unidad, principal, turno, "reprogramar", ahora)
         return turno

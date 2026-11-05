@@ -532,7 +532,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ## FASE 4 — Confirmación, recordatorios y liberación automática
 
 ### [C-15] `notifications-outbox-sweep`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado y archivado el 2026-11-05 en [`2026-11-05-c-15-notifications-outbox-sweep`](openspec/changes/archive/2026-11-05-c-15-notifications-outbox-sweep/); 35/35 tareas, 1454 pruebas aprobadas y especificaciones sincronizadas. [Evidencia](openspec/changes/archive/2026-11-05-c-15-notifications-outbox-sweep/evidence.md).
 - **Scope**: Barrido idempotente en la API, endpoint disparador y bandeja de notificaciones (reemplaza al worker; antes `notifications-outbox-worker`)
   - Puerto `Planificador` con dos adaptadores sobre el **mismo caso de uso** `EjecutarBarrido`: disparo externo (el endpoint de abajo) y bucle `asyncio` propio (`SWEEP_IN_PROCESS_ENABLED`, intervalo `SWEEPER_INTERVAL_SECONDS`, arrancado en el `lifespan` de FastAPI; para local o VM)
   - `POST /internal/barrido` fuera de `/api/v1`, excluido del OpenAPI público, autenticado con `SWEEP_SHARED_SECRET` comparado en tiempo constante; sin secreto configurado o con uno incorrecto no ejecuta nada; responde con el resumen del barrido (conteos de filas reclamadas, enviadas, reintentadas, omitidas y fallidas)

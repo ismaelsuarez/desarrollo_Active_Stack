@@ -11,6 +11,18 @@ from app.domain.services.auth_crypto import (
 from app.infrastructure.db.models import IntentoIngresoModel
 
 
+class PurgarIntentosIngreso:
+    def __init__(self, sesion: AsyncSession, reloj: Reloj):
+        self.sesion, self.reloj = sesion, reloj
+
+    async def ejecutar(self, consultorio_id: int | None = None) -> None:
+        statement = delete(IntentoIngresoModel).where(
+            IntentoIngresoModel.creado_en < self.reloj.ahora()-timedelta(hours=24))
+        if consultorio_id is not None:
+            statement = statement.where(IntentoIngresoModel.consultorio_id == consultorio_id)
+        await self.sesion.execute(statement)
+
+
 class LoginRateLimiter:
     """Gestor de tasa de intentos de ingreso, bloqueos por par y origen y purga (RN-09, DD-21, DD-25)."""
 
@@ -56,10 +68,7 @@ class LoginRateLimiter:
         self.sesion.add(intento)
 
         # 2. Purga oportunista al escribir de intentos con más de 24 horas
-        limite_purga = ahora - timedelta(hours=24)
-        await self.sesion.execute(
-            delete(IntentoIngresoModel).where(IntentoIngresoModel.creado_en < limite_purga)
-        )
+        await PurgarIntentosIngreso(self.sesion, self.reloj).ejecutar()
 
         # Confirmación atómica antes de evaluar el conteo de la ventana
         await self.sesion.commit()

@@ -1,5 +1,6 @@
 """Despacho durable de correo con reclamación por fila (RN-61)."""
 from datetime import datetime, time, timedelta
+from dataclasses import dataclass
 import logging
 from zoneinfo import ZoneInfo
 
@@ -10,9 +11,16 @@ from app.core.config import Settings
 from app.domain.ports.correo import EnviadorCorreo
 from app.domain.ports.reloj import Reloj
 from app.infrastructure.db.account_models import NotificacionModel, TIPOS_CUENTA
-from app.infrastructure.db.models import ConsultorioModel, UsuarioModel
+from app.infrastructure.db.models import ConsultorioModel, UsuarioModel, TurnoModel
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ResultadoDespacho:
+    reclamada: bool = False
+    estado: str | None = None
+    motivo: str = 'no_disponible'
 
 
 class DespacharNotificacion:
@@ -26,6 +34,10 @@ class DespacharNotificacion:
         self.settings = settings
 
     async def ejecutar(self, consultorio_id: int, notificacion_id: int) -> bool:
+        resultado = await self.ejecutar_detallado(consultorio_id, notificacion_id)
+        return resultado.estado == 'enviada'
+
+    async def ejecutar_detallado(self, consultorio_id: int, notificacion_id: int) -> ResultadoDespacho:
         ahora = self.reloj.ahora()
         vencida_antes = ahora - timedelta(seconds=self.settings.notification_claim_ttl_seconds)
         async with self.sesiones() as session, session.begin():
@@ -39,7 +51,19 @@ class DespacharNotificacion:
                 NotificacionModel.programada_para <= ahora,
             ).with_for_update(skip_locked=True))
             if row is None:
-                return False
+                return ResultadoDespacho()
+            if row.tipo in ('solicitud_confirmacion', 'recordatorio'):
+                estados = ('pendiente',) if row.tipo == 'solicitud_confirmacion' else ('pendiente', 'confirmado')
+                vigente = await session.scalar(select(TurnoModel.id).where(
+                    TurnoModel.id == row.turno_id,
+                    TurnoModel.consultorio_id == consultorio_id,
+                    TurnoModel.estado.in_(estados),
+                    TurnoModel.ciclo_confirmacion == row.ciclo,
+                    TurnoModel.inicio > ahora,
+                )) if row.ciclo is not None else None
+                if vigente is None:
+                    await self._cerrar_sin_envio(session, row, 'omitida')
+                    return ResultadoDespacho(estado='omitida', motivo='no_vigente')
             if row.tipo == 'vinculacion_rechazada':
                 verified = await session.scalar(select(UsuarioModel.email_verificado).where(
                     UsuarioModel.id == row.usuario_id,
@@ -47,10 +71,10 @@ class DespacharNotificacion:
                 ))
                 if not verified:
                     await self._cerrar_sin_envio(session, row, 'omitida')
-                    return False
+                    return ResultadoDespacho(estado='omitida', motivo='no_vigente')
             if row.intentos >= self.settings.notification_max_attempts:
                 await self._cerrar_sin_envio(session, row, 'fallida')
-                return False
+                return ResultadoDespacho(estado='fallida', motivo='intentos_agotados')
             consultorio = await session.get(ConsultorioModel, consultorio_id)
             zona = ZoneInfo(consultorio.zona_horaria)
             fecha = ahora.astimezone(zona).date()
@@ -67,11 +91,11 @@ class DespacharNotificacion:
             )
             total = await session.scalar(uso)
             if total >= self.settings.email_daily_limit:
-                return False
+                return ResultadoDespacho(motivo='cupo_total')
             if row.tipo in TIPOS_CUENTA:
                 cuentas = await session.scalar(uso.where(NotificacionModel.tipo.in_(TIPOS_CUENTA)))
                 if cuentas >= self.settings.email_daily_limit_account:
-                    return False
+                    return ResultadoDespacho(motivo='cupo_cuenta')
             if total + 1 >= self.settings.email_daily_limit * self.settings.email_daily_alert_ratio:
                 logger.warning('cupo_correo_alerta', extra={'consultorio_id': consultorio_id})
             row.estado = 'enviando'
@@ -101,8 +125,8 @@ class DespacharNotificacion:
                      reclamada_en=None, ultimo_error=error))
             if result.rowcount != 1:
                 logger.warning('reclamacion_perdida')
-                return False
-            return error is None
+                return ResultadoDespacho(True, motivo='reclamacion_perdida')
+            return ResultadoDespacho(True, estado, 'entregada' if error is None else 'error_transporte')
 
     @staticmethod
     async def _cerrar_sin_envio(session: AsyncSession, row: NotificacionModel,

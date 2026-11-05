@@ -4,6 +4,7 @@ from typing import Protocol, Self
 from app.application.ports.vinculacion import RepositorioVinculacion
 from app.infrastructure.db.cuentas import RepositorioCuentas
 from app.application.ports.pacientes import RepositorioPacientes
+from app.application.ports.avisos_turno import RepositorioAvisosDeTurno
 
 from app.application.ports.repositorios import (
     RepositorioPrestaciones,
@@ -25,6 +26,7 @@ class UnidadDeTrabajo(Protocol):
     vinculos: RepositorioVinculacion
     cuentas: RepositorioCuentas
     pacientes: RepositorioPacientes
+    notificaciones: RepositorioAvisosDeTurno
 
     async def __aenter__(self) -> Self: ...
 

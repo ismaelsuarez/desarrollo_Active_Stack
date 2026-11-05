@@ -21,9 +21,12 @@ class PurgarIntentosRegistro:
         self.sesion = sesion
         self.reloj = reloj
 
-    async def ejecutar(self) -> None:
-        await self.sesion.execute(delete(IntentoRegistroModel).where(
-            IntentoRegistroModel.creado_en < self.reloj.ahora() - timedelta(hours=24)))
+    async def ejecutar(self, consultorio_id: int | None = None) -> None:
+        statement = delete(IntentoRegistroModel).where(
+            IntentoRegistroModel.creado_en < self.reloj.ahora() - timedelta(hours=24))
+        if consultorio_id is not None:
+            statement = statement.where(IntentoRegistroModel.consultorio_id == consultorio_id)
+        await self.sesion.execute(statement)
 
 
 class LimitesCuentaPostgres:

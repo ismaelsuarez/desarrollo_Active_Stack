@@ -1,4 +1,6 @@
 import logging
+import asyncio
+from contextlib import suppress
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -19,6 +21,8 @@ from app.api.v1.routers.vinculacion import router as vinculacion_router
 from app.api.v1.routers.pacientes import router as pacientes_router
 from app.api.v1.routers.reactivacion import router as reactivacion_router
 from app.api.v1.routers.publico import router as publico_router
+from app.api.v1.routers.barrido import router as barrido_router
+from app.api.v1.routers.notificaciones import router as notificaciones_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
@@ -31,7 +35,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        yield
+        tarea = None
+        if configured.sweep_in_process_enabled:
+            from app.domain.ports.reloj import RelojSistema
+            from app.infrastructure.barrido import componer_barrido
+            from app.infrastructure.planificador import BucleBarrido
+            planificador = componer_barrido(app, RelojSistema(), configured)
+            tarea = asyncio.create_task(BucleBarrido(planificador,
+                configured.consultorio_activo_id, configured.sweeper_interval_seconds).ejecutar())
+            app.state.sweep_task = tarea
+        try:
+            yield
+        finally:
+            if tarea is not None:
+                tarea.cancel()
+                with suppress(asyncio.CancelledError):
+                    await tarea
+            if getattr(app.state, "sweep_owns_engine", False):
+                await app.state.engine.dispose()
 
     app = FastAPI(title='Sistema de Turnos y Agenda Odontológica', lifespan=lifespan)
 
@@ -68,4 +89,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(pacientes_router)
     app.include_router(reactivacion_router)
     app.include_router(publico_router)
+    app.include_router(barrido_router)
+    app.include_router(notificaciones_router)
     return app

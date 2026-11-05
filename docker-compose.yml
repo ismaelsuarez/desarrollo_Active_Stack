@@ -37,6 +37,10 @@ services:
   api:
     <<: *backend
     env_file: .env
+    # El bucle corre dentro de la API; no hay servicio worker separado.
+    environment:
+      SWEEP_IN_PROCESS_ENABLED: ${SWEEP_IN_PROCESS_ENABLED:-false}
+      SWEEPER_INTERVAL_SECONDS: ${SWEEPER_INTERVAL_SECONDS:-300}
     secrets: [database_url, jwt_secret_key, origin_hash_secret]
     depends_on:
       seed:
