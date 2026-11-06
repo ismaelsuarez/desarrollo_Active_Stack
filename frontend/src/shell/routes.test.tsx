@@ -13,9 +13,47 @@ vi.mock('../staff/AgendaPage', () => ({ AgendaPage: () => <p>Agenda del personal
 vi.mock('../records/RecordsPage', () => ({ RecordsPage: () => <p>Fichas autorizadas</p> }));
 vi.mock('../records/LinkingPage', () => ({ LinkingPage: () => <p>Solicitudes del personal</p> }));
 vi.mock('../admin/AdminPage', () => ({ AdminPage: () => <p>Configuración del consultorio</p> }));
+vi.mock('../notifications/NotificationsPage', () => ({ NotificationsPage: () => <p>Operación de notificaciones</p>, HealthPage: () => <p>Salud operativa</p> }));
+vi.mock('../notifications/Unconfirmed', () => ({ Unconfirmed: () => <p>Turnos sin confirmar pendientes</p> }));
+vi.mock('../notifications/Counters', () => ({ Counters: () => <p>Indicadores operativos</p> }));
 
 describe('rutas', () => {
   beforeEach(() => { mockSession.state = { loading: false, profile: null }; });
+  it('restringe notificaciones a recepción y administración y salud solo a administración', () => {
+    for (const rol of ['recepcion', 'administrador']) {
+      mockSession.state.profile = { rol, nombre_usuario: 'ana' };
+      const view = render(<MemoryRouter initialEntries={['/notificaciones']}><AppRoutes /></MemoryRouter>);
+      expect(screen.getByText('Operación de notificaciones')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Notificaciones' })).toHaveAttribute('href', '/notificaciones');
+      view.unmount();
+    }
+    for (const rol of ['profesional', 'paciente']) {
+      mockSession.state.profile = { rol, nombre_usuario: 'ana' };
+      const view = render(<MemoryRouter initialEntries={['/notificaciones']}><AppRoutes /></MemoryRouter>);
+      expect(screen.queryByText('Operación de notificaciones')).not.toBeInTheDocument();
+      view.unmount();
+    }
+    mockSession.state.profile = { rol: 'recepcion', nombre_usuario: 'ana' };
+    const denied = render(<MemoryRouter initialEntries={['/estado-operativo']}><AppRoutes /></MemoryRouter>);
+    expect(screen.queryByText('Salud operativa')).not.toBeInTheDocument();
+    denied.unmount();
+    mockSession.state.profile = { rol: 'administrador', nombre_usuario: 'ana' };
+    const admin = render(<MemoryRouter initialEntries={['/estado-operativo']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Salud operativa')).toBeInTheDocument();
+    admin.unmount();
+    mockSession.state.profile = null;
+    render(<MemoryRouter initialEntries={['/notificaciones']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Formulario ingreso')).toBeInTheDocument();
+  });
+  it('protege la lista sin confirmar para recepción y administrador', () => {
+    for (const rol of ['recepcion', 'administrador', 'profesional']) {
+      mockSession.state.profile = { rol, nombre_usuario: 'ana' };
+      const view = render(<MemoryRouter initialEntries={['/sin-confirmar']}><AppRoutes /></MemoryRouter>);
+      if (rol === 'profesional') expect(screen.queryByText('Turnos sin confirmar pendientes')).not.toBeInTheDocument();
+      else expect(screen.getByText('Turnos sin confirmar pendientes')).toBeInTheDocument();
+      view.unmount();
+    }
+  });
   it('permite configuración solamente al administrador', () => {
     mockSession.state.profile = { rol: 'administrador', nombre_usuario: 'ana' };
     const admin = render(<MemoryRouter initialEntries={['/configuracion']}><AppRoutes /></MemoryRouter>);

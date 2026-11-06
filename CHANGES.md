@@ -605,7 +605,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-18] `frontend-notifications-ops`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-11-06; `openspec/changes/archive/2026-11-06-c-18-frontend-notifications-ops`)
 - **Scope**: Pantallas operativas de Recepción y estado operativo del barrido
   - `features/notificaciones`: lista de WhatsApp pendientes (el clic abre `wa.me` en otra pestaña y permite marcar enviada) y lista de envíos de correo fallidos
   - Lista de turnos "sin confirmar" con acciones confirmar, cancelar y liberar

@@ -13,6 +13,8 @@ import { RecordsPage } from '../records/RecordsPage';
 import { LinkingPage } from '../records/LinkingPage';
 import { StaffNav } from './StaffNav';
 import { AdminPage } from '../admin/AdminPage';
+import { NotificationsPage, HealthPage } from '../notifications/NotificationsPage';
+import { Unconfirmed } from '../notifications/Unconfirmed';
 
 function Entry() {
   const { state } = useSession();
@@ -32,6 +34,9 @@ export function AppRoutes() {
     <Route path="/pacientes" element={<Guard roles={['recepcion', 'profesional', 'administrador']}><StaffNav /><RecordsPage /></Guard>} />
     <Route path="/solicitudes" element={<Guard roles={['recepcion', 'administrador']}><StaffNav /><LinkingPage /></Guard>} />
     <Route path="/configuracion/*" element={<Guard roles={['administrador']}><StaffNav /><AdminPage /></Guard>} />
+    <Route path="/notificaciones" element={<Guard roles={['recepcion', 'administrador']}><StaffNav /><NotificationsPage /></Guard>} />
+    <Route path="/sin-confirmar" element={<Guard roles={['recepcion', 'administrador']}><StaffNav /><Unconfirmed /></Guard>} />
+    <Route path="/estado-operativo" element={<Guard roles={['administrador']}><StaffNav /><HealthPage /></Guard>} />
     <Route path="/registro" element={<RegisterPage />} />
     <Route path="/recuperar-password" element={<EmailRequestPage mode="recover" />} />
     <Route path="/reenviar-verificacion" element={<EmailRequestPage mode="resend" />} />

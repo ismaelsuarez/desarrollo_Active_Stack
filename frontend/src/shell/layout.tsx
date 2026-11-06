@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../auth/provider';
 import { Button, Notice, PageTemplate } from '../components/ui';
 import './layout.css';
+import { Counters } from '../notifications/Counters';
 
 export function RoleLayout() {
   const { state, session } = useSession();
@@ -18,10 +19,13 @@ export function RoleLayout() {
         {['recepcion', 'profesional', 'administrador'].includes(rol) && <Link to="/agenda">Agenda</Link>}
         {['recepcion', 'profesional', 'administrador'].includes(rol) && <Link to="/pacientes">Pacientes</Link>}
         {['recepcion', 'administrador'].includes(rol) && <Link to="/solicitudes">Solicitudes</Link>}
+        {['recepcion', 'administrador'].includes(rol) && <Link to="/notificaciones">Notificaciones</Link>}
+        {rol === 'administrador' && <Link to="/estado-operativo">Estado operativo</Link>}
         {rol === 'administrador' && <Link to="/configuracion">Configuración</Link>}
         <Button variant="secondary" onClick={() => { void session.logout().catch(() => setLogoutError(true)); }}>Cerrar sesión</Button>
       </nav>
       <section className="role-layout__content">
+        {['recepcion', 'administrador'].includes(rol) && <Counters />}
         {rol === 'administrativo'
           ? <p>Tu cuenta está activa. Las funciones para este rol todavía no están disponibles.</p>
           : <p>Las funciones de {rol} se incorporarán más adelante.</p>}

@@ -15,7 +15,15 @@ it('ofrece solo acciones autorizadas y recarga al confirmarlas', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Confirmar turno' }));
   await waitFor(() => expect(mock.request).toHaveBeenCalledWith('/turnos/4/confirmar', { method: 'POST', body: {} }));
   expect(saved).toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Liberar turno' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Marcar ausente' })).not.toBeInTheDocument();
+});
+it('ofrece liberar en detalle únicamente cuando el servidor lo autoriza', async () => {
+  mock.request.mockImplementation((path: string) => path === '/turnos/4' ? Promise.resolve({ id: 4, estado: 'pendiente', paciente_nombre: 'Ana', paciente_apellido: 'Paz', acciones_permitidas: ['liberar'], es_sobreturno: false }) : Promise.resolve({}));
+  render(<StaffTurnoDetalle turnoId={4} onClose={() => {}} onSaved={() => {}} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Liberar turno' }));
+  await waitFor(() => expect(mock.request).toHaveBeenCalledWith('/turnos/4/liberar', { method: 'POST', body: {} }));
+  expect(screen.queryByRole('button', { name: 'Confirmar turno' })).not.toBeInTheDocument();
 });
 
 it('exige motivo y autorización explícita antes de crear sobreturno', async () => {
