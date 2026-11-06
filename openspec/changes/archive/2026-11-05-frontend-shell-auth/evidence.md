@@ -42,3 +42,23 @@ El 2026-11-05 se comparó la implementación con los mockups aprobados y el sist
 - **No inspeccionados visualmente:** estados de error de campo y credenciales, correo sin verificar, límite de intentos, servicio demorado, aviso no disponible o actualizado, enlaces válidos/usados/vencidos, resultado de cambio de contraseña/contacto, acceso denegado por rol y cierre no confirmado. Esos estados requieren revisión adicional en navegador; las pruebas automatizadas de comportamiento no sustituyen esa comparación visual.
 
 Resultado: **diferencias / revisión visual parcial**. No se afirma coincidencia completa con todos los mockups ni verificación integral de accesibilidad.
+
+## Revisión complementaria — 2026-11-05
+
+Se levantó Vite temporal y se usó Edge headless a 1440×900 y 390×844. Se interceptaron respuestas de API para provocar estados excepcionales; esto comprueba la presentación y no sustituye la integración real de §7.2. Las capturas están en `mockups/verify/*-extra.png`. No hubo desborde horizontal en los estados capturados ni excepciones de JavaScript; en el segundo recorrido de ingreso la consola registró los 401/403/429 simulados esperados. No se hizo una auditoría integral de consola o accesibilidad para todos los estados.
+
+- Se capturaron credenciales incorrectas, correo sin verificar, límite de intentos, campo inválido, aviso no disponible/actualizado, servicio demorado, verificación exitosa o vencida, confirmación exitosa, restablecimiento vencido, resultados de contraseña y contacto, acceso restringido y cierre no confirmado en ambos tamaños. Se abrieron e inspeccionaron individualmente las 34 capturas de esos 17 estados en ambos tamaños.
+- **Corregido, mayor — ingreso, ambos tamaños:** tras respuestas 401/403/429 el formulario se desmontaba durante login y perdía la alerta. Reproducción: ingresar credenciales con API que devuelve cualquiera de esos códigos. Ahora el formulario permanece montado y muestra la alerta; se abrieron capturas de 403 móvil y 429 escritorio y se capturó 401 en ambos tamaños.
+- **Corregido, menor — acceso restringido, ambos tamaños:** el título empezaba en x=0 por falta de plantilla. Se usó la plantilla compartida; la prueba visual midió 16 px en móvil y 120 px en escritorio, y ambas capturas fueron inspeccionadas.
+- **Corregido, menor — registro mientras carga el aviso:** mostraba “El aviso no está disponible” y recarga durante una petición aún en curso. Ahora indica que está cargando; capturas `servicio-demorado-*-extra.png` reinspeccionadas en ambos tamaños.
+- Sigue pendiente la diferencia menor del favicon 404. No se capturaron ni inspeccionaron individualmente restablecimiento exitoso, confirmación con token inválido/usado/vencido, recuperación/reenvío exitoso o fallido, contraseña y contacto con otros códigos de error, ni estados de carga del ingreso y enlaces. El navegador se ejecutó con respuestas simuladas para esta revisión; no se afirma una comparación visual integral ni comportamiento real de enlaces de un solo uso.
+
+### Evidencia TDD de correcciones
+
+| Cambio | Capa | Línea de base | RED | GREEN y triangulación | Refactor |
+|---|---|---|---|---|---|
+| Alertas de ingreso | React integrado con proveedor y rutas (`frontend/src/shell/login-integration.test.tsx`) | 38/38 en cuatro archivos afectados | 401, 403 y 429 sin alerta, 3 fallos | 3 casos pasan; 41/41 en cinco archivos, 85/85 en suite completa | No necesario |
+| Carga del aviso | React (`frontend/src/pages/public.test.tsx`) | 21/21 antes del ajuste | Error y recarga aparecían durante la espera | Carga inicial, demora y fallo real cubiertos; 22/22 | No necesario |
+| Espaciado de acceso restringido | Navegador Edge, medición geométrica temporal | 85/85 suite frontend antes de la modificación | 390 px: margen izquierdo 0 px | 390 px: 16 px; 1440 px: 120 px; 11/11 pruebas relacionadas | Reutiliza plantilla compartida |
+
+Después de las tres correcciones pasaron 86/86 pruebas frontend, typecheck y build.

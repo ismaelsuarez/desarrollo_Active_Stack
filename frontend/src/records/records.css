@@ -1,0 +1,12 @@
+.records-page { max-width: 72rem; margin: 0 auto; padding: clamp(1rem, 4vw, 2rem); color: #19342f; }
+.records-page h1 { font-size: clamp(1.75rem, 4vw, 2.3rem); }
+.records-page article, .records-page section, .records-page form { background: #fff; border: 1px solid #c8d7d0; border-radius: 1rem; padding: 1.25rem; margin: 1rem 0; }
+.records-page form { display: flex; flex-wrap: wrap; gap: .8rem; align-items: end; }
+.records-page label { display: grid; gap: .35rem; font-weight: 600; }
+.records-page input, .records-page select { box-sizing: border-box; max-width: 100%; padding: .65rem; border: 1px solid #8ba69c; border-radius: .5rem; font: inherit; }
+.records-page button { padding: .65rem 1rem; margin: .25rem; color: #125e55; background: #fff; border: 1px solid #8ba69c; border-radius: .6rem; font: inherit; cursor: pointer; }
+.records-page button:hover { background: #e2f0eb; }
+.records-page button:focus-visible, .records-page input:focus-visible, .records-page select:focus-visible { outline: 3px solid #2a9d8f; outline-offset: 2px; }
+.records-page button:disabled { opacity: .55; cursor: not-allowed; }
+.records-page [role="alert"] { color: #8c2d28; }
+@media (max-width: 40rem) { .records-page form label { flex: 1 1 100%; } .records-page form input { width: 100%; } }

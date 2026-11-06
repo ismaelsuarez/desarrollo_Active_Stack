@@ -4,6 +4,38 @@ import { ApiError, request } from './client';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('cliente HTTP', () => {
+  it('conserva alternativas válidas de conflicto de horario sin guardar el resto del cuerpo', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: {
+      motivo: 'horario ocupado', alternativas: [{ inicio: '2026-11-12T09:30:00-03:00', fin: '2026-11-12T10:00:00-03:00', secreto: 'privado' }], secreto: 'privado',
+    } }), { status: 409 })));
+    const error = await request('/turnos', { method: 'POST', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 409, bookingDetail: { kind: 'occupied', alternatives: [{ inicio: '2026-11-12T09:30:00-03:00', fin: '2026-11-12T10:00:00-03:00' }] } });
+    expect(JSON.stringify(error)).not.toContain('privado');
+  });
+  it('descarta alternativas malformadas y reconoce una lista vacía', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: {
+      motivo: 'horario ocupado', alternativas: [{ inicio: 'dato privado', fin: 'incorrecto' }, { inicio: '2026-11-12T09:30:00-03:00' }],
+    } }), { status: 409 })));
+    const error = await request('/turnos', { method: 'POST', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ bookingDetail: { kind: 'occupied', alternatives: [] } });
+    expect(JSON.stringify(error)).not.toContain('dato privado');
+  });
+  it('identifica el límite de turnos sin conservar texto arbitrario', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'Máximo de 2 turnos futuros activos' }), { status: 409 })));
+    const error = await request('/turnos', { method: 'POST', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ bookingDetail: { kind: 'limit', maximum: 2 } });
+  });
+  it('identifica el rechazo fuera de plazo sin retener el teléfono del mensaje', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'Fuera de plazo. Comuníquese con el consultorio: 12345678' }), { status: 403 })));
+    const error = await request('/turnos/1', { method: 'PATCH', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ bookingDetail: { kind: 'deadline' } });
+    expect(JSON.stringify(error)).not.toContain('12345678');
+  });
+  it('no atribuye fuera de plazo a un 403 arbitrario', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'no permitido' }), { status: 403 })));
+    const error = await request('/turnos/1', { method: 'PATCH', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 403, bookingDetail: undefined });
+  });
   it('envía credenciales, autorización y cuerpo a la ruta relativa', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     vi.stubGlobal('fetch', fetcher);

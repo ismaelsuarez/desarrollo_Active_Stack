@@ -429,7 +429,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-10] `overbooking-authorization`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado y archivado el 2026-11-06 en [`2026-11-06-c-10-overbooking-authorization`](openspec/changes/archive/2026-11-06-c-10-overbooking-authorization/); 6/6 tareas y cinco requisitos sincronizados. La suite completa inicial tuvo fallos de entorno y expectativas de migración luego verificadas por separado; cuatro pruebas de entorno permanecen sin aprobar. Ver [evidencia](openspec/changes/archive/2026-11-06-c-10-overbooking-authorization/evidence.md).
 - **Scope**: Sobreturnos con autorización registrada
   - Migración `autorizacion_sobreturno` (`UNIQUE (turno_id)`, respuesta del profesional `sin_respuesta`/`aprobado`/`rechazado`)
   - `POST /api/v1/sobreturnos` — solo Recepción o Administrador; recibe los datos del turno, el motivo y la autorización explícita, y crea en una transacción el turno con `es_sobreturno = true` y su `autorizacion_sobreturno` (DD-30); si el horario no se superpone con ningún turno activo del profesional responde 422 e indica crear un turno normal; `es_sobreturno = true` queda fuera de la restricción de exclusión; respeta horario semanal y bloqueos (RN-43); los pacientes nunca lo generan
@@ -454,7 +454,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 > Agente C trabaja en estas pantallas mientras los agentes A y B avanzan en el backend. El flujo completo de reserva y gestión funciona de punta a punta al terminar C-14 y C-13.
 
 ### [C-11] `frontend-shell-auth`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado en `openspec/changes/archive/2026-11-05-frontend-shell-auth/`; revisión visual parcial y favicon pendientes documentados en su evidencia.
 - **Scope**: Esqueleto del frontend y pantallas de cuenta
   - `src/app` con enrutado, proveedores y guardas por rol; layouts por rol (paciente, recepción, profesional, administrador); las rutas de los enlaces de correo (`/verificar-email`, confirmación de turno) las resuelve el router de la SPA
   - `src/services`: cliente HTTP con `VITE_API_BASE_URL` (variable de compilación pública, relativa: `/api/v1`; en desarrollo `vite.config.ts` reenvía `/api` a la API con `server.proxy`, hacia el destino de `VITE_DEV_PROXY_TARGET` (variable solo de desarrollo, no entra en el build: `http://api:8000` dentro de Compose y `http://localhost:8000` fuera de Compose), y en producción la API sirve el build, DD-26), token de acceso en memoria y renovación por cookie `HttpOnly` con `credentials: 'include'`, manejo de 401/403/404; reintento acotado con aviso en las lecturas cuando la API está dormida y responde lento o con error de arranque
@@ -490,7 +490,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-13] `frontend-staff-agenda`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado en [`2026-11-06-c-13-frontend-staff-agenda`](openspec/changes/archive/2026-11-06-c-13-frontend-staff-agenda/), 12/12 tareas y nueve requisitos sincronizados. Verificación: 113 pruebas PostgreSQL y 173 frontend aprobadas, typecheck y build. La revisión visual de la implementación, consola, red y teclado queda pendiente mediante la [guía manual](openspec/changes/archive/2026-11-06-c-13-frontend-staff-agenda/mockups/verify/README.md); no se generaron capturas ni se inspeccionó el render. Ver [evidencia](openspec/changes/archive/2026-11-06-c-13-frontend-staff-agenda/evidence.md).
 - **Scope**: Agenda y gestión de turnos para Recepción y Profesional
   - `features/agenda`: vista diaria por profesional con estado de cada turno y sobreturnos marcados; el Profesional ve solo la propia; el administrador con agenda propia tiene un filtro "mi agenda" (DD-24)
   - `features/turnos`: dar turno (buscar o crear ficha en el momento), mover, cancelar con motivo, confirmar por el paciente, marcar atendido y ausente
@@ -509,7 +509,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-14] `frontend-public-booking`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado en `openspec/changes/archive/2026-11-05-c-14-frontend-public-booking/`; revisión visual omitida por decisión del usuario y limitaciones documentadas en la evidencia.
 - **Scope**: Enlace público de reserva y autogestión del paciente
   - `features/reserva`: elegir prestación y profesional, ver disponibilidad sin ingresar, reservar (exige cuenta verificada: lleva a registro o ingreso)
   - Mis turnos: estado, fecha, profesional y prestación; confirmar, cancelar y reprogramar; pasadas las 24 h se muestra el teléfono del consultorio en lugar de la acción

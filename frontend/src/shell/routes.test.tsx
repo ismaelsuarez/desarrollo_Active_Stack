@@ -7,9 +7,49 @@ const mockSession = vi.hoisted(() => ({ state: { loading: false, profile: null a
 vi.mock('../auth/provider', () => ({ useSession: () => mockSession }));
 vi.mock('../pages/public', () => ({ LoginPage: () => <p>Formulario ingreso</p>, RegisterPage: () => <p>Registro</p>, EmailRequestPage: () => <p>Correo</p>, TokenActionPage: () => <p>Enlace</p>, ResetPasswordPage: () => <p>Restablecer</p> }));
 vi.mock('../account/AccountPage', () => ({ AccountPage: () => <p>Cuenta privada</p> }));
+vi.mock('../booking/BookingPage', () => ({ BookingPage: () => <p>Reserva pública</p> }));
+vi.mock('../booking/AppointmentsPage', () => ({ AppointmentsPage: () => <p>Turnos privados</p> }));
+vi.mock('../staff/AgendaPage', () => ({ AgendaPage: () => <p>Agenda del personal</p> }));
+vi.mock('../records/RecordsPage', () => ({ RecordsPage: () => <p>Fichas autorizadas</p> }));
+vi.mock('../records/LinkingPage', () => ({ LinkingPage: () => <p>Solicitudes del personal</p> }));
 
 describe('rutas', () => {
   beforeEach(() => { mockSession.state = { loading: false, profile: null }; });
+  it('restringe agenda al personal autorizado', () => {
+    mockSession.state.profile = { rol: 'profesional', nombre_usuario: 'maria' };
+    const view = render(<MemoryRouter initialEntries={['/agenda']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Agenda del personal')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pacientes' })).toHaveAttribute('href', '/pacientes');
+    expect(screen.queryByRole('link', { name: 'Solicitudes' })).not.toBeInTheDocument();
+    view.unmount();
+    mockSession.state.profile = { rol: 'paciente', nombre_usuario: 'maria' };
+    render(<MemoryRouter initialEntries={['/agenda']}><AppRoutes /></MemoryRouter>);
+    expect(screen.queryByText('Agenda del personal')).not.toBeInTheDocument();
+  });
+  it('restringe solicitudes a recepción y administración y fichas al personal', () => {
+    mockSession.state.profile = { rol: 'profesional', nombre_usuario: 'maria' };
+    const view = render(<MemoryRouter initialEntries={['/pacientes']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Fichas autorizadas')).toBeInTheDocument();
+    view.unmount();
+    const denied = render(<MemoryRouter initialEntries={['/solicitudes']}><AppRoutes /></MemoryRouter>);
+    expect(screen.queryByText('Solicitudes del personal')).not.toBeInTheDocument();
+    denied.unmount();
+    mockSession.state.profile = { rol: 'recepcion', nombre_usuario: 'maria' };
+    render(<MemoryRouter initialEntries={['/solicitudes']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Solicitudes del personal')).toBeInTheDocument();
+  });
+  it('abre la reserva pública sin sesión', () => {
+    render(<MemoryRouter initialEntries={['/reservar']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Reserva pública')).toBeInTheDocument();
+  });
+  it('protege la lista de turnos y permite el acceso al paciente', () => {
+    const view = render(<MemoryRouter initialEntries={['/mis-turnos']}><AppRoutes /></MemoryRouter>);
+    expect(screen.queryByText('Turnos privados')).not.toBeInTheDocument();
+    view.unmount();
+    mockSession.state.profile = { rol: 'paciente', nombre_usuario: 'maria' };
+    render(<MemoryRouter initialEntries={['/mis-turnos']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Turnos privados')).toBeInTheDocument();
+  });
   it('resuelve rutas públicas directas sin sesión', () => {
     render(<MemoryRouter initialEntries={['/restablecer']}><AppRoutes /></MemoryRouter>);
     expect(screen.getByText('Restablecer')).toBeInTheDocument();

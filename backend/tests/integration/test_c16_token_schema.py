@@ -96,7 +96,7 @@ async def test_migration_downgrade_preflight_keeps_accountless_token_and_schema(
                 alembic(url, "downgrade", "0009_notifications_outbox_sweep")
             assert "tokens de confirmación sin cuenta" in error.value.stderr
             async with engine.connect() as conexion:
-                assert await conexion.scalar(text("SELECT version_num FROM alembic_version")) == "0010_confirmation_tokens"
+                assert await conexion.scalar(text("SELECT version_num FROM alembic_version")) == "0011_overbooking_authorization"
                 assert await conexion.scalar(text("SELECT token_hash FROM token_usuario")) == "sin-cuenta"
                 assert await conexion.scalar(text("SELECT is_nullable FROM information_schema.columns WHERE table_name='token_usuario' AND column_name='usuario_id'")) == "YES"
                 assert await conexion.scalar(text("SELECT count(*) FROM pg_constraint WHERE conname='ck_token_usuario_proposito_coherente'")) == 1
@@ -140,7 +140,7 @@ async def test_migration_round_trip_preserves_account_tokens_and_turn_constraint
     from tests.integration.conftest import BACKEND
     from app.infrastructure.db.models import RESTRICCION_SIN_SOLAPAMIENTO
 
-    assert ScriptDirectory.from_config(Config(BACKEND / "alembic.ini")).get_heads() == ["0010_confirmation_tokens"]
+    assert ScriptDirectory.from_config(Config(BACKEND / "alembic.ini")).get_heads() == ["0011_overbooking_authorization"]
     async with base_temporal() as url:
         alembic(url, "upgrade", "0009_notifications_outbox_sweep")
         engine = create_async_engine(url, poolclass=NullPool)

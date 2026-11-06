@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
 from app.api.deps import get_reloj, get_settings, requiere_rol
-from app.api.v1.schemas.turno import ReprogramacionEntrada, ReprogramacionOnlineEntrada, TurnoEntrada, TurnoOnlineEntrada, TurnoRespuesta
+from app.api.v1.schemas.turno import ReprogramacionEntrada, ReprogramacionOnlineEntrada, RespuestaSobreturnoEntrada, SobreturnoEntrada, TurnoEntrada, TurnoOnlineEntrada, TurnoRespuesta
 from app.api.v1.routers.acciones_turnos import router as acciones_router
 from app.application.use_cases.gestionar_turnos import GestionTurnos
 from app.domain.entities.auth import Principal, RolUsuario
@@ -19,6 +19,7 @@ from app.domain.errors_turnos import ConflictoDeTurno
 router = APIRouter(prefix="/api/v1", tags=["Turnos"])
 Personal = Annotated[Principal, Depends(requiere_rol(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION))]
 Reservante = Annotated[Principal, Depends(requiere_rol(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCION, RolUsuario.PACIENTE))]
+Respondiente = Annotated[Principal, Depends(requiere_rol(RolUsuario.ADMINISTRADOR, RolUsuario.PROFESIONAL))]
 
 
 def get_gestion(request: Request, reloj: Reloj = Depends(get_reloj),
@@ -68,6 +69,18 @@ async def crear_turno(payload: TurnoEntrada | TurnoOnlineEntrada, principal: Res
 
 
 router.include_router(acciones_router)
+
+
+@router.post("/sobreturnos", response_model=TurnoRespuesta, status_code=201)
+async def crear_sobreturno(payload: SobreturnoEntrada, principal: Personal, gestion: Gestion):
+    datos = payload.model_dump(exclude={"autorizado", "motivo"})
+    return await gestion.crear(principal, **datos, motivo_sobreturno=payload.motivo.strip())
+
+
+@router.post("/sobreturnos/{turno_id}/respuesta-profesional")
+async def responder_sobreturno(turno_id: int, payload: RespuestaSobreturnoEntrada,
+                               principal: Respondiente, gestion: Gestion):
+    return await gestion.responder_sobreturno(principal, turno_id, payload.respuesta, payload.comentario)
 
 
 @router.patch("/turnos/{turno_id}", response_model=TurnoRespuesta,

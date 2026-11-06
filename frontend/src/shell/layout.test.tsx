@@ -14,5 +14,7 @@ describe('navegación de cuenta', () => {
     expect(screen.getByRole('heading', { name: /hola, maria/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Mi cuenta' })).toHaveAttribute('href', '/cuenta');
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Reservar turno' })).toHaveAttribute('href', '/reservar');
+    expect(screen.getByRole('link', { name: 'Mis turnos' })).toHaveAttribute('href', '/mis-turnos');
   });
 });

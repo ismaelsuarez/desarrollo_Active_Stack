@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.domain.value_objects.estado_turno import EstadoTurno
 
 
-class TurnoOperativo(BaseModel):
+class TurnoBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -23,7 +23,24 @@ class TurnoOperativo(BaseModel):
     marcado_sin_confirmar_en: datetime | None
 
 
-class TurnoPaciente(TurnoOperativo):
+class AutorizacionOperativa(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    autorizado_por_id: int
+    autorizado_en: datetime
+    motivo: str
+    avisado_en: datetime
+    respuesta: str | None
+    respondido_en: datetime | None
+    respondido_por_id: int | None
+    comentario: str | None
+
+
+class TurnoOperativo(TurnoBase):
+    autorizacion_sobreturno: AutorizacionOperativa | None = None
+    acciones_permitidas: list[str]
+
+
+class TurnoPaciente(TurnoBase):
     acciones_permitidas: list[str]
 
 

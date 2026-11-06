@@ -35,6 +35,23 @@ class GestionTurnos:
         if inicio <= ahora or inicio.astimezone(zona).date() > ahora.astimezone(zona).date() + timedelta(days=config.dias_anticipacion_maxima):
             raise RechazoDeTurno(422, "El inicio debe ser futuro y estar dentro del horizonte de reserva")
 
+    async def responder_sobreturno(self, principal, turno_id, respuesta, comentario):
+        ahora = self._reloj.ahora()
+        async with self._unidades() as unidad:
+            turno = await unidad.turnos.obtener(principal.consultorio_id, turno_id)
+            if turno is None:
+                raise RechazoDeTurno(404, "Turno no encontrado")
+            vinculado = await unidad.agenda.profesional_vinculado(principal.consultorio_id, principal.usuario_id)
+            decision = autorizar(principal, Accion.SOBRETURNO_RESPONDER, turno,
+                                 ContextoAcceso(ahora=ahora, profesional_vinculado_id=vinculado))
+            if not decision.permitido:
+                raise RechazoDeTurno(decision.codigo_http, decision.motivo)
+            autorizacion = await unidad.sobreturnos.obtener(principal.consultorio_id, turno_id)
+            if autorizacion is None:
+                raise RechazoDeTurno(404, "Autorización no encontrada")
+            await unidad.sobreturnos.responder(autorizacion, respuesta, principal.usuario_id, ahora, comentario)
+        return {"respuesta": respuesta, "respondido_en": ahora, "comentario": comentario}
+
     async def alternativas(self, principal, inicio, profesional_id=None, prestacion_id=None, turno_id=None):
         """Lectura nueva, invocada sólo después del rollback de una ocupación."""
         from app.application.use_cases.consultar_disponibilidad import ConsultarDisponibilidad
@@ -57,7 +74,7 @@ class GestionTurnos:
 
     async def crear(self, principal: Principal, paciente_id: int | None, profesional_id: int,
                     prestacion_id: int, inicio: datetime, duracion_min: int | None = None,
-                    confirmar: bool = False) -> Turno:
+                    confirmar: bool = False, motivo_sobreturno: str | None = None) -> Turno:
         ahora = self._reloj.ahora()
         async with self._unidades() as unidad:
             ficha = None
@@ -75,7 +92,8 @@ class GestionTurnos:
             paciente = await unidad.agenda.obtener_paciente(principal.consultorio_id, paciente_id)
             if any(recurso is None for recurso in (profesional, prestacion, config, paciente)):
                 raise RechazoDeTurno(404, "Recurso no encontrado")
-            decision = autorizar(principal, Accion.TURNO_CREAR, config, ContextoAcceso(
+            accion = Accion.SOBRETURNO_AUTORIZAR if motivo_sobreturno is not None else Accion.TURNO_CREAR
+            decision = autorizar(principal, accion, config, ContextoAcceso(
                 ahora=ahora, ficha_vigente_id=ficha.id if ficha is not None else None,
                 correo_verificado=correo_verificado))
             if not decision.permitido:
@@ -104,7 +122,10 @@ class GestionTurnos:
                                   config.minutos_granularidad, config.zona_horaria)
             except ValueError as error:
                 raise RechazoDeTurno(422, str(error)) from None
-            if await unidad.turnos.hay_solapamiento(principal.consultorio_id, profesional_id, inicio, fin):
+            ocupado = await unidad.turnos.hay_solapamiento(principal.consultorio_id, profesional_id, inicio, fin)
+            if motivo_sobreturno is not None and not ocupado:
+                raise RechazoDeTurno(422, "El horario está libre; cree un turno normal")
+            if motivo_sobreturno is None and ocupado:
                 raise HorarioOcupado()
             estado = estado_inicial(inicio, ahora, config.horas_confirmacion, confirmar)
             turno = await unidad.turnos.guardar(NuevoTurno(
@@ -112,13 +133,16 @@ class GestionTurnos:
                 profesional_id=profesional.id, box_id=profesional.box_id,
                 prestacion_id=prestacion.id, inicio=inicio,
                 fin=fin,
-                estado=estado, origen="online" if principal.rol == RolUsuario.PACIENTE else "recepcion", creado_por_id=principal.usuario_id,
+                estado=estado, es_sobreturno=motivo_sobreturno is not None, origen="online" if principal.rol == RolUsuario.PACIENTE else "recepcion", creado_por_id=principal.usuario_id,
                 creado_en=ahora, actualizado_en=ahora,
                 confirmado_en=ahora if estado.value == "confirmado" else None,
             ))
+            if motivo_sobreturno is not None:
+                await unidad.sobreturnos.agregar(principal.consultorio_id, turno.id,
+                                                principal.usuario_id, ahora, motivo_sobreturno)
             await unidad.historial.agregar(HechoDeTurno(
                 consultorio_id=principal.consultorio_id, turno_id=turno.id,
-                usuario_id=principal.usuario_id, accion="crear", estado_anterior=None,
+                usuario_id=principal.usuario_id, accion="sobreturno" if motivo_sobreturno is not None else "crear", estado_anterior=None,
                 estado_nuevo=estado, detalle={"motivo": "confirmacion_manual" if confirmar else "RN-29" if estado.value == "confirmado" else "RN-23"},
                 ocurrido_en=ahora,
             ))

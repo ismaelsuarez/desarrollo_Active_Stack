@@ -285,6 +285,7 @@ class PrestacionModel(Base):
 class TurnoModel(Base):
     __tablename__ = "turno"
     __table_args__ = (
+        UniqueConstraint("consultorio_id", "id", name="uq_turno_consultorio_id"),
         CheckConstraint("inicio < fin", name="turno_inicio_antes_de_fin"),
         CheckConstraint("origen IN ('online','recepcion')", name="origen_valido"),
         CheckConstraint("ciclo_confirmacion >= 1", name="ciclo_positivo"),
@@ -339,6 +340,30 @@ class TurnoModel(Base):
     creado_por_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuario.id"))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     actualizado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AutorizacionSobreturnoModel(Base):
+    __tablename__ = "autorizacion_sobreturno"
+    __table_args__ = (
+        UniqueConstraint("turno_id", name="uq_autorizacion_sobreturno_turno"),
+        CheckConstraint("length(btrim(motivo)) > 0", name="motivo_no_vacio"),
+        CheckConstraint("respuesta IN ('aprobado', 'rechazado')", name="respuesta_valida"),
+        ForeignKeyConstraint(["consultorio_id", "turno_id"], ["turno.consultorio_id", "turno.id"]),
+        ForeignKeyConstraint(["consultorio_id", "autorizado_por_id"], ["usuario.consultorio_id", "usuario.id"]),
+        ForeignKeyConstraint(["consultorio_id", "respondido_por_id"], ["usuario.consultorio_id", "usuario.id"]),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    consultorio_id: Mapped[int] = mapped_column(BigInteger)
+    turno_id: Mapped[int] = mapped_column(BigInteger)
+    autorizado_por_id: Mapped[int] = mapped_column(BigInteger)
+    autorizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    motivo: Mapped[str] = mapped_column(Text)
+    avisado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    respuesta: Mapped[str | None] = mapped_column(Text)
+    respondido_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    respondido_por_id: Mapped[int | None] = mapped_column(BigInteger)
+    comentario: Mapped[str | None] = mapped_column(Text)
 
 
 class TurnoHistorialModel(Base):

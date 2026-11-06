@@ -29,6 +29,14 @@ describe('cuentas públicas', () => {
     });
     show(<RegisterPage />);
     expect(await screen.findByText(/servicio está demorando/i)).toBeInTheDocument();
+    expect(screen.queryByText('El aviso no está disponible.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Volver a cargar' })).not.toBeInTheDocument();
+  });
+  it('no presenta un error mientras comienza a cargar el aviso', () => {
+    mocks.request.mockReturnValue(new Promise(() => undefined));
+    show(<RegisterPage />);
+    expect(screen.queryByText('El aviso no está disponible.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Volver a cargar' })).not.toBeInTheDocument();
   });
   it('solicita aviso y no permite registrarse sin aceptación', async () => {
     mocks.request.mockResolvedValueOnce({ texto: 'Aviso vigente', version: 'v1' });
@@ -128,6 +136,13 @@ describe('cuentas públicas', () => {
     expect(await screen.findByText('Turno confirmado')).toBeInTheDocument();
     expect(mocks.request).toHaveBeenCalledWith('/turnos/confirmar-por-enlace', { method: 'POST', body: { token: 'otro' } });
     expect(window.location.hash).toBe('');
+  });
+  it('ofrece reservar de nuevo si el turno del enlace ya no admite confirmación', async () => {
+    window.history.replaceState(null, '', '/confirmar-turno#token=otro'); mocks.request.mockRejectedValueOnce(new ApiError(409));
+    show(<TokenActionPage action="confirm" />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/ya no se puede confirmar/i);
+    expect(screen.getByRole('link', { name: /reservar de nuevo/i })).toHaveAttribute('href', '/reservar');
+    expect(mocks.request).toHaveBeenCalledTimes(1);
   });
 
   it('informa enlace rechazado sin repetir la operación', async () => {

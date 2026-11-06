@@ -1,5 +1,8 @@
+type BookingDetail = { kind: 'occupied'; alternatives: { inicio: string; fin: string }[] } | { kind: 'limit'; maximum: number } | { kind: 'deadline' };
+const isInstant = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value) && Number.isFinite(Date.parse(value));
+
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly invalidFields: string[] = []) {
+  constructor(public readonly status: number, public readonly invalidFields: string[] = [], public readonly bookingDetail?: BookingDetail) {
     super(`Error HTTP ${status}`);
     this.name = 'ApiError';
   }
@@ -50,6 +53,23 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   if (!response) throw new Error('Servicio no disponible');
   if (!response.ok) {
     const fields: string[] = [];
+    if (response.status === 403 && /^\/turnos(?:\/|$)/.test(path)) {
+      const payload: unknown = await response.json().catch(() => undefined);
+      if (payload && typeof payload === 'object' && 'detail' in payload && typeof payload.detail === 'string' && payload.detail.startsWith('Fuera de plazo. Comuníquese con el consultorio: ')) {
+        throw new ApiError(response.status, fields, { kind: 'deadline' });
+      }
+    }
+    if (response.status === 409 && path.startsWith('/turnos')) {
+      const payload: unknown = await response.json().catch(() => undefined);
+      if (payload && typeof payload === 'object' && 'detail' in payload && payload.detail && typeof payload.detail === 'object' && 'motivo' in payload.detail && payload.detail.motivo === 'horario ocupado' && 'alternativas' in payload.detail && Array.isArray(payload.detail.alternativas)) {
+        const alternatives = payload.detail.alternativas.slice(0, 3).flatMap((value: unknown) => value && typeof value === 'object' && 'inicio' in value && 'fin' in value && isInstant(value.inicio) && isInstant(value.fin) && Date.parse(value.inicio) < Date.parse(value.fin) ? [{ inicio: value.inicio, fin: value.fin }] : []);
+        throw new ApiError(response.status, fields, { kind: 'occupied', alternatives });
+      }
+      if (payload && typeof payload === 'object' && 'detail' in payload && typeof payload.detail === 'string') {
+        const match = /^Máximo de (\d{1,4}) turnos futuros activos$/.exec(payload.detail);
+        if (match) throw new ApiError(response.status, fields, { kind: 'limit', maximum: Number(match[1]) });
+      }
+    }
     if (response.status === 422) {
       const payload: unknown = await response.json().catch(() => undefined);
       if (payload && typeof payload === 'object' && 'detail' in payload && Array.isArray(payload.detail)) {

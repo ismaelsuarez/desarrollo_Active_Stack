@@ -135,7 +135,7 @@ async def test_migraciones_de_cuenta_reversibles_y_un_solo_head():
     from sqlalchemy.pool import NullPool
     from tests.integration.conftest import BACKEND, alembic, base_temporal
     script = ScriptDirectory.from_config(Config(str(BACKEND / 'alembic.ini')))
-    assert script.get_heads() == ['0010_confirmation_tokens']
+    assert script.get_heads() == ['0011_overbooking_authorization']
     async with base_temporal() as url:
         alembic(url, 'upgrade', 'head')
         engine = create_async_engine(url, poolclass=NullPool)

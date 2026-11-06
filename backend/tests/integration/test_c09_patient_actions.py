@@ -90,7 +90,13 @@ async def test_acciones_permitidas_concuerdan_con_estado_y_reloj(cliente, escena
     assert listado.json()[0]["acciones_permitidas"] == acciones
     personal = await cliente.get(f"/api/v1/turnos/{tid}", headers=escenario.headers())
     assert personal.status_code == 200
-    assert "acciones_permitidas" not in personal.json()
+    esperadas_personal = {
+        "pendiente": ["confirmar", "cancelar", "reprogramar"],
+        "confirmado": ["cancelar", "reprogramar"],
+        "atendido": [], "ausente": ["corregir_ausente"],
+        "liberado": [], "cancelado": [],
+    }
+    assert personal.json()["acciones_permitidas"] == esperadas_personal[estado]
     assert personal.json()["marcado_sin_confirmar_en"] is None
 
 

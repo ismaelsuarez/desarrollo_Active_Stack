@@ -6,6 +6,12 @@ import { LoginPage, RegisterPage, EmailRequestPage, TokenActionPage, ResetPasswo
 import { AccountPage } from '../account/AccountPage';
 import { RoleLayout } from './layout';
 import { PageTemplate } from '../components/ui';
+import { BookingPage } from '../booking/BookingPage';
+import { AppointmentsPage } from '../booking/AppointmentsPage';
+import { AgendaPage } from '../staff/AgendaPage';
+import { RecordsPage } from '../records/RecordsPage';
+import { LinkingPage } from '../records/LinkingPage';
+import { StaffNav } from './StaffNav';
 
 function Entry() {
   const { state } = useSession();
@@ -19,6 +25,11 @@ export function AppRoutes() {
   return <Routes>
     <Route path="/" element={<Entry />} />
     <Route path="/ingresar" element={<Entry />} />
+    <Route path="/reservar" element={<BookingPage />} />
+    <Route path="/mis-turnos" element={<Guard roles={['paciente']}><AppointmentsPage /></Guard>} />
+    <Route path="/agenda" element={<Guard roles={['recepcion', 'profesional', 'administrador']}><StaffNav /><AgendaPage /></Guard>} />
+    <Route path="/pacientes" element={<Guard roles={['recepcion', 'profesional', 'administrador']}><StaffNav /><RecordsPage /></Guard>} />
+    <Route path="/solicitudes" element={<Guard roles={['recepcion', 'administrador']}><StaffNav /><LinkingPage /></Guard>} />
     <Route path="/registro" element={<RegisterPage />} />
     <Route path="/recuperar-password" element={<EmailRequestPage mode="recover" />} />
     <Route path="/reenviar-verificacion" element={<EmailRequestPage mode="resend" />} />

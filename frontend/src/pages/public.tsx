@@ -51,9 +51,10 @@ export function RegisterPage() {
   const [invalidFields, setInvalidFields] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [waiting, setWaiting] = useState(false);
+  const [loadingPrivacy, setLoadingPrivacy] = useState(true);
   async function loadPrivacy() {
-    setPrivacy(null); setAccepted(false); setWaiting(false);
-    try { setPrivacy(await request<Privacy>('/publico/aviso-privacidad', { onWait: () => setWaiting(true) })); } catch { setError('No pudimos cargar el aviso de privacidad. Intentá nuevamente.'); } finally { setWaiting(false); }
+    setPrivacy(null); setAccepted(false); setWaiting(false); setLoadingPrivacy(true);
+    try { setPrivacy(await request<Privacy>('/publico/aviso-privacidad', { onWait: () => setWaiting(true) })); } catch { setError('No pudimos cargar el aviso de privacidad. Intentá nuevamente.'); } finally { setWaiting(false); setLoadingPrivacy(false); }
   }
   useEffect(() => { void loadPrivacy(); }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -76,7 +77,7 @@ export function RegisterPage() {
       {error && <Notice kind="error">{error}</Notice>}
       <form className="public-form" onSubmit={submit}>
         {fields.map(([name, label, type]) => <TextField key={name} name={name} label={label} type={type} required={name !== 'obra_social'} autoComplete={name === 'password' ? 'new-password' : undefined} error={invalidFields.includes(name) ? 'Revisá este dato.' : undefined} />)}
-        <section aria-labelledby="privacy-title"><h2 id="privacy-title">Aviso de privacidad</h2>{privacy ? <><PrivacyText text={privacyParts(privacy.texto).body} /><p>Versión: {privacy.version}</p><label><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} /> {privacyParts(privacy.texto).consent}</label></> : <><p>El aviso no está disponible.</p><Button onClick={() => { setError(''); void loadPrivacy(); }}>Volver a cargar</Button></>}</section>
+        <section aria-labelledby="privacy-title"><h2 id="privacy-title">Aviso de privacidad</h2>{privacy ? <><PrivacyText text={privacyParts(privacy.texto).body} /><p>Versión: {privacy.version}</p><label><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} /> {privacyParts(privacy.texto).consent}</label></> : loadingPrivacy ? <p>Cargando aviso de privacidad…</p> : <><p>El aviso no está disponible.</p><Button onClick={() => { setError(''); void loadPrivacy(); }}>Volver a cargar</Button></>}</section>
         <Button type="submit" disabled={!privacy || !accepted || busy}>Crear cuenta</Button><Link to="/ingresar">Volver a ingresar</Link>
       </form></>}
   </div></PageTemplate>;
@@ -103,18 +104,18 @@ function consumeFragment(): string | null {
 
 export function TokenActionPage({ action }: { action: 'verify' | 'confirm' }) {
   const pending = useRef<Promise<unknown> | null>(null);
-  const [result, setResult] = useState<'loading' | 'success' | 'error'>('loading');
+  const [result, setResult] = useState<'loading' | 'success' | 'error' | 'unavailable'>('loading');
   useEffect(() => {
     if (!pending.current) {
       const token = consumeFragment();
       pending.current = token ? request(action === 'verify' ? '/auth/verificar-email' : '/turnos/confirmar-por-enlace', { method: 'POST', body: { token } }) : Promise.reject(new Error('Enlace ausente'));
     }
     let active = true;
-    pending.current.then(() => { if (active) setResult('success'); }, () => { if (active) setResult('error'); });
+    pending.current.then(() => { if (active) setResult('success'); }, error => { if (active) setResult(action === 'confirm' && error instanceof ApiError && error.status === 409 ? 'unavailable' : 'error'); });
     return () => { active = false; };
   }, [action]);
   const title = action === 'verify' ? 'Verificar correo' : 'Confirmar turno';
-  return <PageTemplate title={title}><div className="public-card">{result === 'loading' ? <Notice>Procesando enlace…</Notice> : result === 'success' ? <Notice kind="success">{action === 'verify' ? 'Correo verificado' : 'Turno confirmado'}</Notice> : <Notice kind="error">El enlace no es válido, venció o ya fue utilizado. Solicitá uno nuevo.</Notice>}<p><Link to="/ingresar">Ir a ingresar</Link></p></div></PageTemplate>;
+  return <PageTemplate title={title}><div className="public-card">{result === 'loading' ? <Notice>Procesando enlace…</Notice> : result === 'success' ? <Notice kind="success">{action === 'verify' ? 'Correo verificado' : 'Turno confirmado'}</Notice> : result === 'unavailable' ? <Notice kind="error">Este turno ya no se puede confirmar. <Link to="/reservar">Reservar de nuevo</Link></Notice> : <Notice kind="error">El enlace no es válido, venció o ya fue utilizado. Solicitá uno nuevo.</Notice>}<p><Link to="/ingresar">Ir a ingresar</Link></p></div></PageTemplate>;
 }
 
 export function ResetPasswordPage() {

@@ -1,14 +1,17 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_reloj, get_settings, requiere_rol
+from app.api.deps import get_reloj, get_sesion, get_settings, requiere_rol
 from app.api.v1.schemas.agenda_turnos import ConsultaAgenda, HechoOperativo, TurnoOperativo, TurnoPaciente
 from app.application.use_cases.consultar_turnos import ConsultarTurnos
 from app.core.config import Settings
 from app.domain.entities.auth import Principal, RolUsuario
 from app.domain.ports.reloj import Reloj
 from app.infrastructure.db.sesion import crear_engine, crear_fabrica_de_sesiones
+from app.infrastructure.db.models import ProfesionalModel
 from app.infrastructure.db.unidad_de_trabajo import UnidadDeTrabajoSQL
 
 router = APIRouter(prefix="/api/v1", tags=["Agenda de turnos"], responses={
@@ -44,17 +47,33 @@ def get_consulta(request: Request, reloj: Annotated[Reloj, Depends(get_reloj)],
 Consulta = Annotated[ConsultarTurnos, Depends(get_consulta)]
 
 
+@router.get("/agenda/contexto")
+async def contexto_agenda(
+    principal: Annotated[Principal, Depends(requiere_rol(RolUsuario.ADMINISTRADOR, RolUsuario.PROFESIONAL))],
+    sesion: Annotated[AsyncSession, Depends(get_sesion)],
+) -> dict[str, int | None]:
+    profesional_id = await sesion.scalar(select(ProfesionalModel.id).where(
+        ProfesionalModel.consultorio_id == principal.consultorio_id,
+        ProfesionalModel.usuario_id == principal.usuario_id,
+    ))
+    return {"profesional_id": profesional_id}
+
+
 @router.get("/turnos", response_model=list[TurnoPaciente | TurnoOperativo],
     description="Paciente: sólo turnos de su ficha vigente, pasados y futuros; sin ficha devuelve []. Incluye acciones_permitidas calculadas con reloj/políticas. Personal conserva su agenda y contrato operativo.")
 async def listar_turnos(principal: UsuarioLista, consulta: Consulta,
                         sin_confirmar: Annotated[bool, Query(description="Sólo pendientes marcados para Recepción/Administrador")] = False):
-    return await consulta.listar(principal, sin_confirmar=sin_confirmar)
+    turnos = await consulta.listar(principal, sin_confirmar=sin_confirmar)
+    modelo = TurnoPaciente if principal.rol == RolUsuario.PACIENTE else TurnoOperativo
+    return [modelo.model_validate(turno) for turno in turnos]
 
 
 @router.get("/turnos/{turno_id}", response_model=TurnoPaciente | TurnoOperativo,
     description="Paciente: detalle propio con acciones_permitidas. El vínculo se consulta en cada solicitud; un JWT anterior a desvincular no conserva acceso. Ajeno o sin vínculo:404.")
 async def detalle_turno(turno_id: int, principal: UsuarioTurnos, consulta: Consulta):
-    return await consulta.detalle(principal, turno_id)
+    turno = await consulta.detalle(principal, turno_id)
+    modelo = TurnoPaciente if principal.rol == RolUsuario.PACIENTE else TurnoOperativo
+    return modelo.model_validate(turno)
 
 
 @router.get("/turnos/{turno_id}/historial", response_model=list[HechoOperativo])

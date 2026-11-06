@@ -48,6 +48,7 @@ class NuevoTurno:
     inicio: datetime
     fin: datetime
     estado: EstadoTurno = EstadoTurno.PENDIENTE
+    es_sobreturno: bool = False
     origen: str | None = None
     creado_por_id: int | None = None
     creado_en: datetime | None = None

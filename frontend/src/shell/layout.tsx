@@ -14,6 +14,10 @@ export function RoleLayout() {
       <nav aria-label="Navegación de la cuenta">
         <Link to={`/${rol}`}>Inicio</Link>
         <Link to="/cuenta">Mi cuenta</Link>
+        {rol === 'paciente' && <><Link to="/reservar">Reservar turno</Link><Link to="/mis-turnos">Mis turnos</Link></>}
+        {['recepcion', 'profesional', 'administrador'].includes(rol) && <Link to="/agenda">Agenda</Link>}
+        {['recepcion', 'profesional', 'administrador'].includes(rol) && <Link to="/pacientes">Pacientes</Link>}
+        {['recepcion', 'administrador'].includes(rol) && <Link to="/solicitudes">Solicitudes</Link>}
         <Button variant="secondary" onClick={() => { void session.logout().catch(() => setLogoutError(true)); }}>Cerrar sesión</Button>
       </nav>
       <section className="role-layout__content">

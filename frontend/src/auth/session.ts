@@ -27,7 +27,7 @@ export class Session {
   private async performLogin(identificador: string, password: string): Promise<void> {
     const epoch = ++this.epoch;
     this.token = null;
-    this.update({ profile: null, loading: true });
+    this.update({ profile: null, loading: false });
     try {
       if (this.loggingOut) await this.loggingOut.catch(() => undefined);
       if (this.refreshing) await this.refreshing.catch(() => null);

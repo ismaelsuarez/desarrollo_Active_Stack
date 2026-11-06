@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
@@ -22,6 +23,17 @@ class TurnoOnlineEntrada(BaseModel):
     profesional_id: int = Field(gt=0)
     prestacion_id: int = Field(gt=0)
     inicio: AwareDatetime
+
+
+class SobreturnoEntrada(TurnoEntrada):
+    autorizado: Literal[True]
+    motivo: str = Field(min_length=1, pattern=r"\S")
+
+
+class RespuestaSobreturnoEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    respuesta: Literal["aprobado", "rechazado"]
+    comentario: str | None = None
 
 
 class TurnoRespuesta(BaseModel):

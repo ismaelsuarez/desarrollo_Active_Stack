@@ -164,6 +164,7 @@ class RepositorioTurnosSQL:
             inicio=turno.inicio,
             fin=turno.fin,
             estado=turno.estado,
+            es_sobreturno=turno.es_sobreturno,
             origen=turno.origen,
             creado_por_id=turno.creado_por_id,
             creado_en=turno.creado_en or self._reloj.ahora(),
