@@ -7,9 +7,21 @@ from pydantic import BaseModel, ConfigDict, Field
 EstadoNotificacion = Literal["programada", "enviando", "enviada", "fallida", "preparada", "enviada_manual", "omitida"]
 
 
+class EnlaceWhatsApp(BaseModel):
+    id: int
+    enlace_whatsapp: str
+
+
+class EnvioManual(BaseModel):
+    id: int
+    estado: Literal['enviada_manual']
+    enviada_en: datetime
+
+
 class ConsultaNotificaciones(BaseModel):
     model_config = ConfigDict(extra="forbid")
     estado: EstadoNotificacion | None = None
+    canal: Literal['email', 'whatsapp'] | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
 

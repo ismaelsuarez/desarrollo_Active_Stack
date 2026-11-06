@@ -12,9 +12,32 @@ vi.mock('../booking/AppointmentsPage', () => ({ AppointmentsPage: () => <p>Turno
 vi.mock('../staff/AgendaPage', () => ({ AgendaPage: () => <p>Agenda del personal</p> }));
 vi.mock('../records/RecordsPage', () => ({ RecordsPage: () => <p>Fichas autorizadas</p> }));
 vi.mock('../records/LinkingPage', () => ({ LinkingPage: () => <p>Solicitudes del personal</p> }));
+vi.mock('../admin/AdminPage', () => ({ AdminPage: () => <p>Configuración del consultorio</p> }));
 
 describe('rutas', () => {
   beforeEach(() => { mockSession.state = { loading: false, profile: null }; });
+  it('permite configuración solamente al administrador', () => {
+    mockSession.state.profile = { rol: 'administrador', nombre_usuario: 'ana' };
+    const admin = render(<MemoryRouter initialEntries={['/configuracion']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Configuración del consultorio')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Configuración' })).toHaveAttribute('href', '/configuracion');
+    admin.unmount();
+    for (const rol of ['paciente', 'recepcion', 'profesional', 'administrativo']) {
+      mockSession.state.profile = { rol, nombre_usuario: 'ana' };
+      const view = render(<MemoryRouter initialEntries={['/configuracion']}><AppRoutes /></MemoryRouter>);
+      expect(screen.queryByText('Configuración del consultorio')).not.toBeInTheDocument();
+      view.unmount();
+    }
+    mockSession.state.profile = null;
+    render(<MemoryRouter initialEntries={['/configuracion']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Formulario ingreso')).toBeInTheDocument();
+    expect(screen.queryByText('Configuración del consultorio')).not.toBeInTheDocument();
+  });
+  it('ofrece configuración desde el inicio del administrador', () => {
+    mockSession.state.profile = { rol: 'administrador', nombre_usuario: 'ana' };
+    render(<MemoryRouter initialEntries={['/administrador']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: 'Configuración' })).toHaveAttribute('href', '/configuracion');
+  });
   it('restringe agenda al personal autorizado', () => {
     mockSession.state.profile = { rol: 'profesional', nombre_usuario: 'maria' };
     const view = render(<MemoryRouter initialEntries={['/agenda']}><AppRoutes /></MemoryRouter>);

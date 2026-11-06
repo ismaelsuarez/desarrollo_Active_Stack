@@ -1,0 +1,21 @@
+.admin-page { width: min(100% - 2rem, 75rem); margin: 0 auto; padding: 2rem 0 4rem; }
+.admin-page h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: .4rem 0; }
+.admin-eyebrow { color: #4b6c62; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.admin-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin: 2rem 0; border-bottom: 1px solid #c8d7d0; }
+.admin-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .8rem; text-decoration: none; font-weight: 700; }
+.admin-tabs a:hover { background: #e5efeb; }
+.admin-section { scroll-margin-top: 1rem; background: #fff; border: 1px solid #d4e0d9; border-radius: .75rem; padding: clamp(1rem, 3vw, 1.5rem); margin-block: 1.25rem; }
+.admin-section h2 { margin-top: 0; }
+.admin-section form { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-top: 1rem; padding: 1rem; border-radius: .5rem; background: #f5f8f5; }
+.admin-section label { display: grid; gap: .4rem; flex: 1 1 13rem; font-weight: 600; }
+.admin-section input, .admin-section select { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid #8ca9a0; border-radius: 6px; padding: .6rem; background: #fff; color: #19342f; font: inherit; }
+.admin-section button { min-height: 44px; border: 1px solid #167a70; border-radius: 6px; padding: .6rem .9rem; background: #2a9d8f; color: #0b2722; font: inherit; font-weight: 700; cursor: pointer; }
+.admin-section button:disabled { opacity: .55; cursor: not-allowed; }
+.admin-section [role="alert"] { margin: .75rem 0; padding: 1rem; border-left: 4px solid #ad2931; background: #fff0ef; }
+.admin-section [role="status"] { margin: .75rem 0; }
+.admin-bloqueo-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding-block: .75rem; border-bottom: 1px solid #d4e0d9; }
+.admin-bloqueo-row p { min-width: 0; overflow-wrap: anywhere; }
+.admin-section [role="alert"] { max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+.admin-section fieldset { display: flex; flex-wrap: wrap; gap: .75rem; flex-basis: 100%; border: 1px solid #c8d7d0; border-radius: .5rem; }
+.admin-page :focus-visible { outline: 3px solid #125e55; outline-offset: 2px; }
+@media (max-width: 40rem) { .admin-section { padding: 1rem; } .admin-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .admin-section form > button { width: 100%; } }

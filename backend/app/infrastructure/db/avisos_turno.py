@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.turno import Turno
 from app.infrastructure.db.account_models import NotificacionModel
+from app.infrastructure.db.avisos_whatsapp import RepositorioAvisosWhatsAppSQL
 from app.infrastructure.db.models import ConsultorioModel, PacienteModel, ProfesionalModel
 
 
@@ -28,6 +29,8 @@ class RepositorioAvisosDeTurnoSQL:
     async def _programar_hecho(self, turno: Turno, tipo: str, descripcion: str,
                               ahora: datetime, *,
                               evento_sin_contacto: str = "aviso_turno_sin_contacto") -> int | None:
+        if tipo in ('liberacion', 'cancelacion_por_personal', 'reprogramacion_por_personal'):
+            await RepositorioAvisosWhatsAppSQL(self.sesion).programar_hecho(turno, tipo, ahora)
         paciente = await self.sesion.scalar(select(PacienteModel).where(
             PacienteModel.id == turno.paciente_id, PacienteModel.consultorio_id == turno.consultorio_id))
         if paciente is None or not paciente.email or "@" not in paciente.email:
@@ -55,6 +58,7 @@ class RepositorioAvisosDeTurnoSQL:
         ).values(estado="omitida", reclamada_en=None))
 
     async def programar_hito(self, turno: Turno, tipo: str, para: datetime) -> int | None:
+        await RepositorioAvisosWhatsAppSQL(self.sesion).programar_hito(turno, tipo, para)
         paciente = await self.sesion.scalar(select(PacienteModel).where(
             PacienteModel.id == turno.paciente_id, PacienteModel.consultorio_id == turno.consultorio_id))
         if paciente is None or not paciente.email or "@" not in paciente.email:

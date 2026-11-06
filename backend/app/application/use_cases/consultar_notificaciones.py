@@ -2,7 +2,7 @@
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 
 from app.application.errors_turnos import RechazoDeTurno
 from app.domain.entities.auth import Principal
@@ -24,7 +24,7 @@ class ConsultarNotificaciones:
         if not decision.permitido:
             raise RechazoDeTurno(decision.codigo_http, decision.motivo)
 
-    async def listar(self, principal: Principal, estado=None, limit=50, offset=0):
+    async def listar(self, principal: Principal, estado=None, canal=None, limit=50, offset=0):
         self._autorizar(principal)
         columnas = (NotificacionModel.id, NotificacionModel.turno_id, NotificacionModel.tipo,
                     NotificacionModel.canal, NotificacionModel.estado, NotificacionModel.intentos,
@@ -32,8 +32,43 @@ class ConsultarNotificaciones:
         query = select(*columnas).where(NotificacionModel.consultorio_id == principal.consultorio_id)
         if estado is not None:
             query = query.where(NotificacionModel.estado == estado)
+        if canal is not None:
+            query = query.where(NotificacionModel.canal == canal)
+        orden = (NotificacionModel.programada_para, NotificacionModel.id) if canal == 'whatsapp' and estado == 'preparada' else (NotificacionModel.id.desc(),)
         async with self.sesiones() as sesion:
-            return (await sesion.execute(query.order_by(NotificacionModel.id.desc()).limit(limit).offset(offset))).mappings().all()
+            return (await sesion.execute(query.order_by(*orden).limit(limit).offset(offset))).mappings().all()
+
+    async def enlace_whatsapp(self, principal: Principal, identificador: int):
+        self._autorizar(principal)
+        async with self.sesiones() as sesion:
+            fila = (await sesion.execute(select(NotificacionModel.id, NotificacionModel.canal,
+                NotificacionModel.estado, NotificacionModel.enlace_whatsapp).where(
+                NotificacionModel.consultorio_id == principal.consultorio_id,
+                NotificacionModel.id == identificador))).one_or_none()
+            if fila is None:
+                raise RechazoDeTurno(404, 'Recurso no encontrado')
+            if fila.canal != 'whatsapp' or fila.estado != 'preparada' or not fila.enlace_whatsapp:
+                raise RechazoDeTurno(409, 'Notificación no disponible')
+            return {'id': fila.id, 'enlace_whatsapp': fila.enlace_whatsapp}
+
+    async def marcar_enviada(self, principal: Principal, identificador: int):
+        self._autorizar(principal)
+        ahora = self.reloj.ahora()
+        async with self.sesiones() as sesion, sesion.begin():
+            resultado = await sesion.scalar(update(NotificacionModel).where(
+                NotificacionModel.id == identificador,
+                NotificacionModel.consultorio_id == principal.consultorio_id,
+                NotificacionModel.canal == 'whatsapp', NotificacionModel.estado == 'preparada',
+            ).values(estado='enviada_manual', enviada_en=ahora,
+                     marcada_enviada_por_id=principal.usuario_id).returning(NotificacionModel.id))
+            if resultado is None:
+                existe = await sesion.scalar(select(NotificacionModel.id).where(
+                    NotificacionModel.id == identificador,
+                    NotificacionModel.consultorio_id == principal.consultorio_id))
+                if existe is None:
+                    raise RechazoDeTurno(404, 'Recurso no encontrado')
+                raise RechazoDeTurno(409, 'Notificación no disponible')
+            return {'id': resultado, 'estado': 'enviada_manual', 'enviada_en': ahora}
 
     async def indicadores(self, principal: Principal):
         self._autorizar(principal)

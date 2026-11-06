@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { request } from '../api/client';
 import { useSession } from '../auth/provider';
 import { formatClinicTime } from '../booking/time';
@@ -12,6 +13,7 @@ type Turno = { id: number; inicio: string; paciente_nombre: string; paciente_ape
 
 export function AgendaPage() {
   const { session, state } = useSession();
+  const [params] = useSearchParams();
   const role = state.profile?.rol;
   const userId = state.profile?.id;
   const [date, setDate] = useState('');
@@ -23,7 +25,10 @@ export function AgendaPage() {
   const [initialized, setInitialized] = useState(false);
   const [initRetry, setInitRetry] = useState(0);
   const [retry, setRetry] = useState(0);
-  const [view, setView] = useState<'agenda' | 'new' | number>('agenda');
+  const [view, setView] = useState<'agenda' | 'new' | number>(() => {
+    const raw = params.get('turno');
+    return raw && /^[1-9]\d*$/.test(raw) && Number.isSafeInteger(Number(raw)) ? Number(raw) : 'agenda';
+  });
   useEffect(() => {
     let active = true;
     setInitialized(false); setProfessional(null); setTurnos(null); setError('');

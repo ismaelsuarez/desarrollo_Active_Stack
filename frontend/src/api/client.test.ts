@@ -4,6 +4,17 @@ import { ApiError, request } from './client';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('cliente HTTP', () => {
+  it('conserva solo identificadores válidos de turnos afectados por un bloqueo', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: { turnos_afectados: [12, 'dato privado', -1, 0, 13], secreto: 'privado' } }), { status: 409 })));
+    const error = await request('/profesionales/1/bloqueos', { method: 'POST', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 409, affectedAppointments: [12, 13] });
+    expect(JSON.stringify(error)).not.toContain('privado');
+  });
+  it('no asigna turnos afectados a un conflicto ajeno', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: { turnos_afectados: [12] } }), { status: 409 })));
+    const error = await request('/usuarios', { method: 'POST', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 409, affectedAppointments: undefined });
+  });
   it('conserva alternativas válidas de conflicto de horario sin guardar el resto del cuerpo', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: {
       motivo: 'horario ocupado', alternativas: [{ inicio: '2026-11-12T09:30:00-03:00', fin: '2026-11-12T10:00:00-03:00', secreto: 'privado' }], secreto: 'privado',
@@ -67,6 +78,14 @@ describe('cliente HTTP', () => {
     const error = await request('/auth/registro', { method: 'POST', body: {} }).catch((value: unknown) => value);
     expect(error).toMatchObject({ status: 422, invalidFields: ['email'] });
     expect(JSON.stringify(error)).not.toContain('dato privado');
+  });
+  it('identifica campos de configuración sin retener valores privados', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: [
+      { loc: ['body', 'duracion_min'], input: 'privado' }, { loc: ['body', 'horas_confirmacion'], input: 'privado' }, { loc: ['body', 'secreto'], input: 'privado' },
+    ] }), { status: 422 })));
+    const error = await request('/prestaciones', { method: 'POST', body: {} }).catch((value: unknown) => value);
+    expect(error).toMatchObject({ invalidFields: ['duracion_min', 'horas_confirmacion'] });
+    expect(JSON.stringify(error)).not.toContain('privado');
   });
   it('reintenta una lectura transitoria e informa la espera', async () => {
     const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('network')).mockResolvedValueOnce(new Response('{}', { status: 200 }));

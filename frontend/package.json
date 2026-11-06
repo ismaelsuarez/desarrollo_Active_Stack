@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "test": "vitest",
+    "test:keyboard": "playwright test",
     "typecheck": "tsc --noEmit",
     "build": "vite build"
   },
@@ -15,6 +16,7 @@
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@types/node": "26.6.5",

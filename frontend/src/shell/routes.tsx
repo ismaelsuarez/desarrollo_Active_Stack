@@ -12,6 +12,7 @@ import { AgendaPage } from '../staff/AgendaPage';
 import { RecordsPage } from '../records/RecordsPage';
 import { LinkingPage } from '../records/LinkingPage';
 import { StaffNav } from './StaffNav';
+import { AdminPage } from '../admin/AdminPage';
 
 function Entry() {
   const { state } = useSession();
@@ -30,6 +31,7 @@ export function AppRoutes() {
     <Route path="/agenda" element={<Guard roles={['recepcion', 'profesional', 'administrador']}><StaffNav /><AgendaPage /></Guard>} />
     <Route path="/pacientes" element={<Guard roles={['recepcion', 'profesional', 'administrador']}><StaffNav /><RecordsPage /></Guard>} />
     <Route path="/solicitudes" element={<Guard roles={['recepcion', 'administrador']}><StaffNav /><LinkingPage /></Guard>} />
+    <Route path="/configuracion/*" element={<Guard roles={['administrador']}><StaffNav /><AdminPage /></Guard>} />
     <Route path="/registro" element={<RegisterPage />} />
     <Route path="/recuperar-password" element={<EmailRequestPage mode="recover" />} />
     <Route path="/reenviar-verificacion" element={<EmailRequestPage mode="resend" />} />

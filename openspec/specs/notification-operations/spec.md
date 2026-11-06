@@ -7,7 +7,7 @@ Permitir que Recepción y Administrador observen fallos de correo y salud del ba
 ## Requirements
 
 ### Requirement: Bandeja autorizada de notificaciones
-GET /api/v1/notificaciones SHALL permitir a Recepción y Administrador consultar notificaciones propias con filtro de estado y paginación. SHALL rechazar otros roles y minimizar la proyección sin devolver destinatario, cuerpo, tokens o errores originales del transporte.
+GET /api/v1/notificaciones SHALL permitir a Recepción y Administrador consultar notificaciones propias con filtros opcionales de estado y canal y paginación. SHALL rechazar otros roles y minimizar la proyección sin devolver destinatario, cuerpo, tokens o errores originales del transporte.
 
 #### Scenario: Fallidas del consultorio
 - **WHEN** Recepción consulta estado=fallida con paginación válida
@@ -20,6 +20,14 @@ GET /api/v1/notificaciones SHALL permitir a Recepción y Administrador consultar
 #### Scenario: Consulta inválida o sin sesión
 - **WHEN** se solicita un estado desconocido, una página inválida o no hay sesión
 - **THEN** rechaza con 422 las entradas inválidas y con 401 la ausencia de autenticación, sin devolver información de notificaciones
+
+#### Scenario: WhatsApp preparado por urgencia
+- **WHEN** Recepción consulta canal=whatsapp y estado=preparada
+- **THEN** obtiene solo esas filas propias ordenadas por hito más próximo con orden estable y sin destinatarios ni mensajes
+
+#### Scenario: Compatibilidad sin canal
+- **WHEN** un cliente existente omite el nuevo filtro o envía un canal desconocido
+- **THEN** la omisión conserva la respuesta previa y un canal desconocido recibe 422
 
 ### Requirement: Indicadores del correo
 Los indicadores SHALL informar cantidad de fallidas, antigüedad de la programada más vieja, cantidad y antigüedad de enviando, conteo diario de correo, límites y alerta al umbral configurado, limitados al consultorio autorizado. Una colección vacía SHALL devolver cero y antigüedad nula.

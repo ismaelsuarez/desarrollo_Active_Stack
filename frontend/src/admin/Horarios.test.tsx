@@ -1,0 +1,43 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { Horarios } from './Horarios';
+const api = vi.hoisted(() => ({ request: vi.fn() }));
+vi.mock('../auth/provider', () => ({ useSession: () => ({ session: api }) }));
+beforeEach(() => api.request.mockReset());
+it('acepta bloques contiguos y guarda el horario completo', async () => {
+  api.request.mockImplementation((path: string, options?: { method?: string }) => path === '/profesionales' ? Promise.resolve([{ id: 1, nombre: 'Ana', apellido: 'Ríos', activo: true }]) : options?.method === 'PUT' ? Promise.resolve({ bloques: [{ dia_semana: 1, hora_inicio: '09:00', hora_fin: '10:00' }, { dia_semana: 1, hora_inicio: '10:00', hora_fin: '11:00' }] }) : Promise.resolve({ bloques: [] }));
+  render(<Horarios />); await screen.findByRole('option', { name: 'Ana Ríos' });
+  fireEvent.change(screen.getByLabelText('Profesional de horario'), { target: { value: '1' } });
+  await screen.findByText('No hay bloques semanales.');
+  fireEvent.click(screen.getByRole('button', { name: 'Agregar bloque' }));
+  fireEvent.change(screen.getByLabelText('Inicio 1'), { target: { value: '09:00' } });
+  fireEvent.change(screen.getByLabelText('Fin 1'), { target: { value: '10:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Agregar bloque' }));
+  fireEvent.change(screen.getByLabelText('Inicio 2'), { target: { value: '10:00' } });
+  fireEvent.change(screen.getByLabelText('Fin 2'), { target: { value: '11:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar horario' }));
+  await screen.findByText('Horario guardado.');
+  expect(api.request).toHaveBeenCalledWith('/profesionales/1/horario-semanal', { method: 'PUT', body: { bloques: [{ dia_semana: 1, hora_inicio: '09:00', hora_fin: '10:00' }, { dia_semana: 1, hora_inicio: '10:00', hora_fin: '11:00' }] } });
+});
+it('detecta solapamientos y preserva los bloques sin enviar', async () => {
+  api.request.mockImplementation((path: string) => path === '/profesionales' ? Promise.resolve([{ id: 1, nombre: 'Ana', apellido: 'Ríos', activo: true }]) : Promise.resolve({ bloques: [{ dia_semana: 1, hora_inicio: '09:00', hora_fin: '11:00' }, { dia_semana: 1, hora_inicio: '10:00', hora_fin: '12:00' }] }));
+  render(<Horarios />); await screen.findByRole('option', { name: 'Ana Ríos' });
+  fireEvent.change(screen.getByLabelText('Profesional de horario'), { target: { value: '1' } });
+  await screen.findByDisplayValue('11:00');
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar horario' }));
+  expect(screen.getByRole('alert')).toHaveTextContent(/superponen/i);
+  expect(screen.getByLabelText('Inicio 2')).toHaveValue('10:00');
+  expect(api.request).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ method: 'PUT' }));
+});
+it('rechaza orden inválido y conserva cambios ante fallo del servidor', async () => {
+  api.request.mockImplementation((path: string, options?: { method?: string }) => path === '/profesionales' ? Promise.resolve([{ id: 1, nombre: 'Ana', apellido: 'Ríos', activo: true }]) : options?.method === 'PUT' ? Promise.reject(new Error('red')) : Promise.resolve({ bloques: [{ dia_semana: 1, hora_inicio: '11:00', hora_fin: '10:00' }] }));
+  render(<Horarios />); await screen.findByRole('option', { name: 'Ana Ríos' });
+  fireEvent.change(screen.getByLabelText('Profesional de horario'), { target: { value: '1' } });
+  await screen.findByDisplayValue('11:00');
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar horario' }));
+  expect(screen.getByRole('alert')).toHaveTextContent(/inicio debe ser anterior/i);
+  fireEvent.change(screen.getByLabelText('Fin 1'), { target: { value: '12:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar horario' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(/confirmar el resultado/i);
+  expect(screen.getByLabelText('Fin 1')).toHaveValue('12:00');
+});

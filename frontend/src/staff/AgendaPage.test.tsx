@@ -10,6 +10,22 @@ vi.mock('./StaffTurno', () => ({ StaffNuevoTurno: ({ onClose }: { onClose: () =>
 
 beforeEach(() => { mock.profile.rol = 'profesional'; mock.session.request.mockReset(); mock.publicRequest.mockReset(); });
 
+it('abre el detalle indicado en el enlace y vuelve a la agenda', () => {
+  mock.profile.rol = 'administrador';
+  mock.publicRequest.mockResolvedValue({ zona_horaria: 'America/Argentina/Buenos_Aires' });
+  mock.session.request.mockResolvedValue([]);
+  render(<MemoryRouter initialEntries={['/agenda?turno=13']}><AgendaPage /></MemoryRouter>);
+  expect(screen.getByText('Detalle 13')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Volver' }));
+  expect(screen.queryByText('Detalle 13')).not.toBeInTheDocument();
+});
+it('ignora un identificador de turno inválido', () => {
+  mock.publicRequest.mockResolvedValue({ zona_horaria: 'America/Argentina/Buenos_Aires' });
+  mock.session.request.mockResolvedValue([]);
+  render(<MemoryRouter initialEntries={['/agenda?turno=-2']}><AgendaPage /></MemoryRouter>);
+  expect(screen.queryByText(/Detalle/)).not.toBeInTheDocument();
+});
+
 it('muestra la agenda propia del profesional sin selector de otro profesional', async () => {
   mock.publicRequest.mockResolvedValue({ zona_horaria: 'America/Argentina/Buenos_Aires' });
   mock.session.request.mockImplementation((path: string) => path === '/agenda/contexto' ? Promise.resolve({ profesional_id: 7 }) : Promise.resolve([]));

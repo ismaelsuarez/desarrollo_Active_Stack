@@ -18,6 +18,7 @@ export function RoleLayout() {
         {['recepcion', 'profesional', 'administrador'].includes(rol) && <Link to="/agenda">Agenda</Link>}
         {['recepcion', 'profesional', 'administrador'].includes(rol) && <Link to="/pacientes">Pacientes</Link>}
         {['recepcion', 'administrador'].includes(rol) && <Link to="/solicitudes">Solicitudes</Link>}
+        {rol === 'administrador' && <Link to="/configuracion">Configuración</Link>}
         <Button variant="secondary" onClick={() => { void session.logout().catch(() => setLogoutError(true)); }}>Cerrar sesión</Button>
       </nav>
       <section className="role-layout__content">

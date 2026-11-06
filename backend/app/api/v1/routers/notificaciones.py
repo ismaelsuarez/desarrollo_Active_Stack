@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_reloj, get_settings, requiere_rol
-from app.api.v1.schemas.notificaciones import ConsultaNotificaciones, IndicadoresNotificaciones, NotificacionOperativa
+from app.api.v1.schemas.notificaciones import ConsultaNotificaciones, EnlaceWhatsApp, EnvioManual, IndicadoresNotificaciones, NotificacionOperativa
 from app.application.use_cases.consultar_notificaciones import ConsultarNotificaciones
 from app.core.config import Settings
 from app.domain.entities.auth import Principal, RolUsuario
@@ -34,3 +34,13 @@ async def listar(principal: Operador, consulta: Consulta,
 @router.get("/indicadores", response_model=IndicadoresNotificaciones)
 async def indicadores(principal: Operador, consulta: Consulta):
     return await consulta.indicadores(principal)
+
+
+@router.get('/{notificacion_id}/whatsapp', response_model=EnlaceWhatsApp)
+async def enlace_whatsapp(notificacion_id: int, principal: Operador, consulta: Consulta):
+    return await consulta.enlace_whatsapp(principal, notificacion_id)
+
+
+@router.post('/{notificacion_id}/marcar-enviada', response_model=EnvioManual)
+async def marcar_enviada(notificacion_id: int, principal: Operador, consulta: Consulta):
+    return await consulta.marcar_enviada(principal, notificacion_id)

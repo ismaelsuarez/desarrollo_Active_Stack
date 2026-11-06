@@ -2,7 +2,7 @@ type BookingDetail = { kind: 'occupied'; alternatives: { inicio: string; fin: st
 const isInstant = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value) && Number.isFinite(Date.parse(value));
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly invalidFields: string[] = [], public readonly bookingDetail?: BookingDetail) {
+  constructor(public readonly status: number, public readonly invalidFields: string[] = [], public readonly bookingDetail?: BookingDetail, public readonly affectedAppointments?: number[]) {
     super(`Error HTTP ${status}`);
     this.name = 'ApiError';
   }
@@ -19,7 +19,9 @@ export type RequestOptions = {
 
 const knownFields = new Set(['nombre', 'apellido', 'email', 'telefono', 'dni', 'nombre_usuario',
   'password', 'password_actual', 'password_nueva', 'obra_social', 'acepta_aviso_privacidad',
-  'aviso_privacidad_version', 'identificador', 'token']);
+  'aviso_privacidad_version', 'identificador', 'token', 'duracion_min', 'modo_liberacion',
+  'horas_confirmacion', 'horas_recordatorio', 'horas_liberacion', 'horas_limite_paciente',
+  'minutos_granularidad', 'dias_anticipacion_maxima', 'max_turnos_activos_paciente']);
 
 export async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
@@ -53,6 +55,13 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   if (!response) throw new Error('Servicio no disponible');
   if (!response.ok) {
     const fields: string[] = [];
+    if (response.status === 409 && /^\/(?:profesionales\/\d+\/)?bloqueos$/.test(path)) {
+      const payload: unknown = await response.json().catch(() => undefined);
+      if (payload && typeof payload === 'object' && 'detail' in payload && payload.detail && typeof payload.detail === 'object' && 'turnos_afectados' in payload.detail && Array.isArray(payload.detail.turnos_afectados)) {
+        const ids = payload.detail.turnos_afectados.filter((id: unknown): id is number => typeof id === 'number' && Number.isSafeInteger(id) && id > 0);
+        throw new ApiError(response.status, fields, undefined, ids);
+      }
+    }
     if (response.status === 403 && /^\/turnos(?:\/|$)/.test(path)) {
       const payload: unknown = await response.json().catch(() => undefined);
       if (payload && typeof payload === 'object' && 'detail' in payload && typeof payload.detail === 'string' && payload.detail.startsWith('Fuera de plazo. Comuníquese con el consultorio: ')) {

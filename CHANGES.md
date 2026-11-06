@@ -474,7 +474,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-12] `frontend-admin-config`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado en [`2026-11-06-c-12-frontend-admin-config`](openspec/changes/archive/2026-11-06-c-12-frontend-admin-config/), 12/12 tareas y siete requisitos sincronizados. La comparación visual completa de la implementación sigue pendiente; ver [guía manual](openspec/changes/archive/2026-11-06-c-12-frontend-admin-config/mockups/verify/README.md) y [evidencia](openspec/changes/archive/2026-11-06-c-12-frontend-admin-config/evidence.md).
 - **Scope**: Pantallas de configuración del Administrador
   - `features/configuracion`: usuarios del personal, profesionales con su box, editor de horario semanal por bloques, excepciones y bloqueos (muestra la lista de turnos afectados y exige resolverlos), catálogo de prestaciones, parámetros del consultorio (modo de liberación, plazos, teléfono, y los de reserva de RN-64: granularidad, anticipación máxima y turnos activos por paciente)
   - Páginas bajo guarda de rol `administrador`; formularios con validación y errores de campo del backend
@@ -584,7 +584,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-17] `whatsapp-one-click`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-11-06; `openspec/changes/archive/2026-11-06-c-17-whatsapp-one-click`)
 - **Scope**: WhatsApp semimanual preparado por el sistema y enviado por Recepción
   - Value object `Telefono` con normalización internacional (código de país de Argentina por defecto, RN-53)
   - Constructor de mensaje sin datos de salud (RN-54) y enlace `wa.me` con teléfono y texto prellenados

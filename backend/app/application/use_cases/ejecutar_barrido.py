@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.infrastructure.db.account_models import BarridoEstadoModel, NotificacionModel, TIPOS_CUENTA
 from app.application.services.limpieza_barrido import LimpiarBarrido
+from app.application.services.preparar_whatsapp import PrepararWhatsApp
 from app.application.use_cases.evaluar_hitos_turnos import EvaluarHitosTurnos
 
 
@@ -29,6 +30,7 @@ class EjecutarBarrido:
         self.settings = settings
         self.limpieza = LimpiarBarrido(sesiones, reloj)
         self.evaluacion = EvaluarHitosTurnos(sesiones, reloj)
+        self.whatsapp = PrepararWhatsApp(sesiones, reloj)
 
     async def seleccionar_candidatos(self, consultorio_id: int) -> list[int]:
         ids = []
@@ -56,6 +58,7 @@ class EjecutarBarrido:
         try:
             await self.limpieza.ejecutar(consultorio_id)
             await self.evaluacion.ejecutar(consultorio_id)
+            await self.whatsapp.ejecutar(consultorio_id)
             ids = await self.seleccionar_candidatos(consultorio_id)
             for identifier in ids:
                 item = await self.despacho.ejecutar_detallado(consultorio_id, identifier)
