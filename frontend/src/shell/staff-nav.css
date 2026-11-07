@@ -4,3 +4,9 @@
 .staff-header a { color: var(--color-link, #17695f); min-height: 44px; display: inline-flex; align-items: center; }
 .staff-header a:focus-visible { outline: var(--focus-ring, 3px solid #b7790b); outline-offset: 2px; }
 .staff-header [aria-label="Indicadores de recepción"]{display:flex;flex-wrap:wrap;gap:1rem}
+.staff-header nav a { border-bottom: 3px solid transparent; }
+.staff-header nav a[aria-current="page"] { font-weight: 700; border-bottom-color: var(--color-primary, #2a9d8f); }
+@media (max-width: 700px) {
+  .staff-header nav { flex-wrap: nowrap; gap: 20px; overflow-x: auto; white-space: nowrap; }
+  .staff-header nav a { flex: 0 0 auto; }
+}

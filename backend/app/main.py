@@ -25,6 +25,7 @@ from app.api.v1.routers.reactivacion import router as reactivacion_router
 from app.api.v1.routers.publico import router as publico_router
 from app.api.v1.routers.barrido import router as barrido_router
 from app.api.v1.routers.notificaciones import router as notificaciones_router
+from app.api.v1.routers.indicadores import router as indicadores_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
@@ -95,6 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(publico_router)
     app.include_router(barrido_router)
     app.include_router(notificaciones_router)
+    app.include_router(indicadores_router)
 
     @app.middleware('http')
     async def spa(request: Request, call_next):

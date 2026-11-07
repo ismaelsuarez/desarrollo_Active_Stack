@@ -34,6 +34,12 @@ test('visualiza la bandeja en celular y escritorio', async ({ page }) => {
   for (const [name, width, height] of [['mobile', 390, 844], ['desktop', 1440, 900]] as const) {
     await page.setViewportSize({ width, height });
     await expect(page.getByRole('heading', { name: 'Notificaciones', exact: true })).toBeVisible();
+    if (name === 'mobile') {
+      const nav = page.getByRole('navigation', { name: 'Navegación principal' });
+      const positions = await nav.getByRole('link').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top));
+      expect(new Set(positions).size).toBe(1);
+      await expect(nav.getByRole('link', { name: 'Notificaciones' })).toHaveAttribute('aria-current', 'page');
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/${name}.png`, fullPage: true });
   }

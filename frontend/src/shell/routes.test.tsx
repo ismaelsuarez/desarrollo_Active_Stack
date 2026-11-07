@@ -16,9 +16,28 @@ vi.mock('../admin/AdminPage', () => ({ AdminPage: () => <p>Configuración del co
 vi.mock('../notifications/NotificationsPage', () => ({ NotificationsPage: () => <p>Operación de notificaciones</p>, HealthPage: () => <p>Salud operativa</p> }));
 vi.mock('../notifications/Unconfirmed', () => ({ Unconfirmed: () => <p>Turnos sin confirmar pendientes</p> }));
 vi.mock('../notifications/Counters', () => ({ Counters: () => <p>Indicadores operativos</p> }));
+vi.mock('../indicators/AbsenteeismPage', () => ({ AbsenteeismPage: () => <p>Informe de ausentismo</p> }));
 
 describe('rutas', () => {
   beforeEach(() => { mockSession.state = { loading: false, profile: null }; });
+  it('ofrece ausentismo solo al administrador', () => {
+    mockSession.state.profile = { rol: 'administrador', nombre_usuario: 'ana' };
+    const admin = render(<MemoryRouter initialEntries={['/administrador']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: 'Ausentismo' })).toHaveAttribute('href', '/ausentismo');
+    admin.unmount();
+    mockSession.state.profile = { rol: 'recepcion', nombre_usuario: 'ana' };
+    render(<MemoryRouter initialEntries={['/recepcion']}><AppRoutes /></MemoryRouter>);
+    expect(screen.queryByRole('link', { name: 'Ausentismo' })).not.toBeInTheDocument();
+  });
+  it('protege el informe de ausentismo para los demás roles', () => {
+    for (const rol of ['administrador', 'recepcion', 'profesional', 'paciente', 'administrativo']) {
+      mockSession.state.profile = { rol, nombre_usuario: 'ana' };
+      const view = render(<MemoryRouter initialEntries={['/ausentismo']}><AppRoutes /></MemoryRouter>);
+      if (rol === 'administrador') expect(screen.getByText('Informe de ausentismo')).toBeInTheDocument();
+      else expect(screen.queryByText('Informe de ausentismo')).not.toBeInTheDocument();
+      view.unmount();
+    }
+  });
   it('restringe notificaciones a recepción y administración y salud solo a administración', () => {
     for (const rol of ['recepcion', 'administrador']) {
       mockSession.state.profile = { rol, nombre_usuario: 'ana' };

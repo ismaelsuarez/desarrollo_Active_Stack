@@ -15,6 +15,7 @@ import { StaffNav } from './StaffNav';
 import { AdminPage } from '../admin/AdminPage';
 import { NotificationsPage, HealthPage } from '../notifications/NotificationsPage';
 import { Unconfirmed } from '../notifications/Unconfirmed';
+import { AbsenteeismPage } from '../indicators/AbsenteeismPage';
 
 function Entry() {
   const { state } = useSession();
@@ -37,6 +38,7 @@ export function AppRoutes() {
     <Route path="/notificaciones" element={<Guard roles={['recepcion', 'administrador']}><StaffNav /><NotificationsPage /></Guard>} />
     <Route path="/sin-confirmar" element={<Guard roles={['recepcion', 'administrador']}><StaffNav /><Unconfirmed /></Guard>} />
     <Route path="/estado-operativo" element={<Guard roles={['administrador']}><StaffNav /><HealthPage /></Guard>} />
+    <Route path="/ausentismo" element={<Guard roles={['administrador']}><StaffNav /><AbsenteeismPage /></Guard>} />
     <Route path="/registro" element={<RegisterPage />} />
     <Route path="/recuperar-password" element={<EmailRequestPage mode="recover" />} />
     <Route path="/reenviar-verificacion" element={<EmailRequestPage mode="resend" />} />
