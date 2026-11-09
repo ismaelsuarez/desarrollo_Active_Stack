@@ -29,7 +29,9 @@ export function RoleLayout() {
         {['recepcion', 'administrador'].includes(rol) && <Counters />}
         {rol === 'administrativo'
           ? <p>Tu cuenta está activa. Las funciones para este rol todavía no están disponibles.</p>
-          : <p>Las funciones de {rol} se incorporarán más adelante.</p>}
+          : rol === 'administrador'
+            ? <p>Elegí una opción del menú para comenzar.</p>
+            : <p>Las funciones de {rol} se incorporarán más adelante.</p>}
       </section>
     </div>
   </PageTemplate>;

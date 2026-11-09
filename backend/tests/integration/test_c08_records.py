@@ -456,22 +456,31 @@ async def test_patch_propio_error_postgres_revierte_contacto_y_verificacion(
 async def test_patch_propio_recarga_vinculo_cambiado_entre_lectura_y_escritura(
         cliente, escenario, sesiones, monkeypatch):
     import asyncio
+    from contextvars import ContextVar
     from app.infrastructure.db.cuentas import RepositorioCuentas
 
     await vincular_titular(sesiones, escenario)
     pid, uid = escenario.pacientes[1], escenario.usuarios[1, "paciente"]
     leido, continuar = asyncio.Event(), asyncio.Event()
+    operacion = ContextVar("operacion_c08", default=None)
     original = RepositorioCuentas.usuario_por_id
 
     async def esperar_tras_lectura(repo, cid, usuario_id):
-        if asyncio.current_task().get_name() == "contacto-c08":
+        if operacion.get() == "contacto-c08":
             leido.set()
             await asyncio.wait_for(continuar.wait(), 10)
         return await original(repo, cid, usuario_id)
 
     monkeypatch.setattr(RepositorioCuentas, "usuario_por_id", esperar_tras_lectura)
-    tarea = asyncio.create_task(cliente.patch(f"/api/v1/pacientes/{pid}",
-        json={"telefono": "1188889999"}, headers=escenario.headers("paciente")), name="contacto-c08")
+    async def actualizar_contacto():
+        token = operacion.set("contacto-c08")
+        try:
+            return await cliente.patch(f"/api/v1/pacientes/{pid}",
+                json={"telefono": "1188889999"}, headers=escenario.headers("paciente"))
+        finally:
+            operacion.reset(token)
+
+    tarea = asyncio.create_task(actualizar_contacto())
     await asyncio.wait_for(leido.wait(), 10)
     try:
         desvinculada = await cliente.post(f"/api/v1/pacientes/{pid}/desvincular",
@@ -496,6 +505,7 @@ async def test_patch_propio_recarga_vinculo_cambiado_entre_lectura_y_escritura(
 async def test_contacto_y_desvinculacion_concurrentes_conservan_orden_serial(
         cliente, escenario, sesiones, monkeypatch, primero):
     import asyncio
+    from contextvars import ContextVar
     from sqlalchemy import func
     from app.infrastructure.db.cuentas import RepositorioCuentas
     from app.infrastructure.db.vinculacion import RepositorioVinculacionSQL
@@ -504,12 +514,13 @@ async def test_contacto_y_desvinculacion_concurrentes_conservan_orden_serial(
     pid = escenario.pacientes[1]
     bloqueado, intentando, liberar = asyncio.Event(), asyncio.Event(), asyncio.Event()
     conexiones = set()
+    operacion = ContextVar("operacion_c08", default=None)
     ficha_original = RepositorioCuentas.ficha_de_usuario
     usuario_original = RepositorioCuentas.usuario_por_id
     bloqueo_original = RepositorioVinculacionSQL.bloquear_ficha
 
     async def usuario(repo, *args):
-        nombre = asyncio.current_task().get_name()
+        nombre = operacion.get()
         conexiones.add(await repo.sesion.scalar(select(func.pg_backend_pid())))
         if nombre == "contacto" and primero == "desvincular":
             intentando.set()
@@ -537,11 +548,15 @@ async def test_contacto_y_desvinculacion_concurrentes_conservan_orden_serial(
     monkeypatch.setattr(RepositorioVinculacionSQL, "bloquear_ficha", bloquear)
 
     async def ejecutar(nombre):
-        if nombre == "contacto":
-            return await cliente.patch(f"/api/v1/pacientes/{pid}", json={"telefono": "1188889999"},
-                                       headers=escenario.headers("paciente"))
-        return await cliente.post(f"/api/v1/pacientes/{pid}/desvincular", json={"motivo": "Corrección"},
-                                  headers=escenario.headers())
+        token = operacion.set(nombre)
+        try:
+            if nombre == "contacto":
+                return await cliente.patch(f"/api/v1/pacientes/{pid}", json={"telefono": "1188889999"},
+                                           headers=escenario.headers("paciente"))
+            return await cliente.post(f"/api/v1/pacientes/{pid}/desvincular", json={"motivo": "Corrección"},
+                                      headers=escenario.headers())
+        finally:
+            operacion.reset(token)
 
     otra = "desvincular" if primero == "contacto" else "contacto"
     inicial = asyncio.create_task(ejecutar(primero), name=primero)

@@ -238,6 +238,10 @@ Convención de revisión: las decisiones y supuestos que cambiaron con la explor
 **Justificación**: una reserva hecha con menos de 48 horas ya expresa la intención del paciente.
 **Trade-offs aceptados**: si ese paciente falta, el hueco no se libera antes; el indicador de ausentismo lo cuenta como un turno `confirmado` que terminó `ausente`. El estado `confirmado` asignado por la regla se distingue en el historial del confirmado por el paciente.
 
+### DD-34 — Arquitectura elegida para preparar C-20
+
+**Decisión (2026-11-07):** el usuario eligió preparar una demostración académica con un servicio que sirve frontend y API, PostgreSQL administrado y un disparador externo. Los proveedores y su viabilidad siguen pendientes de verificación (Q-23 a Q-27). Esta elección no verifica qué exige la asignatura: Q-29 sigue abierta hasta comprobar la consigna.
+
 ### DD-33 — La primera entrega es la del Trabajo de Integración: un único change, `crear-turno-sin-solapamientos` (precisa DD-22 y DD-31)
 **Decisión (2026-10-12)**: la primera parte de la entrega, el 2026-10-19, es lo que pide la consigna del Trabajo de Integración de Metodología I ("del Discovery al primer Change"): la fundación del proyecto, el informe de Discovery y un único change llevado por el ciclo OPSX completo (explore, propose, apply, verify, archive). Ese change es `crear-turno-sin-solapamientos` (C-00 en `CHANGES.md`). El trabajo se hace con Spec-Driven Development y OpenSpec, sin otros flujos ni artefactos de proceso en el repositorio. Los 20 changes C-01 a C-20 y C-21 son el plan de la segunda parte, en el orden de DD-31.
 **Contexto**: el dueño del proyecto confirmó que la consigna es exactamente lo que se entrega en la primera parte. La consigna pide un change del MVP, con reglas de negocio verificables y lo bastante chico para terminarlo, y advierte que vale más un change bien especificado, probado y archivado que varios a medias. C-01 (`foundation-setup`) es andamiaje y no cumple esos criterios.

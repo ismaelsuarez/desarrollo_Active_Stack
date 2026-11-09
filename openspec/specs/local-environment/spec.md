@@ -79,7 +79,19 @@ La verificación local y de CI SHALL usar un proyecto Compose descartable con id
 - **AND** los volúmenes habituales y sus datos permanecen intactos
 
 ### Requirement: Secretos como archivos montados y no versionados
-Los valores sensibles SHALL llegar a los contenedores como secretos de Compose montados en `/run/secrets/<nombre>` desde la carpeta `secrets/`, nunca por `env_file` ni por `environment`; `secrets/` y `.env` MUST quedar excluidos de Git, y `.env.example` MUST listar solo variables no sensibles. Cada servicio SHALL recibir únicamente los secretos que usa: `db` recibe `postgres_password`, `migrate` recibe `database_url`, `seed` recibe `database_url` y `bootstrap_admin_password`, y `api` recibe `database_url` y `jwt_secret_key`.
+Los valores sensibles SHALL llegar a los contenedores como secretos de Compose montados en `/run/secrets/<nombre>` desde la carpeta `secrets/`, nunca por `env_file` ni por `environment`; `secrets/` y `.env` MUST quedar excluidos de Git, y `.env.example` MUST listar solo variables no sensibles.
+
+#### Scenario: Archivos ignorados
+- **WHEN** se ejecuta `git check-ignore secrets/jwt_secret_key.txt .env`
+- **THEN** ambas rutas figuran como ignoradas
+
+#### Scenario: Ejemplo de entorno
+- **WHEN** se inspecciona `.env.example`
+- **THEN** incluye `APP_ENV=development` y `APP_TIMEZONE`
+- **AND** no incluye `DATABASE_URL`, `JWT_SECRET_KEY` ni `POSTGRES_PASSWORD`
+
+### Requirement: Secretos limitados a cada servicio
+Cada servicio SHALL recibir únicamente los secretos que usa: `db` recibe `postgres_password`, `migrate` recibe `database_url`, `seed` recibe `database_url` y `bootstrap_admin_password`, y `api` recibe `database_url` y `jwt_secret_key`.
 
 #### Scenario: Secretos de la API
 - **WHEN** se inspecciona el servicio `api`
@@ -94,15 +106,6 @@ Los valores sensibles SHALL llegar a los contenedores como secretos de Compose m
 - **WHEN** se inspecciona el servicio `db`
 - **THEN** recibe `postgres_password` como secreto de Compose y lo lee con `POSTGRES_PASSWORD_FILE`
 - **AND** no define `POSTGRES_PASSWORD`
-
-#### Scenario: Archivos ignorados
-- **WHEN** se ejecuta `git check-ignore secrets/jwt_secret_key.txt .env`
-- **THEN** ambas rutas figuran como ignoradas
-
-#### Scenario: Ejemplo de entorno
-- **WHEN** se inspecciona `.env.example`
-- **THEN** incluye `APP_ENV=development` y `APP_TIMEZONE`
-- **AND** no incluye `DATABASE_URL`, `JWT_SECRET_KEY` ni `POSTGRES_PASSWORD`
 
 #### Scenario: Arranque sin `.env`
 - **WHEN** se ejecuta el arranque verificado (`scripts/smoke_compose.sh`) en una copia limpia sin `.env`

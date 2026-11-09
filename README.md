@@ -36,15 +36,11 @@ Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de 
 
 ## Estado del proyecto
 
-- **Entrega en dos partes:** la primera el 2026-10-19, con los changes completos y verificados a esa fecha; la segunda, con el resto. Se entrega el repositorio de GitHub.
-- **Fundación terminada:** descubrimiento de producto, base de conocimiento, roadmap de 20 changes, skills y reglas del proyecto.
-- **C-00 completado:** creación de turnos sin solapamientos, archivada e integrada a `main`.
-- **C-01 completado y archivado:** entorno local, salud HTTP, configuración, logging y frontend mínimo integrados a `main`, con las 22 tareas completadas y seis especificaciones sincronizadas. El change está en [`2026-10-15-c-01-foundation-setup`](openspec/changes/archive/2026-10-15-c-01-foundation-setup/). La [ejecución de CI de `2c463ad`](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) pasó los cuatro jobs.
-- **C-02 completado y archivado:** modelos troncales con `consultorio_id`, migración de identidad `0002_core_models`, puerto `Reloj`, Value Object `Dni` y servicio de semilla con Argon2 integrados a `main`, con las 23 tareas completadas y cuatro especificaciones sincronizadas. El change está en [`2026-10-30-c-02-core-models`](openspec/changes/archive/2026-10-30-c-02-core-models/).
-- **C-03 completado y archivado:** autenticación JWT HS256 con PyJWT, hash Argon2 con pwdlib, rotación atómica de refresh tokens en cookies HttpOnly SameSite=Strict, RBAC con dependencias FastAPI, rate limiting contra tabla `intento_ingreso` con mitigación de timing attacks dummy, e integración con puerto `Reloj` inyectado, con las 15 tareas completadas y especificaciones sincronizadas. El change está en [`2026-10-30-c-03-auth-core`](openspec/changes/archive/2026-10-30-c-03-auth-core/).
-- **C-05 completado y archivado en el workspace:** cuenta de paciente, aviso versionado, verificación, recuperación y autoservicio, con SMTP y despacho durable. Las 21 tareas y seis especificaciones están cerradas en [`2026-11-03-c-05-patient-account`](openspec/changes/archive/2026-11-03-c-05-patient-account/). Verificación: 465 pruebas completas en Linux y 265 unitarias/API en Windows, sin omisiones. Sin commit ni push de esta sesión.
-- **Próximo change:** C-06 (`agenda-config`), según el orden de construcción de [`CHANGES.md`](CHANGES.md).
-- **Código ejecutable:** backend de C-00, entorno de C-01, modelos y semilla de C-02, autenticación de C-03, políticas ABAC de C-04 y cuenta/correo de C-05. Aún no hay pantallas de agenda ni despliegue publicado.
+- **Alcance actual:** C-00 a C-19 están archivados; no hay changes activos. Incluyen API, autenticación y permisos, configuración de agenda, pacientes, turnos, reserva pública, notificaciones y pantallas de operación e indicadores. El detalle, escenarios y resultados históricos se conservan en [`CHANGES.md`](CHANGES.md) y [`openspec/changes/archive/`](openspec/changes/archive/).
+- **Pendientes:** C-20 (despliegue y endurecimiento) y C-21 (derechos de titulares y auditoría de acceso) no están implementados. La aplicación se demuestra localmente con datos sintéticos; no se presenta un despliegue público como completado.
+- **Límites:** WhatsApp prepara enlaces para envío manual; Mailpit captura correo de prueba y no entrega a destinatarios reales. La automatización de hitos requiere el barrido en la API. La protección de solapamientos tiene un riesgo residual documentado para la carrera simultánea entre un turno regular y un sobreturno.
+- **Historia:** el primer change C-00 se archivó en 2026-10-13; la [ejecución de CI de C-01](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) pasó sus cuatro trabajos. Los resultados posteriores y sus límites se conservan en cada change archivado; no deben confundirse con una ejecución actual.
+- **Demostración y verificación:** [recorrido y pruebas del TPI](docs/verificacion-tpi.md), [skill propia y Context7 en C-07](docs/skills-mcp/demostracion-tpi.md) e [informe de Discovery](docs/discovery/informe-discovery.md).
 
 ## Stack tecnológico
 
@@ -174,6 +170,8 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
 
 Requisitos: Docker Engine con Docker Compose v2 o posterior y Python 3 para los scripts locales. Para las pruebas fuera de contenedores: `uv`, Node.js 24 y npm. Ejecutar desde la raíz del repositorio:
 
+Los comandos de esta sección usan Bash y `python3`; en Windows usar un entorno Linux/WSL con Docker disponible. La compatibilidad de los enlaces simbólicos de `.claude/skills` depende de la configuración de Windows; las skills canónicas están en `.agents/skills`.
+
 ```bash
 scripts/dev_secrets.sh
 test -f .env || cp .env.example .env
@@ -182,6 +180,8 @@ python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.
 ```
 
 Frontend: `http://localhost:5173`. Salud de la API: `http://localhost:8000/api/v1/health` (responde `200` con `{"status": "ok"}`, sin consultar PostgreSQL). Compose aplica `alembic upgrade head` antes de iniciar la API. Se conserva la migración y la restricción de no solapamiento de C-00; C-01 no crea otra raíz ni requiere una revisión vacía.
+
+Swagger está en `http://localhost:8000/docs` y OpenAPI en `http://localhost:8000/openapi.json`. La semilla crea el usuario administrador con el correo `BOOTSTRAP_ADMIN_EMAIL` de `.env` y la contraseña generada en `secrets/bootstrap_admin_password.txt`; consultarla localmente sin compartirla ni registrarla en el repositorio. Configurar un profesional, un box y su horario desde Administración antes de buscar disponibilidad. Para probar correo local iniciar Mailpit con el perfil `dev`; el barrido debe activarse explícitamente o habilitarse su bucle local. Usar exclusivamente datos sintéticos para la demostración.
 
 `.env` contiene solo configuración no sensible. Los secretos se generan una vez en `secrets/` y se montan en `/run/secrets`; no se imprimen ni sobrescriben. La carpeta tiene modo `0700`; los archivos son legibles por el proceso no root del contenedor mediante sus montajes. `.env` y `secrets/` están ignorados por Git. Si se personalizan `POSTGRES_USER` o `POSTGRES_DB`, exportar esos mismos valores al generar los secretos y usarlos en `.env`; no regenerar credenciales sobre un volumen ya inicializado.
 
@@ -303,7 +303,7 @@ uv run pytest tests/integration/test_c07_migration.py tests/integration/test_mig
 uv run alembic heads
 ```
 
-Las pruebas crean y eliminan sus propias bases e incluyen upgrade desde C-06 con filas sintéticas y downgrade a `0007_agenda_config` seguido de upgrade. Debe existir un único head, `0008_turnos_core`. El downgrade elimina el historial y las columnas nuevas: el upgrade posterior no recupera esa información. Requiere revisión humana antes de usarse en un entorno con datos; se prefiere una corrección hacia adelante. Esta verificación no ejecutó restauraciones ni migraciones sobre datos reales.
+Las pruebas crean y eliminan sus propias bases e incluyen upgrade desde C-06 con filas sintéticas y downgrade a `0007_agenda_config` seguido de upgrade. En la verificación histórica de C-07 el head era `0008_turnos_core`; el head actual es `0011_overbooking_authorization` y debe seguir siendo único. El downgrade elimina el historial y las columnas nuevas: el upgrade posterior no recupera esa información. Requiere revisión humana antes de usarse en un entorno con datos; se prefiere una corrección hacia adelante. Esta verificación no ejecutó restauraciones ni migraciones sobre datos reales.
 
 En Windows, las pruebas de esta migración se ejecutaron en un contenedor Linux con Python 3.13 y uv 0.13.1, contra PostgreSQL 17 sin volumen persistente. Se usó una copia descartable de las fuentes, con los scripts en LF según `.gitattributes`; el repositorio original se montó en solo lectura. No se copiaron secretos, `.env`, `.git`, `node_modules` ni el entorno virtual de Windows.
 
@@ -317,14 +317,16 @@ uv sync
 uv run pytest -m "not integration"
 
 # 3. Levantar un PostgreSQL descartable para las pruebas de integración
-docker run --rm -d --name tpi-pg-test -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:17
+docker run --rm -d --name tpi-pg-test -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55432:5432 postgres:17
 
-# 4. Levantar Mailpit para las pruebas SMTP
-docker run --rm -d --name tpi-mailpit -p 11025:1025 axllent/mailpit:latest
+# 4. Levantar Mailpit descartable para SMTP y su API
+docker run --rm -d --name tpi-mailpit -p 127.0.0.1:11025:1025 -p 127.0.0.1:18025:8025 axllent/mailpit:v1.30.1
 
 # 5. Pruebas de integración contra PostgreSQL real y Mailpit
 export TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@127.0.0.1:55432/postgres"
+export SMTP_TEST_HOST=127.0.0.1
 export SMTP_TEST_PORT=11025
+export MAILPIT_API_URL=http://127.0.0.1:18025
 uv run pytest -m integration
 
 # 6. Detener los contenedores al terminar

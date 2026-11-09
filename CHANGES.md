@@ -626,7 +626,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ## FASE 5 — Indicador de ausentismo
 
 ### [C-19] `absenteeism-indicator`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-11-07; `openspec/changes/archive/2026-11-07-c-19-absenteeism-indicator`)
 - **Scope**: Indicador de ausentismo del Administrador (backend y pantalla)
   - `GET /api/v1/indicadores/ausentismo?desde=&hasta=&profesional_id=` — cantidad de `ausente`, tasa `ausentes / (atendidos + ausentes)` sobre turnos cuya hora ya llegó (RN-45), por período y por profesional, más cantidad de `liberado` y `cancelado`
   - Solo el Administrador (`puede_ver_ausentismo`); Administrativo con permiso reservado y sin acceso
@@ -648,6 +648,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 
 ### [C-20] `deploy-hardening`
 - **Estado**: `[ ]` pendiente
+- **Preparación**: usuario eligió frontend y API en un servicio, PostgreSQL administrado y disparador externo (DD-34); requisitos académicos y validación de proveedores siguen abiertos. Ver `discovery/c-20-preparacion-despliegue.md`.
 - **Scope**: Despliegue en servicios gratuitos, endurecimiento y prueba de punta a punta
   - Topología de producción (DD-13): un solo servicio web gratuito con la API, que sirve también el frontend compilado (DD-26: la imagen de producción incluye el build de Vite con `VITE_API_BASE_URL=/api/v1` y la aplicación lo monta con `app.frontend()` o, si la versión fijada de FastAPI no lo trae, con `StaticFiles` y una ruta de respaldo; contenedor del `Dockerfile` del backend, host por decidir, Q-24), PostgreSQL en **Neon** (`DATABASE_URL` con `postgresql+asyncpg`, `btree_gist` verificado), sin proceso persistente aparte y sin Redis obligatorio
   - Migraciones (`alembic upgrade head`, un único head) y semilla idempotente como paso de despliegue; HTTPS, `FRONTEND_BASE_URL` del dominio público y `CORS_ORIGINS` vacío (DD-26); `OPENAPI_DOCS_ENABLED=false` (`/docs` y `/openapi.json` deshabilitados); secretos (`JWT_SECRET_KEY`, `SWEEP_SHARED_SECRET`, `ORIGIN_HASH_SECRET`, `SMTP_PASSWORD`, `DATABASE_URL`) solo en el almacén de secretos del host; `TRUSTED_PROXY_HOPS` con la cantidad real de proxies del host (Q-24), comprobando que un `X-Forwarded-For` enviado por el cliente no cambia el origen del límite de registros ni el del bloqueo de ingreso, y que dos clientes distintos tienen orígenes distintos (con `TRUSTED_PROXY_HOPS=0` detrás del proxy del host todos comparten un origen: el bloqueo de ingreso pasa a ser por cuenta y el límite por origen, global)
