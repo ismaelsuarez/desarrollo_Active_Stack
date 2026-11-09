@@ -60,6 +60,13 @@ class RepositorioPrestacionesSQL:
     def __init__(self, sesion: AsyncSession) -> None:
         self._sesion = sesion
 
+    async def obtener_varios(self, consultorio_id: int, ids: set[int]) -> dict[int, Prestacion]:
+        modelos = await self._sesion.scalars(select(PrestacionModel).where(
+            PrestacionModel.consultorio_id == consultorio_id, PrestacionModel.id.in_(ids)))
+        return {modelo.id: Prestacion(id=modelo.id, consultorio_id=modelo.consultorio_id,
+                                     nombre=modelo.nombre, duracion_min=modelo.duracion_min)
+                for modelo in modelos}
+
     async def obtener(
         self, consultorio_id: int, prestacion_id: int, *, incluir_inactivos: bool = False
     ) -> Prestacion | None:
@@ -105,6 +112,7 @@ class RepositorioTurnosSQL:
         self, consultorio_id: int, profesional_id: int | None = None,
         paciente_id: int | None = None, desde: datetime | None = None,
         hasta: datetime | None = None, sin_confirmar: bool = False,
+        limit: int | None = None, offset: int = 0,
     ) -> list[Turno]:
         consulta = select(TurnoModel).where(TurnoModel.consultorio_id == consultorio_id)
         if sin_confirmar:
@@ -117,7 +125,10 @@ class RepositorioTurnosSQL:
             consulta = consulta.where(TurnoModel.inicio >= desde)
         if hasta is not None:
             consulta = consulta.where(TurnoModel.inicio < hasta)
-        filas = await self._sesion.scalars(consulta.order_by(TurnoModel.inicio, TurnoModel.id))
+        consulta = consulta.order_by(TurnoModel.inicio, TurnoModel.id).offset(offset)
+        if limit is not None:
+            consulta = consulta.limit(limit)
+        filas = await self._sesion.scalars(consulta)
         return [self._entidad(modelo) for modelo in filas]
 
     async def hay_solapamiento(

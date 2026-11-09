@@ -201,6 +201,8 @@ Una variable marcada como sensible (`Y`) nunca aparece en los logs. Los logs ocu
 | `REGISTRATION_LIMIT_PER_ORIGIN` | Registros permitidos por origen dentro de la ventana; al superarlo, 429 | `10` (por defecto) | N |
 | `REGISTRATION_LIMIT_GLOBAL` | Registros permitidos dentro de la ventana cuando no se puede determinar el origen; al superarlo, 429 | `50` (por defecto) | N |
 | `REGISTRATION_LIMIT_WINDOW_MINUTES` | Ventana de los dos límites anteriores, en minutos; no puede superar 1.440 (la retención de 24 horas de `intento_registro`) | `60` (por defecto) | N |
+| `ACCOUNT_REQUEST_LIMIT_PER_ORIGIN` / `ACCOUNT_REQUEST_LIMIT_GLOBAL` | Cuota compartida de recuperación y reenvío por origen o global si no se conoce el origen | `10` / `50` (por defecto) | N |
+| `ACCOUNT_REQUEST_LIMIT_WINDOW_MINUTES` | Ventana de la cuota compartida de recuperación y reenvío; máximo 1.440 minutos | `60` (por defecto) | N |
 | `NOTIFICATION_CLAIM_TTL_SECONDS` | Antigüedad desde la cual una notificación `enviando` se considera abandonada y se reclama de nuevo (RN-61); debe superar el tiempo máximo de un envío SMTP | a definir | N |
 | `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | Alta del primer administrador (solo la primera vez). Las carga `SeedSettings` del servicio `seed` (C-02), no `Settings`; la contraseña llega como el secreto `bootstrap_admin_password` | valores propios | Y (contraseña) |
 | `OPENAPI_DOCS_ENABLED` | Publicar `/docs` | `true` en desarrollo, `false` en producción | N |

@@ -171,6 +171,19 @@ describe('cuentas públicas', () => {
     expect(mocks.request).toHaveBeenCalledTimes(1);
   });
 
+  it.each([new TypeError('red'), new ApiError(503)])('informa resultado incierto al fallar la conexión o el servidor', async fallo => {
+    window.history.replaceState(null, '', '/restablecer-password#token=privado');
+    mocks.request.mockRejectedValueOnce(fallo);
+    show(<ResetPasswordPage />);
+    fireEvent.change(await screen.findByLabelText('Nueva contraseña'), { target: { value: '12345678' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Restablecer contraseña' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos confirmar el cambio.');
+    expect(screen.queryByText(/venció/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Restablecer contraseña' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ir a ingresar' })).toHaveAttribute('href', '/ingresar');
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
+
   it('rechaza contraseñas demasiado cortas antes de enviar', async () => {
     window.history.replaceState(null, '', '/restablecer-password#token=valido');
     show(<ResetPasswordPage />);

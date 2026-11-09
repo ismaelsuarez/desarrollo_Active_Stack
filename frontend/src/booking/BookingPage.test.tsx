@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { BookingPage } from './BookingPage';
 
@@ -10,6 +10,7 @@ vi.mock('../api/client', async importOriginal => ({ ...await importOriginal<type
 vi.mock('../auth/provider', () => ({ useSession: () => ({ state: session.state, session: { request: session.request } }) }));
 
 describe('consulta pública de turnos', () => {
+  afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     api.request.mockReset();
     session.state.profile = null; session.request.mockReset();
@@ -34,6 +35,22 @@ describe('consulta pública de turnos', () => {
     expect(screen.getByRole('link', { name: 'Crear cuenta' })).toHaveAttribute('href', '/registro');
     expect(screen.getByText(/volvé a elegir el horario/)).toBeInTheDocument();
     await waitFor(() => expect(api.request).toHaveBeenCalledWith(expect.stringContaining('profesional_id=2'), expect.anything()));
+  });
+  it('anuncia la búsqueda pendiente y evita duplicarla', async () => {
+    let finish!: (value: unknown) => void;
+    const original = api.request.getMockImplementation()!;
+    api.request.mockImplementation((path: string, options: unknown) => path.startsWith('/publico/disponibilidad')
+      ? new Promise(resolve => { finish = resolve; }) : original(path, options));
+    render(<MemoryRouter><BookingPage /></MemoryRouter>);
+    await screen.findByText(/Consultorio · 1234/);
+    fireEvent.change(screen.getByLabelText('Prestación'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Profesional'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-11-12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar horarios' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Buscando horarios');
+    expect(screen.getByRole('button', { name: 'Buscar horarios' })).toBeDisabled();
+    await act(async () => finish([]));
+    expect(screen.queryByText('Buscando horarios…')).not.toBeInTheDocument();
   });
   it('muestra una fecha sin horarios y un límite de consultas', async () => {
     api.request.mockImplementation((path: string) => {
@@ -81,6 +98,44 @@ describe('consulta pública de turnos', () => {
     api.request.mockRejectedValue(new ApiError(429));
     render(<MemoryRouter><BookingPage /></MemoryRouter>);
     expect(await screen.findByRole('alert')).toHaveTextContent('Demasiadas consultas');
+  });
+  it('permite reintentar la carga inicial si falla', async () => {
+    const original = api.request.getMockImplementation()!;
+    let fallar = true;
+    api.request.mockImplementation((path: string, options: unknown) => {
+      if (fallar && path === '/publico/consultorio') return Promise.reject(new Error('sin conexión'));
+      return original(path, options);
+    });
+    render(<MemoryRouter><BookingPage /></MemoryRouter>);
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos cargar');
+    expect(screen.queryByLabelText('Prestación')).not.toBeInTheDocument();
+    fallar = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a cargar' }));
+    expect(await screen.findByText(/Consultorio · 1234/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+  it('espera Retry-After antes de permitir reintentar los catálogos', async () => {
+    api.request.mockRejectedValue(new ApiError(429, [], undefined, undefined, 30));
+    render(<MemoryRouter><BookingPage /></MemoryRouter>);
+    await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: 'Volver a cargar' })).toBeDisabled();
+  });
+  it('habilita nuevamente el reintento cuando termina Retry-After', async () => {
+    vi.useFakeTimers();
+    api.request.mockRejectedValue(new ApiError(429, [], undefined, undefined, 30));
+    render(<MemoryRouter><BookingPage /></MemoryRouter>);
+    await act(async () => {});
+    expect(screen.getByRole('button', { name: 'Volver a cargar' })).toBeDisabled();
+    await act(async () => vi.advanceTimersByTime(30_000));
+    expect(screen.getByRole('button', { name: 'Volver a cargar' })).toBeEnabled();
+  });
+  it('no habilita antes de una espera mayor al máximo de un temporizador', async () => {
+    vi.useFakeTimers();
+    api.request.mockRejectedValue(new ApiError(429, [], undefined, undefined, 3_000_000));
+    render(<MemoryRouter><BookingPage /></MemoryRouter>);
+    await act(async () => {});
+    await act(async () => vi.advanceTimersByTime(2_147_483_647));
+    expect(screen.getByRole('button', { name: 'Volver a cargar' })).toBeDisabled();
   });
   it('muestra la espera durante una lectura demorada y luego los datos', async () => {
     let finish!: (value: unknown) => void;

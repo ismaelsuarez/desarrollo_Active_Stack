@@ -1,10 +1,36 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AbsenteeismPage } from './AbsenteeismPage';
 
 const api = vi.hoisted(() => ({ request: vi.fn() }));
+const publicApi = vi.hoisted(() => ({ request: vi.fn() }));
+const initialTimezone = process.env.TZ;
 vi.mock('../auth/provider', () => ({ useSession: () => ({ session: api }) }));
-beforeEach(() => api.request.mockReset());
+vi.mock('../api/client', () => ({ request: publicApi.request }));
+beforeEach(() => { api.request.mockReset(); publicApi.request.mockReset(); publicApi.request.mockResolvedValue({ zona_horaria: 'America/Argentina/Buenos_Aires' }); });
+afterEach(() => { vi.useRealTimers(); if (initialTimezone === undefined) delete process.env.TZ; else process.env.TZ = initialTimezone; });
+
+it('inicializa el período con la fecha del consultorio aunque UTC ya cambió de mes', async () => {
+  process.env.TZ = 'UTC';
+  vi.setSystemTime(new Date('2026-11-01T02:30:00Z'));
+  api.request.mockImplementation((path: string) => path === '/profesionales' ? Promise.resolve([]) : Promise.resolve({ resumen: { ausentes: 0, atendidos: 0, cancelados: 0, liberados: 0, sin_cierre: 0, tasa: null }, evolucion: [], profesionales: [] }));
+  render(<AbsenteeismPage />);
+  await waitFor(() => expect(screen.getByLabelText('Hasta')).toHaveValue('2026-10-31'));
+  expect(screen.getByLabelText('Desde')).toHaveValue('2026-10-01');
+  await waitFor(() => expect(api.request).toHaveBeenCalledWith('/indicadores/ausentismo?desde=2026-10-01&hasta=2026-10-31'));
+});
+
+it('permite recuperar la zona si no pudo obtenerse sin consultar fechas inventadas', async () => {
+  publicApi.request.mockRejectedValueOnce(new Error('sin conexión')).mockResolvedValueOnce({ zona_horaria: 'America/Argentina/Buenos_Aires' });
+  api.request.mockImplementation((path: string) => path === '/profesionales' ? Promise.resolve([]) : Promise.resolve({ resumen: { ausentes: 0, atendidos: 0, cancelados: 0, liberados: 0, sin_cierre: 0, tasa: null }, evolucion: [], profesionales: [] }));
+  render(<AbsenteeismPage />);
+  expect(await screen.findByText(/No pudimos obtener la zona horaria/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Consultar' })).toBeDisabled();
+  expect(api.request.mock.calls.some(([path]) => String(path).startsWith('/indicadores/ausentismo'))).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Reintentar zona horaria' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Consultar' })).toBeEnabled());
+  expect(await screen.findByText('Sin datos para este período.')).toBeInTheDocument();
+});
 
 it('presenta el indicador y consulta el período y profesional elegidos', async () => {
   api.request.mockImplementation((path: string) => path === '/profesionales'

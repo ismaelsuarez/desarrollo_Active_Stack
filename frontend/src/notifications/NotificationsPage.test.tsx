@@ -68,8 +68,15 @@ it('rechaza destino no autorizado sin abrirlo', async () => {
   render(<MemoryRouter><NotificationsPage /></MemoryRouter>);
   await screen.findByText(/recordatorio/i);
   fireEvent.click(screen.getByRole('button', { name: 'Abrir WhatsApp 8' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('enlace no válido');
+  expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos abrir WhatsApp o el enlace no es válido.');
   expect(open).not.toHaveBeenCalled();
+});
+it('informa con claridad si falla la consulta del enlace', async () => {
+  api.request.mockResolvedValueOnce([{ id: 8, turno_id: 42, tipo: 'recordatorio', programada_para: '2026-11-06T12:00:00Z' }]).mockRejectedValueOnce(new Error('sin conexión'));
+  render(<MemoryRouter><NotificationsPage /></MemoryRouter>);
+  await screen.findByText(/recordatorio/i);
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir WhatsApp 8' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos abrir WhatsApp o el enlace no es válido.');
 });
 it('informa conflicto y vuelve a consultar sin repetir la escritura', async () => {
   const row = { id: 8, turno_id: 42, tipo: 'recordatorio', programada_para: '2026-11-06T12:00:00Z' };

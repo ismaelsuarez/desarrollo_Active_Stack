@@ -2,7 +2,7 @@ type BookingDetail = { kind: 'occupied'; alternatives: { inicio: string; fin: st
 const isInstant = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value) && Number.isFinite(Date.parse(value));
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly invalidFields: string[] = [], public readonly bookingDetail?: BookingDetail, public readonly affectedAppointments?: number[]) {
+  constructor(public readonly status: number, public readonly invalidFields: string[] = [], public readonly bookingDetail?: BookingDetail, public readonly affectedAppointments?: number[], public readonly retryAfterSeconds?: number) {
     super(`Error HTTP ${status}`);
     this.name = 'ApiError';
   }
@@ -90,7 +90,10 @@ export async function request<T = unknown>(path: string, options: RequestOptions
         }
       }
     }
-    throw new ApiError(response.status, fields);
+    const retryHeader = response.headers.get('Retry-After');
+    const retrySeconds = retryHeader && /^\d+$/.test(retryHeader) ? Number(retryHeader)
+      : retryHeader && Number.isFinite(Date.parse(retryHeader)) ? Math.max(0, Math.ceil((Date.parse(retryHeader) - Date.now()) / 1000)) : undefined;
+    throw new ApiError(response.status, fields, undefined, undefined, retrySeconds);
   }
   if (response.status === 204) return undefined as T;
   return await response.json() as T;

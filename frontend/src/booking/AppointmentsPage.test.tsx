@@ -10,6 +10,36 @@ vi.mock('../api/client', async importOriginal => ({ ...await importOriginal<type
 vi.mock('../auth/provider', () => ({ useSession: () => ({ session, state: { profile: { rol: 'paciente' }, loading: false } }) }));
 
 describe('mis turnos', () => {
+  it('muestra turnos aunque el catálogo complementario siga pendiente', async () => {
+    const original = api.request.getMockImplementation()!;
+    api.request.mockImplementation((path: string) => path === '/publico/profesionales'
+      ? new Promise(() => {}) : original(path));
+    render(<MemoryRouter><AppointmentsPage /></MemoryRouter>);
+    expect(await screen.findByText('Consulta')).toBeInTheDocument();
+  });
+  it('no muestra una hora inventada si falta la zona del consultorio', async () => {
+    api.sessionRequest.mockResolvedValue([{ id: 3, profesional_id: 2, prestacion_id: 1, prestacion_nombre: 'Consulta', inicio: '2026-11-12T12:30:00Z', fin: '2026-11-12T13:00:00Z', estado: 'pendiente', acciones_permitidas: ['reprogramar'] }]);
+    api.request.mockImplementation((path: string) => path === '/publico/consultorio'
+      ? Promise.reject(new Error('sin conexión')) : Promise.resolve([{ id: 2, nombre: 'Ana Pérez' }]));
+    render(<MemoryRouter><AppointmentsPage /></MemoryRouter>);
+    expect(await screen.findByText('Consulta')).toBeInTheDocument();
+    expect(await screen.findByText('Fecha y hora no disponibles.')).toBeInTheDocument();
+    expect(screen.queryByText(/12:30/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reprogramar' })).toBeDisabled();
+  });
+  it('muestra los turnos y permite recuperar el catálogo si este falla', async () => {
+    const original = api.request.getMockImplementation()!;
+    let fallar = true;
+    api.request.mockImplementation((path: string) => fallar && path === '/publico/profesionales'
+      ? Promise.reject(new Error('sin conexión')) : original(path));
+    render(<MemoryRouter><AppointmentsPage /></MemoryRouter>);
+    expect(await screen.findByText('Consulta')).toBeInTheDocument();
+    expect(screen.getByText('Profesional no disponible')).toBeInTheDocument();
+    expect(screen.getByText(/No pudimos cargar los datos de profesionales/)).toBeInTheDocument();
+    fallar = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a cargar datos' }));
+    expect(await screen.findByText('Ana Pérez')).toBeInTheDocument();
+  });
   beforeEach(() => {
     api.request.mockReset(); api.sessionRequest.mockReset();
     api.request.mockImplementation((path: string) => path === '/publico/consultorio'
@@ -80,6 +110,17 @@ describe('mis turnos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar nuevo horario' }));
     expect(await screen.findByText(/turno fue reprogramado/i)).toBeInTheDocument();
     expect(api.sessionRequest).toHaveBeenCalledWith('/turnos/3', { method: 'PATCH', body: { inicio: '2026-11-13T13:00:00Z' } });
+  });
+  it('anuncia la búsqueda al reprogramar y evita solicitudes duplicadas', async () => {
+    api.sessionRequest.mockResolvedValue([{ id: 3, profesional_id: 2, prestacion_id: 1, prestacion_nombre: 'Consulta', inicio: '2026-11-12T12:30:00Z', fin: '2026-11-12T13:15:00Z', estado: 'pendiente', acciones_permitidas: ['reprogramar'] }]);
+    const original = api.request.getMockImplementation()!;
+    api.request.mockImplementation((path: string) => path.startsWith('/publico/disponibilidad') ? new Promise(() => {}) : original(path));
+    render(<MemoryRouter><AppointmentsPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Reprogramar' }));
+    fireEvent.change(screen.getByLabelText('Nueva fecha'), { target: { value: '2026-11-13' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar horarios' }));
+    expect(screen.getByText('Buscando horarios…')).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('button', { name: 'Buscar horarios' })).toBeDisabled();
   });
   it('muestra turnos pasados y futuros que devuelve la API', async () => {
     api.sessionRequest.mockResolvedValue([

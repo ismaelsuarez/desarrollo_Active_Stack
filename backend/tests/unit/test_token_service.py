@@ -68,6 +68,19 @@ def test_rechazo_token_firma_invalida():
         servicio.decodificar_access_token(token)
 
 
+def test_token_vence_en_el_segundo_exacto_de_expiracion():
+    reloj = RelojSimulado(AHORA)
+    servicio = AuthTokenService(reloj=reloj, secret_key=SECRET, ttl_segundos=900)
+    principal = Principal(usuario_id=42, consultorio_id=1, rol=RolUsuario.PACIENTE)
+    token = servicio.emitir_access_token(principal)
+
+    reloj.avanzar(timedelta(seconds=899))
+    assert servicio.decodificar_access_token(token) == principal
+    reloj.avanzar(timedelta(seconds=1))
+    with pytest.raises(TokenError):
+        servicio.decodificar_access_token(token)
+
+
 def test_rechazo_token_con_claims_faltantes_o_invalidos():
     reloj = RelojSimulado(AHORA)
     servicio = AuthTokenService(reloj=reloj, secret_key=SECRET)

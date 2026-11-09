@@ -59,7 +59,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if getattr(app.state, "sweep_owns_engine", False):
                 await app.state.engine.dispose()
 
-    app = FastAPI(title='Sistema de Turnos y Agenda Odontológica', lifespan=lifespan)
+    app = FastAPI(title='Sistema de Turnos y Agenda Odontológica', lifespan=lifespan,
+                  docs_url='/docs' if configured.openapi_docs_enabled else None,
+                  redoc_url='/redoc' if configured.openapi_docs_enabled else None,
+                  openapi_url='/openapi.json' if configured.openapi_docs_enabled else None)
 
     @app.exception_handler(RechazoDeTurno)
     async def rechazo_turno(request: Request, error: RechazoDeTurno) -> JSONResponse:
@@ -75,6 +78,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # default errors() response. Never echo request bodies or error context.
         detalles = [{clave: detalle[clave] for clave in ('loc', 'msg', 'type')}
                     for detalle in error.errors()]
+        for detalle in detalles:
+            if detalle['type'] == 'extra_forbidden':
+                detalle['loc'] = (*detalle['loc'][:-1], 'campo_no_permitido')
         return JSONResponse(status_code=422, content={'detail': detalles})
 
     app.state.settings = configured
@@ -104,6 +110,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if request.method != 'GET' or response.status_code != 404 or request.scope.get('route'):
             return response
         path = request.url.path.lstrip('/')
+        if not configured.openapi_docs_enabled and path in {'docs', 'redoc', 'openapi.json'}:
+            return response
         root = SPA_DIR.resolve()
         target = (root / path).resolve()
         if not target.is_relative_to(root) or path.split('/')[0] in {'api', 'internal'}:

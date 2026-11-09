@@ -15,6 +15,14 @@ def test_ci_builds_api_from_root_context():
     assert 'docker build -f backend/Dockerfile .' in commands
 
 
+def test_ci_executes_browser_checks_with_installed_chromium():
+    workflow = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())
+    commands = [step.get('run', '') for step in workflow['jobs']['frontend']['steps']]
+    assert 'npx playwright install --with-deps chromium' in commands
+    assert 'npm run test:keyboard' in commands
+    assert commands.index('npx playwright install --with-deps chromium') < commands.index('npm run test:keyboard')
+
+
 def test_services_profiles_and_persistence():
     document = compose()
     assert 'version' not in document

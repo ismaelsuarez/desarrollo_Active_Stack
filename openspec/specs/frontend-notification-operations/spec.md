@@ -78,3 +78,10 @@ Las pantallas SHALL admitir teléfono y escritorio, navegación por teclado, foc
 #### Scenario: Uso en teléfono
 - **WHEN** se consulta una bandeja en pantalla estrecha
 - **THEN** textos y botones permanecen legibles sin solaparse ni requerir desplazamiento horizontal de página
+
+### Requirement: Mensaje legible de enlace inválido
+La interfaz SHALL mostrar un mensaje gramaticalmente claro cuando no puede abrir el enlace de WhatsApp.
+
+#### Scenario: Enlace inválido
+- **WHEN** el enlace no es válido
+- **THEN** informa que no pudo abrir WhatsApp o que el enlace no es válido.

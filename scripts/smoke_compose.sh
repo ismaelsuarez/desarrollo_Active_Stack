@@ -53,6 +53,7 @@ with urllib.request.urlopen('http://' + sys.argv[1] + '/api/v1/health', timeout=
     assert response.status == 200
     assert json.load(response) == {'status': 'ok'}
 PY
+python3 "$root/scripts/check_spa_smoke.py" "$endpoint"
 "${compose[@]}" --profile dev up -d --wait mailpit
 mailpit="$("${compose[@]}" --profile dev port mailpit 8025)"
 python3 - "$mailpit" <<'PY'

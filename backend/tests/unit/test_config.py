@@ -9,6 +9,12 @@ ORIGIN_SECRET = 'origin-secret-hash-key-0123456789-abcdef'
 CID = 1
 
 
+def test_production_rejects_insecure_refresh_cookie():
+    with pytest.raises(ValidationError, match='COOKIE_SECURE'):
+        Settings(database_url=DB, jwt_secret_key=KEY, origin_hash_secret=ORIGIN_SECRET,
+                 app_env='production', consultorio_activo_id=CID, cookie_secure=False)
+
+
 @pytest.fixture(autouse=True)
 def clean_environment(monkeypatch, tmp_path):
     for name in [
@@ -22,6 +28,7 @@ def clean_environment(monkeypatch, tmp_path):
         'LOGIN_LOCKOUT_MINUTES',
         'LOGIN_MAX_ATTEMPTS_PER_ORIGIN',
         'COOKIE_SECURE',
+        'OPENAPI_DOCS_ENABLED',
         'REDIS_URL',
         'APP_TIMEZONE',
         'CONSULTORIO_ACTIVO_ID',
@@ -225,6 +232,13 @@ def test_cookie_secure_defaults_by_environment():
         cookie_secure=True,
     )
     assert override_config.cookie_secure is True
+
+
+@pytest.mark.parametrize('ambiente,esperado', [('development', True), ('production', False)])
+def test_openapi_docs_defaults_by_environment(ambiente, esperado):
+    settings = Settings(database_url=DB, jwt_secret_key=KEY, origin_hash_secret=ORIGIN_SECRET,
+                        app_env=ambiente, consultorio_activo_id=CID)
+    assert settings.openapi_docs_enabled is esperado
 
 
 def test_seed_settings_isolated_and_valid():

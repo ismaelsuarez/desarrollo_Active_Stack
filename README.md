@@ -36,7 +36,7 @@ Queda fuera de la v1 (backlog): auditoría de accesos y circuito de derechos de 
 
 ## Estado del proyecto
 
-- **Alcance actual:** C-00 a C-19 están archivados; no hay changes activos. Incluyen API, autenticación y permisos, configuración de agenda, pacientes, turnos, reserva pública, notificaciones y pantallas de operación e indicadores. El detalle, escenarios y resultados históricos se conservan en [`CHANGES.md`](CHANGES.md) y [`openspec/changes/archive/`](openspec/changes/archive/).
+- **Alcance actual:** C-00 a C-19, las correcciones visuales de auditoría y la paginación del historial están archivados. Incluyen API, autenticación y permisos, configuración de agenda, pacientes, turnos, reserva pública, notificaciones y pantallas de operación e indicadores. El detalle, escenarios y resultados históricos se conservan en [`CHANGES.md`](CHANGES.md) y [`openspec/changes/archive/`](openspec/changes/archive/).
 - **Pendientes:** C-20 (despliegue y endurecimiento) y C-21 (derechos de titulares y auditoría de acceso) no están implementados. La aplicación se demuestra localmente con datos sintéticos; no se presenta un despliegue público como completado.
 - **Límites:** WhatsApp prepara enlaces para envío manual; Mailpit captura correo de prueba y no entrega a destinatarios reales. La automatización de hitos requiere el barrido en la API. La protección de solapamientos tiene un riesgo residual documentado para la carrera simultánea entre un turno regular y un sobreturno.
 - **Historia:** el primer change C-00 se archivó en 2026-10-13; la [ejecución de CI de C-01](https://github.com/ismaelsuarez/desarrollo_Active_Stack/actions/runs/38834034577) pasó sus cuatro trabajos. Los resultados posteriores y sus límites se conservan en cada change archivado; no deben confundirse con una ejecución actual.
@@ -52,7 +52,7 @@ En desarrollo, `.env.example` apunta al servicio Mailpit: `SMTP_HOST=mailpit`, `
 
 Los enlaces usan `FRONTEND_BASE_URL`. Verificación vence a las 24 horas y recuperación a los 30 minutos. `EMAIL_DAILY_LIMIT=500` y `EMAIL_DAILY_LIMIT_ACCOUNT=150` reservan parte del cupo para turnos; el cupo de cuenta debe ser menor al total. `EMAIL_DAILY_ALERT_RATIO=0.8` configura la alerta.
 
-Registro admite `REGISTRATION_LIMIT_PER_ORIGIN=10`, `REGISTRATION_LIMIT_GLOBAL=50` y `REGISTRATION_LIMIT_WINDOW_MINUTES=60` (máximo 1440). Recuperación/reenvío usan `ACCOUNT_EMAIL_LIMIT=3` y `ACCOUNT_EMAIL_WINDOW_MINUTES=15`, por cuenta y propósito. `NOTIFICATION_MAX_ATTEMPTS=3`, `NOTIFICATION_CLAIM_TTL_SECONDS=120` y `SMTP_TIMEOUT_SECONDS=30` controlan reintentos: el timeout total de envío debe ser menor que el TTL. Todos los umbrales son positivos y la fracción de alerta debe estar entre cero exclusivo y uno inclusive.
+Registro admite `REGISTRATION_LIMIT_PER_ORIGIN=10`, `REGISTRATION_LIMIT_GLOBAL=50` y `REGISTRATION_LIMIT_WINDOW_MINUTES=60` (máximo 1440). Recuperación y reenvío comparten `ACCOUNT_REQUEST_LIMIT_PER_ORIGIN=10`, `ACCOUNT_REQUEST_LIMIT_GLOBAL=50` y `ACCOUNT_REQUEST_LIMIT_WINDOW_MINUTES=60`; el límite global se usa cuando no se conoce el origen. Además usan `ACCOUNT_EMAIL_LIMIT=3` y `ACCOUNT_EMAIL_WINDOW_MINUTES=15` por cuenta y propósito. `NOTIFICATION_MAX_ATTEMPTS=3`, `NOTIFICATION_CLAIM_TTL_SECONDS=120` y `SMTP_TIMEOUT_SECONDS=30` controlan reintentos: el timeout total de envío debe ser menor que el TTL. Todos los umbrales son positivos y la fracción de alerta debe estar entre cero exclusivo y uno inclusive.
 
 Verificación de la configuración desde `backend/`: `uv run pytest tests/unit/test_account_config.py tests/unit/test_config.py tests/unit/test_logging.py -q`. Las pruebas de persistencia y SMTP real requieren PostgreSQL y Mailpit en contenedores; no se reemplazan por SQLite ni por mocks de la base.
 
@@ -120,7 +120,7 @@ Las skills del proyecto están versionadas en [`.agents/skills/`](.agents/skills
 | `active-orchestrator` | Group-Active-IA/active-orchestrator | Orquesta las fases de la fundación |
 | `discovery-research` | Group-Active-IA/discovery-research | Descubrimiento de producto y de mercado |
 | `kb-creator` | Group-Active-IA/kb-creator | Base de conocimiento de 13 archivos |
-| `roadmap-generator` | Group-Active-IA/roadmap-generator | `CHANGES.md` con los 20 changes |
+| `roadmap-generator` | Group-Active-IA/roadmap-generator | `CHANGES.md` con el mapa de changes |
 | `find-skill` | vercel-labs/skills | Búsqueda de skills para el stack |
 | `skill-registry` | JuanCruzRobledo/skill-registry | Índice de rutas locales para cargar las skills completas |
 | `agent-instruction` | JuanCruzRobledo/agent-instruction | `AGENTS.md` y `CLAUDE.md` |
@@ -154,7 +154,7 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
 .
 ├── README.md                    Este archivo
 ├── AGENTS.md / CLAUDE.md        Instrucciones y reglas duras para los agentes (copias idénticas)
-├── CHANGES.md                   Roadmap: 20 changes, dependencias y camino crítico
+├── CHANGES.md                   Roadmap de changes, dependencias y camino crítico
 ├── knowledge-base/              Fuente de verdad del dominio (14 archivos)
 ├── discovery/                   Descubrimiento de producto, análisis de mercado y exploración técnica
 ├── openspec/                    Changes de SDD (propuestas, especificaciones, diseño y tareas)
@@ -167,6 +167,34 @@ Cada skill tiene aclaraciones de uso donde contradice una decisión del proyecto
 ```
 
 ## Desarrollo local con Docker Compose
+
+### Cuenta compartida para demostraciones locales
+
+Para que el equipo pueda explorar una **instalación nueva y aislada con datos ficticios**, se puede crear la cuenta `admin` con la contraseña de demostración `Demo-Turnos-2026!`. Esta contraseña es pública y no es apta para pacientes reales ni para un entorno publicado. La semilla solo crea el administrador cuando aún no existe: no cambia contraseñas ni modifica cuentas ya creadas.
+
+En una copia nueva del repositorio, con Bash, Python 3 y Docker Compose disponibles, ejecutar desde la raíz:
+
+```bash
+(
+  set -eu
+  if [ -e .env ] || [ -e secrets ]; then
+    echo 'Ya existe .env o secrets: usá una copia nueva; no se modificó nada.' >&2
+    exit 1
+  fi
+  if docker volume inspect tpi-equipo-demo_db_data >/dev/null 2>&1 || [ -n "$(docker ps -aq --filter label=com.docker.compose.project=tpi-equipo-demo)" ]; then
+    echo 'La demostración ya existe: usá otro entorno; no se modificó nada.' >&2
+    exit 1
+  fi
+  scripts/dev_secrets.sh
+  cp .env.example .env
+  printf '%s\n' 'Demo-Turnos-2026!' > secrets/bootstrap_admin_password.txt
+  docker compose -p tpi-equipo-demo --profile dev up -d --build --wait
+)
+```
+
+Después abrir `http://localhost:5173/ingresar` y usar **usuario `admin`** y **contraseña `Demo-Turnos-2026!`**. La bandeja local Mailpit está en `http://localhost:8025`. Los puertos 5173, 8000 y 8025 deben estar libres. Para detener este entorno sin borrar sus datos: `docker compose -p tpi-equipo-demo --profile dev stop`. Para volver a iniciarlo desde la misma copia: `docker compose -p tpi-equipo-demo --profile dev up -d --wait`. El comando de creación se niega a reutilizar o sobrescribir secretos o bases previas.
+
+En Windows, los comandos Bash requieren WSL con Docker disponible. Para un entorno que no sea de demostración, seguí la sección siguiente y usá secretos propios.
 
 Requisitos: Docker Engine con Docker Compose v2 o posterior y Python 3 para los scripts locales. Para las pruebas fuera de contenedores: `uv`, Node.js 24 y npm. Ejecutar desde la raíz del repositorio:
 
@@ -181,7 +209,7 @@ python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.
 
 Frontend: `http://localhost:5173`. Salud de la API: `http://localhost:8000/api/v1/health` (responde `200` con `{"status": "ok"}`, sin consultar PostgreSQL). Compose aplica `alembic upgrade head` antes de iniciar la API. Se conserva la migración y la restricción de no solapamiento de C-00; C-01 no crea otra raíz ni requiere una revisión vacía.
 
-Swagger está en `http://localhost:8000/docs` y OpenAPI en `http://localhost:8000/openapi.json`. La semilla crea el usuario administrador con el correo `BOOTSTRAP_ADMIN_EMAIL` de `.env` y la contraseña generada en `secrets/bootstrap_admin_password.txt`; consultarla localmente sin compartirla ni registrarla en el repositorio. Configurar un profesional, un box y su horario desde Administración antes de buscar disponibilidad. Para probar correo local iniciar Mailpit con el perfil `dev`; el barrido debe activarse explícitamente o habilitarse su bucle local. Usar exclusivamente datos sintéticos para la demostración.
+En desarrollo Swagger está en `http://localhost:8000/docs` y OpenAPI en `http://localhost:8000/openapi.json`. `OPENAPI_DOCS_ENABLED` controla estas rutas y `/redoc`: por defecto están habilitadas fuera de producción y deshabilitadas en producción. La semilla crea el usuario administrador con el correo `BOOTSTRAP_ADMIN_EMAIL` de `.env` y la contraseña generada en `secrets/bootstrap_admin_password.txt`; consultarla localmente sin compartirla ni registrarla en el repositorio. Configurar un profesional, un box y su horario desde Administración antes de buscar disponibilidad. Para probar correo local iniciar Mailpit con el perfil `dev`; el barrido debe activarse explícitamente o habilitarse su bucle local. Usar exclusivamente datos sintéticos para la demostración.
 
 `.env` contiene solo configuración no sensible. Los secretos se generan una vez en `secrets/` y se montan en `/run/secrets`; no se imprimen ni sobrescriben. La carpeta tiene modo `0700`; los archivos son legibles por el proceso no root del contenedor mediante sus montajes. `.env` y `secrets/` están ignorados por Git. Si se personalizan `POSTGRES_USER` o `POSTGRES_DB`, exportar esos mismos valores al generar los secretos y usarlos en `.env`; no regenerar credenciales sobre un volumen ya inicializado.
 
@@ -207,7 +235,11 @@ Verificación integrada en un único comando:
 scripts/smoke_compose.sh
 ```
 
-El smoke test construye y levanta un proyecto Compose con nombre único y volúmenes nuevos, comprueba migraciones, salud, usuario no root y Mailpit, y elimina **solo esos recursos descartables**. No reutiliza ni elimina los volúmenes del entorno habitual. Para detener el entorno habitual conservando sus datos:
+El smoke test construye y levanta un proyecto Compose con nombre único y volúmenes nuevos, comprueba migraciones, salud, usuario no root y Mailpit, y elimina **solo esos recursos descartables**. No reutiliza ni elimina los volúmenes del entorno habitual.
+
+Si no existen, el smoke crea `.env` y los archivos de `secrets/` en la raíz del proyecto y los conserva al finalizar. Los archivos existentes no se sobrescriben.
+
+Para detener el entorno habitual conservando sus datos:
 
 ```bash
 docker compose --profile dev --profile redis down
@@ -303,7 +335,7 @@ uv run pytest tests/integration/test_c07_migration.py tests/integration/test_mig
 uv run alembic heads
 ```
 
-Las pruebas crean y eliminan sus propias bases e incluyen upgrade desde C-06 con filas sintéticas y downgrade a `0007_agenda_config` seguido de upgrade. En la verificación histórica de C-07 el head era `0008_turnos_core`; el head actual es `0011_overbooking_authorization` y debe seguir siendo único. El downgrade elimina el historial y las columnas nuevas: el upgrade posterior no recupera esa información. Requiere revisión humana antes de usarse en un entorno con datos; se prefiere una corrección hacia adelante. Esta verificación no ejecutó restauraciones ni migraciones sobre datos reales.
+Las pruebas crean y eliminan sus propias bases e incluyen upgrade desde C-06 con filas sintéticas y downgrade a `0007_agenda_config` seguido de upgrade. En la verificación histórica de C-07 el head era `0008_turnos_core`; el head actual es `0012_account_request_limit` y debe seguir siendo único. El downgrade elimina el historial y las columnas nuevas: el upgrade posterior no recupera esa información. Requiere revisión humana antes de usarse en un entorno con datos; se prefiere una corrección hacia adelante. Esta verificación no ejecutó restauraciones ni migraciones sobre datos reales.
 
 En Windows, las pruebas de esta migración se ejecutaron en un contenedor Linux con Python 3.13 y uv 0.13.1, contra PostgreSQL 17 sin volumen persistente. Se usó una copia descartable de las fuentes, con los scripts en LF según `.gitattributes`; el repositorio original se montó en solo lectura. No se copiaron secretos, `.env`, `.git`, `node_modules` ni el entorno virtual de Windows.
 

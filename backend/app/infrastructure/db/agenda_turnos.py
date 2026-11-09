@@ -18,6 +18,12 @@ class RepositorioAgendaTurnosSQL:
     def __init__(self, sesion: AsyncSession) -> None:
         self._sesion = sesion
 
+    async def obtener_pacientes(self, consultorio_id: int, ids: set[int]) -> dict[int, FichaAgenda]:
+        filas = await self._sesion.execute(select(
+            PacienteModel.id, PacienteModel.consultorio_id, PacienteModel.nombre, PacienteModel.apellido,
+        ).where(PacienteModel.consultorio_id == consultorio_id, PacienteModel.id.in_(ids)))
+        return {fila.id: FichaAgenda(*fila) for fila in filas}
+
     async def obtener_configuracion(self, consultorio_id: int) -> ParametrosAgenda | None:
         modelo = await self._sesion.scalar(select(ConsultorioModel).where(
             ConsultorioModel.id == consultorio_id,

@@ -99,7 +99,7 @@ def usuario_actual(
     except TokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token inválido o expirado: {exc}",
+            detail="Token inválido o expirado",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 

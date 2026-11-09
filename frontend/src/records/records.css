@@ -10,3 +10,8 @@
 .records-page button:disabled { opacity: .55; cursor: not-allowed; }
 .records-page [role="alert"] { color: #8c2d28; }
 @media (max-width: 40rem) { .records-page form label { flex: 1 1 100%; } .records-page form input { width: 100%; } }
+body:has(.staff-header) .records-empty h2{font-size:17px;margin:0}body:has(.staff-header) .records-empty p{text-align:center;padding:45px 10px;color:#526b65;font-size:14px}body:has(.staff-header) .records-page>nav{display:flex;justify-content:flex-end;gap:8px}body:has(.staff-header) .records-page>button:first-of-type{background:#2a9d8f;color:#0b2722;border-color:#2a9d8f;font-weight:750}body:has(.staff-header) .records-page form label{flex:1 1 150px}
+body:has(.staff-header) .records-filters form{padding:0;margin:16px 0 0;border:0;box-shadow:none}body:has(.staff-header) .records-filters h2{font-size:17px;margin:0 0 16px}body:has(.staff-header) .records-filters>label{display:inline-grid;min-width:180px;max-width:100%}
+.records-filter-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.records-filter-actions label { display: grid; gap: .4rem; min-width: 180px; max-width: 100%; }
+.records-page .records-filter-actions button { margin: 0; }

@@ -87,12 +87,61 @@ def datos_registro(**cambios):
     }
 
 
+@pytest.mark.parametrize('ruta,cuerpo', [
+    ('/api/v1/auth/login', {'nombre_usuario': 'ana', 'password': 'clave', '12345678': 'x'}),
+    ('/api/v1/auth/registro', datos_registro(**{'12345678': 'x'})),
+])
+async def test_validacion_no_refleja_nombre_de_campo_extra(cuenta_app, ruta, cuerpo):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=cuenta_app), base_url='http://test') as cliente:
+        respuesta = await cliente.post(ruta, json=cuerpo)
+    assert respuesta.status_code == 422
+    assert '12345678' not in respuesta.text
+    assert any(error['type'] == 'extra_forbidden' for error in respuesta.json()['detail'])
+
+
 class CorreoCapturado:
     def __init__(self):
         self.mensajes = []
 
     async def enviar(self, destinatario, asunto, cuerpo):
         self.mensajes.append((destinatario, asunto, cuerpo))
+
+
+@pytest.mark.parametrize('ruta,nombre', [
+    ('/api/v1/auth/reenviar-verificacion', 'reenviar_verificacion'),
+    ('/api/v1/auth/recuperar-password', 'recuperar_password'),
+])
+async def test_solicitudes_correo_limitadas_por_origen_sin_enumeracion(cuenta_app, ruta, nombre):
+    from app.api.v1.routers.cuentas import get_servicio_cuentas
+
+    ejecutar = AsyncMock(return_value=None)
+    cuenta_app.dependency_overrides[get_servicio_cuentas] = lambda: SimpleNamespace(**{nombre: ejecutar})
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=cuenta_app), base_url='http://test') as cliente:
+        for numero in range(10):
+            respuesta = await cliente.post(ruta, json={'email': f'paciente{numero}@example.test'})
+            assert respuesta.status_code == 200
+            assert respuesta.json() == {'mensaje': 'Si corresponde, recibirás un correo'}
+        rechazadas = [await cliente.post(ruta, json={'email': direccion})
+                      for direccion in ('existente@example.test', 'inexistente@example.test')]
+    assert all(respuesta.status_code == 429 for respuesta in rechazadas)
+    assert rechazadas[0].json() == rechazadas[1].json()
+    assert all(int(respuesta.headers['retry-after']) > 0 for respuesta in rechazadas)
+    assert ejecutar.await_count == 10
+
+
+async def test_solicitudes_correo_comparten_cuota_sin_afectar_registro(cuenta_app):
+    from app.api.v1.routers.cuentas import get_servicio_cuentas
+
+    cuenta_app.state.settings.account_request_limit_per_origin = 1
+    cuenta_app.dependency_overrides[get_servicio_cuentas] = lambda: SimpleNamespace(
+        reenviar_verificacion=AsyncMock(return_value=None), recuperar_password=AsyncMock(return_value=None))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=cuenta_app), base_url='http://test') as cliente:
+        primera = await cliente.post('/api/v1/auth/reenviar-verificacion', json={'email': 'a@example.test'})
+        segunda = await cliente.post('/api/v1/auth/recuperar-password', json={'email': 'b@example.test'})
+        registro = await cliente.post('/api/v1/auth/registro', json=datos_registro(acepta_aviso_privacidad=False))
+    assert primera.status_code == 200
+    assert segunda.status_code == 429
+    assert registro.status_code == 422
 
 
 async def test_registro_http_crea_cuenta_y_despacha_despues_del_commit(cuenta_app, sesiones):

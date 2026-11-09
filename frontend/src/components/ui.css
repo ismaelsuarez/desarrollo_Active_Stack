@@ -14,3 +14,4 @@
 .ui-notice--warning { background: #fff2d6; border-color: #9a6200; }
 .ui-notice--error { background: #fff0ef; border-color: #ad2931; }
 .ui-page { width: min(100% - 2rem, 75rem); margin-inline: auto; padding-block: 2rem; }
+main h1[tabindex="-1"]:focus { outline: 3px solid #b7790b; outline-offset: 4px; width: fit-content; max-width: 100%; }

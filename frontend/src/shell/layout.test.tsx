@@ -12,6 +12,16 @@ vi.mock('../notifications/Counters', () => ({ Counters: () => null }));
 afterEach(() => { role.value = 'paciente'; });
 
 describe('navegación de cuenta', () => {
+  it.each([
+    ['paciente', 'Reservá un turno o revisá tus turnos desde el menú.'],
+    ['recepcion', 'Elegí una opción del menú para comenzar.'],
+    ['profesional', 'Elegí una opción del menú para comenzar.'],
+  ])('orienta al rol %s hacia sus funciones', (rol, mensaje) => {
+    role.value = rol;
+    render(<MemoryRouter><RoleLayout /></MemoryRouter>);
+    expect(screen.getByText(mensaje)).toBeInTheDocument();
+    expect(screen.queryByText(/se incorporarán más adelante/i)).not.toBeInTheDocument();
+  });
   it('muestra el área y la navegación del rol sin funciones futuras', () => {
     render(<MemoryRouter><RoleLayout /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: /hola, maria/i })).toBeInTheDocument();
@@ -25,6 +35,5 @@ describe('navegación de cuenta', () => {
     render(<MemoryRouter><RoleLayout /></MemoryRouter>);
     expect(screen.getByText('Elegí una opción del menú para comenzar.')).toBeInTheDocument();
     expect(screen.queryByText(/funciones de administrador se incorporarán/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Configuración' })).toHaveAttribute('href', '/configuracion');
   });
 });

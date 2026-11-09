@@ -2,3 +2,4 @@
 .account-card h2 { margin-top: 0; }
 .account-card form { display: grid; gap: 1rem; }
 .account-card .ui-button { justify-self: start; }
+.account-security-layout{display:grid;grid-template-columns:minmax(0,780px) minmax(220px,300px);gap:20px;align-items:start}.account-security-note{margin-top:20px;padding:24px;background:#e8f3ec;border:1px solid #d0e5d8;border-radius:14px;color:#325b4d}.account-security-note span{color:#2a9d8f;font-size:22px}.account-security-note h2{font-size:17px}.account-security-note p{font-size:13px;line-height:1.7}@media(max-width:900px){.account-security-layout{grid-template-columns:1fr}.account-security-note{margin-top:0}}

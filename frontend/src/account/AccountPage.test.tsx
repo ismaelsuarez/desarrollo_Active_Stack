@@ -12,6 +12,10 @@ vi.mock('../auth/provider', () => ({ useSession: () => ({
 beforeEach(() => { mocks.request.mockReset(); mocks.role = 'paciente'; });
 
 describe('cuenta autenticada', () => {
+  it('muestra orientación de seguridad al equipo', () => {
+    mocks.role = 'administrador'; render(<AccountPage />);
+    expect(screen.getByRole('heading', {name: 'Seguridad de tu cuenta'})).toBeInTheDocument();
+  });
   it('cambia contraseña con la actual y la nueva', async () => {
     mocks.request.mockResolvedValueOnce({ mensaje: 'Contraseña actualizada' });
     render(<AccountPage />);

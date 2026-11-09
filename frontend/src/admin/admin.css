@@ -15,6 +15,7 @@
 .admin-section [role="status"] { margin: .75rem 0; }
 .admin-bloqueo-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding-block: .75rem; border-bottom: 1px solid #d4e0d9; }
 .admin-bloqueo-row p { min-width: 0; overflow-wrap: anywhere; }
+.admin-catalog-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
 .admin-section [role="alert"] { max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
 .admin-section fieldset { display: flex; flex-wrap: wrap; gap: .75rem; flex-basis: 100%; border: 1px solid #c8d7d0; border-radius: .5rem; }
 .admin-page :focus-visible { outline: 3px solid #125e55; outline-offset: 2px; }

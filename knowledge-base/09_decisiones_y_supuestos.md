@@ -157,7 +157,7 @@ Convención de revisión: las decisiones y supuestos que cambiaron con la explor
 **Contexto**: hallazgo RK-06: el límite por origen, que es la cota principal del riesgo residual de DD-19, no era implementable: "origen" no estaba definido detrás de los proxies y ninguna tabla guardaba el origen.
 **Alternativas consideradas**: usar el primer valor del encabezado, descartada porque lo fija el cliente; guardar la dirección en claro, descartada por minimización (Ley 25.326, RN-58); contar tokens y notificaciones recientes sin tabla nueva, descartada porque no contienen el origen; Redis, que sigue siendo opcional.
 **Justificación**: una dirección con hash con clave no se puede revertir sin la clave del servidor, la tabla es mínima y el barrido ya hace limpieza periódica.
-**Trade-offs aceptados**: un hash de una dirección sigue siendo un dato personal (RN-58); con una cantidad de saltos mal configurada el límite deja de servir (o se vuelve global), por eso es un punto de la lista de verificación de [12](12_devops_y_despliegue.md); el límite puede superarse en una solicitud simultánea por solicitud.
+**Trade-offs aceptados**: un hash de una dirección sigue siendo un dato personal (RN-58); con una cantidad de saltos mal configurada el límite deja de servir (o se vuelve global), por eso es un punto de la lista de verificación de [12](12_devops_y_despliegue.md). La auditoría de 2026-11-09 corrigió la carrera del conteo mediante un bloqueo transaccional por consultorio; la descripción histórica de tolerar solicitudes simultáneas quedó reemplazada.
 
 ### DD-22 — Entrega en dos partes (resuelve Q-01)
 > Precisada por DD-33: la primera parte es la entrega del Trabajo de Integración, con un único change.
@@ -248,6 +248,22 @@ Convención de revisión: las decisiones y supuestos que cambiaron con la explor
 **Alternativas consideradas**: construir C-01 y después C-07 como están diseñados, descartada porque son demasiado grandes para el plazo y C-01 no tiene reglas de negocio.
 **Justificación**: no solapar turnos es la regla central del sistema (RN-17) y el vacío del mercado argentino que identificó el Discovery; es el ejemplo que la propia consigna recomienda.
 **Trade-offs aceptados**: el change lleva solo el andamiaje mínimo que necesita para correr sus pruebas, así que no incluye autenticación, API pública ni pantallas; cuando la segunda parte construya C-01, C-02 y C-07, reutilizan o absorben lo hecho acá. Lo que DD-22 y DD-31 decían sobre el contenido de la primera parte queda reemplazado por esta decisión; su orden de construcción vale para la segunda parte.
+
+### DD-35 — Fórmula del indicador de ausentismo (confirmación parcial de Q-15)
+
+**Decisión (2026-11-09):** el equipo confirma la tasa `ausentes / (ausentes + atendidos)`. Los cancelados, liberados y turnos pasados sin cierre se informan por separado y no integran el denominador. La confirmación no define períodos de reporte adicionales; esa parte de Q-15 permanece abierta.
+
+### DD-36 — Vigencia hasta el siguiente hito
+
+**Decisión (2026-11-09):** el equipo confirma que la solicitud de confirmación deja de estar vigente al alcanzarse el hito de recordatorio y que el recordatorio deja de estar vigente al alcanzarse el hito de liberación. Se conservan los requisitos de estado y ciclo vigentes y la misma regla para correo y WhatsApp; ver la tabla de [04](04_modelo_de_datos.md).
+
+### DD-37 — Defensa local sin publicación
+
+**Decisión (2026-11-09):** el equipo hará la defensa con una demostración local y no publicará el proyecto por ahora. Se emplearán datos ficticios y correo capturado en Mailpit. La arquitectura de DD-34 queda como preparación para una eventual publicación posterior, no como requisito de esta defensa. Las preguntas de proveedores, proxy público y revisión de privacidad para uso real siguen pendientes para ese momento; la decisión no acredita cumplimiento legal ni verifica los requisitos de la asignatura.
+
+### DD-38 — Portada pública para pacientes y presentación del proyecto
+
+**Decisión (2026-11-09):** el equipo solicita una landing para pacientes y docentes: la raíz presentará el consultorio, accesos a reserva y cuenta, y una explicación breve de funciones existentes. Para visitantes con sesión se conserva la redirección a su panel; el ingreso estará disponible en `/ingresar`. Se utilizan datos públicos existentes y una identidad provisional, sin inventar prestaciones, cifras ni datos del consultorio. La demostración sigue siendo local (DD-37).
 
 ## Supuestos inferidos
 
@@ -345,10 +361,10 @@ Los siguientes son propuestas técnicas o de producto que el usuario **no confir
 **Cómo validar**: confirmar con el consultorio.
 
 ### SU-16 — Fórmula del indicador de ausentismo
-**Suposición:** tasa = ausentes / (atendidos + ausentes), con liberados y cancelados informados aparte (RN-45).
+**Confirmada por el equipo el 2026-11-09 (DD-35):** tasa = ausentes / (atendidos + ausentes), con liberados, cancelados y turnos pasados sin cierre informados aparte (RN-45).
 **Origen**: el discovery pide "cuántos turnos se pierden por ausencias" sin definir la métrica.
 **Riesgo si es falso**: el Administrador interpretaría mal la mejora.
-**Cómo validar**: revisar la fórmula con el Administrador antes de implementarla.
+**Cómo validar**: fórmula confirmada por el equipo; los períodos de reporte adicionales siguen en Q-15.
 
 ### SU-17 — Sobreturno: aviso obligatorio, respuesta registrada pero no bloqueante
 **Confirmada el 2026-10-12 (DD-30):** el aviso al profesional es obligatorio y se registra; su aprobación o rechazo se registra pero no bloquea (RN-40).
@@ -529,6 +545,7 @@ Los siguientes son propuestas técnicas o de producto que el usuario **no confir
 **Cómo validar**: ajustar los valores con el consultorio y verificar la cantidad de saltos con el host elegido (Q-24) antes de publicar el enlace.
 
 ### SU-46 — Vigencia por tipo de notificación
+**Precisión confirmada por el equipo el 2026-11-09 (DD-36):** además de las condiciones siguientes, solicitud y recordatorio vencen al alcanzarse su siguiente hito, respectivamente recordatorio y liberación.
 **Confirmada por el dueño del proyecto el 2026-10-12:** la solicitud de confirmación y el recordatorio valen mientras el turno está en el estado para el que se programaron, en el mismo ciclo y sin comenzar (la solicitud solo `pendiente`; el recordatorio `pendiente` o `confirmado`); el rechazo de una solicitud vale mientras la cuenta tiene el correo verificado; los avisos de liberación y de cancelación o reprogramación por el personal, el resumen de la reserva (`resumen_reserva`), la confirmación de la cancelación hecha por el paciente (`cancelacion_por_paciente`) y los correos de cuenta se envían siempre, incluso si el turno ya comenzó o si el hecho que avisan ya es viejo (tabla "Vigencia por tipo" en [04](04_modelo_de_datos.md)).
 **Origen**: hallazgo RK-02: la validación escrita para todos los tipos anulaba los avisos de algo ya ocurrido.
 **Riesgo si es falso**: un aviso de cambio que se envía mucho después del hecho, o después del inicio del turno, podría confundir al paciente; se podría agregar un vencimiento por tipo.

@@ -6,3 +6,4 @@
 .staff-appointment:last-child { border-bottom: 0; }
 .staff-appointment--over { border-inline-start: 4px solid var(--color-warning); background: var(--color-warning-bg); }
 .staff-filters :focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.staff-schedule-panel{background:#fff;border:1px solid #d5e2da;border-radius:14px;padding:24px;margin-top:20px;box-shadow:0 5px 18px #19342f08}.staff-schedule-panel h2{font-size:17px;margin:0 0 18px}.staff-schedule-panel .staff-schedule{border:0;border-top:1px solid #e4ece7;border-radius:0;margin:0}.staff-schedule-panel .staff-appointment{padding:16px 0;border-bottom:1px solid #e4ece7;gap:12px}.staff-schedule-panel .staff-appointment:last-child{border-bottom:0}.staff-schedule-panel .staff-appointment--over{padding-left:12px;border-left:4px solid #835200;background:#fff2d5}@media(max-width:700px){.staff-schedule-panel{padding:20px}}

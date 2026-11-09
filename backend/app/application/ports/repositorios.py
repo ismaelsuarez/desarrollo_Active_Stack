@@ -17,6 +17,7 @@ class RepositorioProfesionales(Protocol):
 
 
 class RepositorioPrestaciones(Protocol):
+    async def obtener_varios(self, consultorio_id: int, ids: set[int]) -> dict[int, Prestacion]: ...
     async def obtener(
         self, consultorio_id: int, prestacion_id: int, *, incluir_inactivos: bool = False
     ) -> Prestacion | None:
@@ -37,6 +38,7 @@ class RepositorioTurnos(Protocol):
         self, consultorio_id: int, profesional_id: int | None = None,
         paciente_id: int | None = None, desde: datetime | None = None,
         hasta: datetime | None = None, sin_confirmar: bool = False,
+        limit: int | None = None, offset: int = 0,
     ) -> list[Turno]: ...
 
     async def hay_solapamiento(
@@ -54,6 +56,7 @@ class RepositorioHistorial(Protocol):
 
 
 class RepositorioAgendaTurnos(Protocol):
+    async def obtener_pacientes(self, consultorio_id: int, ids: set[int]) -> dict[int, FichaAgenda]: ...
     async def ocupacion(self, consultorio_id: int, profesional_id: int,
                         desde: datetime, hasta: datetime) -> list[Turno]: ...
 

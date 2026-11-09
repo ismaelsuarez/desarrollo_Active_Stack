@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi import HTTPException
 from unittest.mock import AsyncMock, MagicMock
@@ -44,6 +44,31 @@ def test_usuario_actual_token_invalido_lanza_401():
     with pytest.raises(HTTPException) as error:
         usuario_actual(token="token-invalido", token_service=token_service)
     assert error.value.status_code == 401
+    assert error.value.detail == 'Token inválido o expirado'
+
+
+def test_usuario_actual_token_vencido_no_expone_detalles():
+    reloj = RelojSimulado(AHORA)
+    token_service = AuthTokenService(reloj=reloj, secret_key=SECRET, ttl_segundos=1)
+    principal = Principal(usuario_id=1, consultorio_id=1, rol=RolUsuario.ADMINISTRADOR)
+    token = token_service.emitir_access_token(principal)
+    reloj.avanzar(timedelta(seconds=1))
+
+    with pytest.raises(HTTPException) as error:
+        usuario_actual(token=token, token_service=token_service)
+    assert error.value.status_code == 401
+    assert error.value.detail == 'Token inválido o expirado'
+
+
+def test_usuario_actual_firma_invalida_no_expone_detalles():
+    reloj = RelojSimulado(AHORA)
+    servicio = AuthTokenService(reloj=reloj, secret_key=SECRET)
+    otro = AuthTokenService(reloj=reloj, secret_key='z' * 32)
+    token = otro.emitir_access_token(Principal(usuario_id=1, consultorio_id=1, rol=RolUsuario.ADMINISTRADOR))
+    with pytest.raises(HTTPException) as error:
+        usuario_actual(token=token, token_service=servicio)
+    assert error.value.status_code == 401
+    assert error.value.detail == 'Token inválido o expirado'
 
 
 def test_requiere_rol_permite_rol_autorizado():

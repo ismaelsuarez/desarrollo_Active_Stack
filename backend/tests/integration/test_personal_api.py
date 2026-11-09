@@ -63,6 +63,22 @@ async def test_administrador_crea_cuenta_de_personal_en_su_consultorio(personal_
     assert [user["nombre_usuario"] for user in listing.json()] == ["recep"]
 
 
+async def test_conflictos_de_personal_muestran_texto_legible(personal_app):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=personal_app), base_url="http://test") as client:
+        payload = {"nombre_usuario": "primero", "email": "primero@example.test",
+                   "password": "Clave-123456789", "rol": "recepcion"}
+        assert (await client.post("/api/v1/usuarios", headers=auth_header(), json=payload)).status_code == 201
+        segundo = await client.post("/api/v1/usuarios", headers=auth_header(), json={
+            **payload, "nombre_usuario": "segundo", "email": "segundo@example.test"})
+        assert segundo.status_code == 201
+        duplicado = await client.post("/api/v1/usuarios", headers=auth_header(), json=payload)
+        edicion = await client.patch(f"/api/v1/usuarios/{segundo.json()['id']}",
+                                     headers=auth_header(), json={"email": payload["email"]})
+        for respuesta in (duplicado, edicion):
+            assert respuesta.status_code == 409
+            assert respuesta.json()["detail"] == "El nombre de usuario o correo ya está registrado"
+
+
 async def test_alta_rechaza_paciente_roles_multiples_y_consultorio_del_cliente(personal_app):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=personal_app), base_url="http://test") as client:
         for payload in (

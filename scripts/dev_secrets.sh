@@ -39,8 +39,17 @@ password = password_path.read_text().strip()
 user = quote(os.environ.get('POSTGRES_USER', 'turnos'), safe='')
 database = quote(os.environ.get('POSTGRES_DB', 'turnos'), safe='')
 create(url_path, f'postgresql+asyncpg://{user}:{quote(password, safe="")}@db:5432/{database}')
-if unquote(urlsplit(url_path.read_text().strip()).password or '') != password:
+parsed = urlsplit(url_path.read_text().strip())
+if unquote(parsed.password or '') != password:
     raise SystemExit('Local database secret files do not match; existing files were not overwritten.')
+try:
+    compatible = (parsed.scheme == 'postgresql+asyncpg' and parsed.hostname == 'db' and parsed.port == 5432
+                  and unquote(parsed.username or '') == unquote(user)
+                  and unquote(parsed.path.removeprefix('/')) == unquote(database))
+except ValueError:
+    compatible = False
+if not compatible:
+    raise SystemExit('Local database URL does not match the configured database identity; existing files were not overwritten.')
 create(directory / 'jwt_secret_key.txt', secrets.token_urlsafe(32))
 create(directory / 'origin_hash_secret.txt', secrets.token_urlsafe(32))
 create(directory / 'bootstrap_admin_password.txt', secrets.token_urlsafe(24))

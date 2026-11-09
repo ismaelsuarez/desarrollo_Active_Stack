@@ -60,13 +60,13 @@ export function AccountPage() {
       {contactError && <Notice kind="error">{contactError}</Notice>}
       {contactMessage && <Notice kind="success">{contactMessage}</Notice>}
     </form></section>}
-    <section className="account-card"><h2>Cambiar contraseña</h2><form onSubmit={changePassword}>
+    <div className="account-security-layout"><section className="account-card"><h2>Cambiar contraseña</h2><form onSubmit={changePassword}>
       <TextField label="Contraseña actual" type="password" value={actual} onChange={event => setActual(event.target.value)} required />
       <TextField label="Contraseña nueva" type="password" value={nueva} onChange={event => setNueva(event.target.value)} required />
       <TextField label="Confirmar nueva contraseña" type="password" value={confirmacion} onChange={event => setConfirmacion(event.target.value)} required />
       <Button type="submit" disabled={busy}>Cambiar contraseña</Button>
       {error && <Notice kind="error">{error}</Notice>}
       {message && <Notice kind="success">{message}</Notice>}
-    </form></section>
+    </form></section>{state.profile?.rol !== 'paciente' && <aside className="account-security-note"><span aria-hidden="true">✳</span><h2>Seguridad de tu cuenta</h2><p>Elegí una contraseña segura y no la compartas con otras personas.</p></aside>}</div>
   </PageTemplate>;
 }

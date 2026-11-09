@@ -1,6 +1,10 @@
 # CHANGES — Secuencia de Implementación
 
 > Índice canónico de todos los changes del proyecto **Sistema de Turnos y Agenda Odontológica** (v1, entrega en dos partes: la primera el **2026-10-19**).
+
+> **C-22 `c-22-landing-publica`**: portada pública para pacientes y presentación académica, solicitada por el equipo (DD-38); depende de C-11 y C-14, ya archivados. Gobernanza baja; alcance frontend local, sin servicios ni dependencias adicionales. Requiere mockup aprobado conforme al sistema visual revisión 2.
+
+> **C-23 `c-23-interfaz-equipo`**: rediseño de navegación y nueve pantallas del equipo, incluido Volver en Mi cuenta; depende de las pantallas C-10 a C-13 y C-17 a C-19. Mantiene permisos y operaciones existentes; requiere mockups aprobados con sistema visual revisión 2.
 > Cada change es atómico: un agente puede implementarlo en una sesión (~4-6 horas).
 > **Leer este archivo antes de ejecutar cualquier `/opsx:propose`.**
 > Regenerado el **2026-10-08**; plazo actualizado el **2026-10-09** (entrega el **2026-10-19**) a partir de la KB actualizada el 2026-10-06 y alineada el 2026-10-08. Se conservan los IDs `C-01` a `C-20`, sus dependencias y el orden de la rebanada vertical; solo cambia lo que exige la arquitectura sin worker persistente (barrido en la API, DD-13), PyJWT/Argon2 (DD-12) y SQLAlchemy asíncrono con migraciones de un solo head (DD-14).
@@ -139,7 +143,7 @@ GATE 9: C-14 ✓ + C-18 ✓ + C-19 ✓
 
 ### Camino crítico (10 changes — mínimo irreducible)
 
-> **Orden de construcción (DD-31)**: C-01, C-02, C-03; C-04, C-05 y C-06; C-07; C-08 y C-09; C-15 y C-16; C-11 y C-14; C-10 y C-13; y después, si alcanza el tiempo, C-12, C-17, C-18, C-19 y C-20. El camino crítico de abajo muestra las dependencias más largas; el orden de construcción decide qué se hace primero cuando hay una sola línea de trabajo, y adelanta C-15 y C-16 para que los recordatorios y la liberación automática entren en la primera parte de la entrega.
+> **Orden de construcción (DD-31)**: C-01, C-02, C-03; C-04, C-05 y C-06; C-07; C-08 y C-09; C-15 y C-16; C-11 y C-14; C-10 y C-13; y después, si alcanza el tiempo, C-12, C-17, C-18, C-19 y C-20. El camino crítico de abajo muestra las dependencias más largas; el orden de construcción prioriza C-15 y C-16 en la segunda parte para incorporar pronto los recordatorios y la liberación automática. La primera entrega se limita a C-00 según DD-33.
 
 ```
 C-01 → C-02 → C-03 → C-06* → C-07 → C-09 → C-16 → C-17 → C-18 → C-20
@@ -309,7 +313,7 @@ Los pasos 1 a 3 son una cadena lineal inevitable (cimientos, modelos, auth): el 
 ---
 
 ### [C-05] `patient-account`
-- **Estado**: `[x]` completado y archivado el 2026-11-03 en [`2026-11-03-c-05-patient-account`](openspec/changes/archive/2026-11-03-c-05-patient-account/); 21/21 tareas, seis especificaciones sincronizadas, 465 pruebas Linux y 265 de compatibilidad Windows pasando. Cambios disponibles en el workspace, sin commit ni push de esta sesión.
+- **Estado**: `[x]` completado y archivado el 2026-11-03 en [`2026-11-03-c-05-patient-account`](openspec/changes/archive/2026-11-03-c-05-patient-account/); 21/21 tareas, seis especificaciones sincronizadas, 465 pruebas Linux y 265 de compatibilidad Windows pasando en esa fecha.
 - **Scope**: Cuenta del paciente: registro, verificación, recuperación y correo SMTP
   - `POST /api/v1/auth/registro` — exige `acepta_aviso_privacidad: true` y `aviso_privacidad_version` igual a la versión vigente del aviso, que el backend guarda junto con el texto (copiados de `knowledge-base/13`) y sirve en `GET /api/v1/publico/aviso-privacidad` (ruta sin token que construye este change; el consultorio sale de `consultorio_sin_token` y el nombre, el domicilio y el contacto del responsable, de `consultorio.nombre`, `consultorio.direccion` y `consultorio.telefono`); el frontend muestra lo que devuelve esa ruta y reenvía la versión que mostró, sin copiar el texto; si falta la aceptación o la versión no coincide, responde 422 sin crear nada, y si se acepta guarda la fecha y la versión en la cuenta (RN-65, DD-28); crea `usuario` rol `paciente` e inserta la ficha de `paciente` con `INSERT ... ON CONFLICT (consultorio_id, dni) DO NOTHING`, para que la transacción sobreviva a un DNI repetido; si no insertó nada (el DNI ya tiene ficha, con o sin cuenta, o la creó otro registro simultáneo) no crea una segunda ni la vincula y sigue por el camino de la solicitud: guarda una `solicitud_vinculacion` `pendiente` con el DNI declarado (RN-49, RN-62). La respuesta y el correo de verificación son idénticos exista o no el DNI; eso no cierra del todo la fuga de pertenencia (quien se registra con el DNI de otra persona y verifica su propio correo infiere el DNI del 403 de la reserva), riesgo aceptado y acotado con el límite de solicitudes por origen de este endpoint, el estado de la vinculación visible solo con el correo verificado y el registro de cada solicitud (RN-62, DD-19). El consultorio lo resuelve `consultorio_sin_token` (C-03)
   - Migración `solicitud_vinculacion` (`consultorio_id`, `usuario_id` con `UNIQUE`, `dni_declarado`, `estado` `pendiente`/`vinculada`/`rechazada`, `paciente_id` nulo, `resuelta_por_id`, `resuelta_en`, `motivo_rechazo`, `creada_en`; índice `(consultorio_id, estado, creada_en)`; `UNIQUE (consultorio_id, dni)` de `paciente` no cambia). La resolución por Recepción (vincular, rechazar, desvincular, reactivar una ficha y el correo `vinculacion_rechazada` con su plantilla) la agrega C-08. Costo aceptado: una cuenta sin ficha (solicitud `pendiente` o `rechazada`) no reserva en línea (lo aplica C-09)

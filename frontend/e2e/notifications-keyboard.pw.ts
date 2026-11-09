@@ -35,13 +35,13 @@ test('visualiza la bandeja en celular y escritorio', async ({ page }) => {
     await page.setViewportSize({ width, height });
     await expect(page.getByRole('heading', { name: 'Notificaciones', exact: true })).toBeVisible();
     if (name === 'mobile') {
+      await page.getByRole('button', { name: '☰ Menú' }).click();
       const nav = page.getByRole('navigation', { name: 'Navegación principal' });
-      const positions = await nav.getByRole('link').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top));
-      expect(new Set(positions).size).toBe(1);
       await expect(nav.getByRole('link', { name: 'Notificaciones' })).toHaveAttribute('aria-current', 'page');
+      await page.getByRole('button', { name: '☰ Menú' }).click();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/${name}.png`, fullPage: true });
   }
 });
 
@@ -54,19 +54,20 @@ test('visualiza turnos y salud en celular y escritorio', async ({ page }) => {
   await page.route('**/api/v1/auth/me', route => route.fulfill({ json: { id: 1, consultorio_id: 1, nombre_usuario: 'admin', email: 'admin@example.test', rol: 'administrador', email_verificado: true } }));
   await page.route('**/api/v1/turnos?*', route => route.fulfill({ json: [{ id: 42, paciente_nombre: 'Ana', paciente_apellido: 'Pérez', inicio: '2026-11-06T12:00:00Z', acciones_permitidas: ['confirmar', 'cancelar', 'liberar'] }] }));
   await page.reload();
+  await expect(page.getByRole('heading', { name: 'Notificaciones', exact: true })).toBeVisible();
   for (const [name, width, height] of [['mobile', 390, 844], ['desktop', 1440, 900]] as const) {
     await page.setViewportSize({ width, height });
     await page.goto('/sin-confirmar');
     await expect(page.getByText('Ana Pérez')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/turnos-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/turnos-${name}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Ver turno 42' }).click();
     await expect(page.getByRole('button', { name: 'Liberar turno' })).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/detalle-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/detalle-${name}.png`, fullPage: true });
     await page.goto('/estado-operativo');
     await expect(page.getByText(/Alerta de cuota/)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/salud-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/salud-${name}.png`, fullPage: true });
   }
   expect(errors).toEqual([]);
 });
@@ -80,7 +81,7 @@ test('visualiza correo fallido en ambos tamaños', async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.getByRole('button', { name: 'Correos fallidos', exact: true }).click();
     await expect(page.getByText('Solicitud de confirmación')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/correo-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/correo-${name}.png`, fullPage: true });
   }
 });
 
@@ -89,16 +90,16 @@ test('muestra correo vacío y error recuperable', async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.getByRole('button', { name: 'Correos fallidos', exact: true }).click();
     await expect(page.getByText('No hay notificaciones en esta bandeja.')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/correo-vacio-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/correo-vacio-${name}.png`, fullPage: true });
     await page.getByRole('button', { name: 'WhatsApp preparado', exact: true }).click();
     await expect(page.getByText('Recordatorio')).toBeVisible();
   }
   await page.route('**/api/v1/notificaciones?*', route => route.fulfill({ status: 500, json: { detail: 'error de prueba' } }));
   await page.getByRole('button', { name: 'Correos fallidos', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText(/No pudimos cargar/);
-  await page.screenshot({ path: '../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/error-desktop.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/notifications/error-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: '../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/error-mobile.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/notifications/error-mobile.png', fullPage: true });
 });
 
 test('estados secundarios de WhatsApp en ambos tamaños', async ({ page }) => {
@@ -108,16 +109,16 @@ test('estados secundarios de WhatsApp en ambos tamaños', async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.getByRole('button', { name: 'Abrir WhatsApp 8' }).click();
     await expect(page.getByRole('link', { name: 'Abrir enlace seguro de WhatsApp' })).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/popup-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/popup-${name}.png`, fullPage: true });
     await page.route('**/api/v1/notificaciones/8/marcar-enviada', route => route.fulfill({ status: 409, json: { detail: 'conflicto simulado' } }));
     await page.getByRole('button', { name: 'Marcar enviada 8' }).click();
     await expect(page.getByText('La notificación cambió. Revisá su estado.')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/conflicto-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/conflicto-${name}.png`, fullPage: true });
     await page.unroute('**/api/v1/notificaciones/8/marcar-enviada');
     await page.route('**/api/v1/notificaciones/8/marcar-enviada', route => route.abort('failed'));
     await page.getByRole('button', { name: 'Marcar enviada 8' }).click();
     await expect(page.getByText('No pudimos confirmar el resultado. Revisá el estado antes de reintentar.')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/incierto-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/incierto-${name}.png`, fullPage: true });
     await page.unroute('**/api/v1/notificaciones/8/marcar-enviada');
   }
 });
@@ -131,11 +132,11 @@ test('salud sin barridos y error en ambos tamaños', async ({ page }) => {
     await page.route('**/api/v1/notificaciones/indicadores', route => route.fulfill({ json: { fallidas: 0, programada_mas_antigua_segundos: null, enviando: 0, enviando_mas_antigua_segundos: null, correos_del_dia: 0, limite_diario: 500, alerta: false, ultimo_barrido: null } }));
     await page.goto('/estado-operativo');
     await expect(page.getByText('Sin barridos registrados.')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/salud-sin-barrido-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/salud-sin-barrido-${name}.png`, fullPage: true });
     await page.route('**/api/v1/notificaciones/indicadores', route => route.fulfill({ status: 500, json: { detail: 'error simulado' } }));
     await page.reload();
     await expect(page.getByText('No pudimos cargar los indicadores.')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/salud-error-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/salud-error-${name}.png`, fullPage: true });
     await page.unroute('**/api/v1/notificaciones/indicadores');
   }
 });
@@ -153,9 +154,10 @@ test('carga y consola de pantallas principales', async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.goto('/notificaciones');
     await expect(page.getByText('Cargando notificaciones…')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-18-frontend-notifications-ops/mockups/verify/carga-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/notifications/carga-${name}.png`, fullPage: true });
     await expect(page.getByText('No hay notificaciones en esta bandeja.')).toBeVisible();
     await page.getByRole('button', { name: 'Correos fallidos', exact: true }).click();
+    await expect(page.getByText('Cargando notificaciones…')).toBeVisible();
     await expect(page.getByText('No hay notificaciones en esta bandeja.')).toBeVisible();
   }
   expect(errors).toEqual([]);

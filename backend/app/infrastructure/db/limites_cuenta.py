@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.domain.ports.reloj import Reloj
 from app.domain.services.auth_crypto import calcular_origen_hash, resolver_ip_origen
-from app.infrastructure.db.account_models import IntentoRegistroModel
-from app.infrastructure.db.models import TokenUsuarioModel
+from app.infrastructure.db.account_models import IntentoCorreoCuentaModel, IntentoRegistroModel
+from app.infrastructure.db.models import ConsultorioModel, TokenUsuarioModel
 
 
 class LimiteSolicitudes(Exception):
@@ -35,6 +35,33 @@ class LimitesCuentaPostgres:
         self.reloj = reloj
         self.settings = settings
 
+    async def admitir_solicitud_correo(self, consultorio_id: int, host: str | None,
+                                        forwarded: str | None) -> None:
+        origin = resolver_ip_origen(host, forwarded, self.settings.trusted_proxy_hops)
+        try:
+            origin = str(ipaddress.ip_address(origin)) if origin is not None else None
+        except ValueError:
+            origin = None
+        digest = calcular_origen_hash(origin, self.settings.origin_hash_secret.get_secret_value())
+        now = self.reloj.ahora()
+        window = timedelta(minutes=self.settings.account_request_limit_window_minutes)
+        conditions = [IntentoCorreoCuentaModel.consultorio_id == consultorio_id,
+                      IntentoCorreoCuentaModel.creado_en >= now - window]
+        maximum = self.settings.account_request_limit_global
+        if digest is not None:
+            conditions.append(IntentoCorreoCuentaModel.origen_hash == digest)
+            maximum = self.settings.account_request_limit_per_origin
+        # El bloqueo protege la cuota incluso entre procesos concurrentes.
+        await self.sesion.execute(select(ConsultorioModel.id).where(
+            ConsultorioModel.id == consultorio_id).with_for_update())
+        count = await self.sesion.scalar(select(func.count()).select_from(IntentoCorreoCuentaModel).where(*conditions))
+        if count >= maximum:
+            raise LimiteSolicitudes('Demasiadas solicitudes; intentá nuevamente más tarde')
+        await self.sesion.execute(delete(IntentoCorreoCuentaModel).where(
+            IntentoCorreoCuentaModel.creado_en < now - timedelta(hours=24)))
+        self.sesion.add(IntentoCorreoCuentaModel(consultorio_id=consultorio_id, origen_hash=digest, creado_en=now))
+        await self.sesion.commit()
+
     async def admitir_registro(self, consultorio_id: int, host: str | None,
                                forwarded: str | None) -> None:
         origin = resolver_ip_origen(host, forwarded, self.settings.trusted_proxy_hops)
@@ -51,6 +78,10 @@ class LimitesCuentaPostgres:
         if digest is not None:
             conditions.append(IntentoRegistroModel.origen_hash == digest)
             maximum = self.settings.registration_limit_per_origin
+        # Serializa el conteo y la inserción por consultorio dentro de la transacción.
+        await self.sesion.execute(
+            select(ConsultorioModel.id).where(ConsultorioModel.id == consultorio_id).with_for_update()
+        )
         count = await self.sesion.scalar(select(func.count()).select_from(IntentoRegistroModel).where(*conditions))
         if count >= maximum:
             raise LimiteSolicitudes('Demasiadas solicitudes; intentá nuevamente más tarde')

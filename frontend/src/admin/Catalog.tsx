@@ -51,7 +51,7 @@ export function Prestaciones() {
     {message && <p role="status">{message}</p>}
     {!items && !error && <p role="status">Cargando prestaciones…</p>}
     {items?.length === 0 && <p>No hay prestaciones registradas.</p>}
-    {items?.map(item => <div key={item.id}><p>{item.nombre} · {item.duracion_min} minutos · {item.activa ? 'Activa' : 'Inactiva'}</p><button type="button" onClick={() => { setEditing(item.id); setNombre(item.nombre); setDuracion(String(item.duracion_min)); }}>Editar {item.nombre}</button>{item.activa && <button type="button" disabled={busy} onClick={() => void deactivate(item.id)}>Desactivar {item.nombre}</button>}</div>)}
+    {items?.map(item => <div key={item.id}><p>{item.nombre} · {item.duracion_min} minutos · {item.activa ? 'Activa' : 'Inactiva'}</p><div className="admin-catalog-actions"><button type="button" onClick={() => { setEditing(item.id); setNombre(item.nombre); setDuracion(String(item.duracion_min)); }}>Editar {item.nombre}</button>{item.activa && <button type="button" disabled={busy} onClick={() => void deactivate(item.id)}>Desactivar {item.nombre}</button>}</div></div>)}
     <form onSubmit={e => { e.preventDefault(); void save(); }} noValidate>
       <label>Nombre de prestación <input required maxLength={160} aria-invalid={invalid.includes('nombre')} value={nombre} onChange={e => setNombre(e.target.value)} /></label>{invalid.includes('nombre') && <p>Revisá el nombre.</p>}
       <label>Duración en minutos <input required type="number" min={1} step={1} onKeyDown={integerKey} onPaste={integerPaste} aria-invalid={invalid.includes('duracion_min')} value={duracion} onChange={e => { if (onlyDigits(e.target.value)) setDuracion(e.target.value); }} /></label>{invalid.includes('duracion_min') && <p>Revisá la duración.</p>}

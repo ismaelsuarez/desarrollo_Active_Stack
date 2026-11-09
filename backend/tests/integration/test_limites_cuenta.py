@@ -1,10 +1,11 @@
+import asyncio
 from datetime import timedelta
 import pytest
 from sqlalchemy import select, func
 
 from app.core.config import Settings
 from app.domain.ports.reloj import RelojSimulado
-from app.infrastructure.db.account_models import IntentoRegistroModel
+from app.infrastructure.db.account_models import IntentoCorreoCuentaModel, IntentoRegistroModel
 from tests.integration.test_core_models import crear_consultorio_ejemplo, AHORA
 
 pytestmark = pytest.mark.integration
@@ -32,6 +33,62 @@ async def test_limite_registro_confirmado_y_excedido_no_inserta(sesiones):
         assert len(rows[0].origen_hash) == 64
         assert '192.0.2.1' not in rows[0].origen_hash
         assert rows[0].creado_en == AHORA
+
+
+@pytest.mark.parametrize('host', ['192.0.2.1', None])
+async def test_limite_registro_no_se_supera_con_solicitudes_simultaneas(sesiones, host):
+    from app.infrastructure.db.limites_cuenta import LimitesCuentaPostgres, LimiteSolicitudes
+
+    async with sesiones() as session:
+        session.add(crear_consultorio_ejemplo())
+        await session.commit()
+
+    inicio = asyncio.Event()
+
+    async def solicitar():
+        async with sesiones() as session:
+            limite = LimitesCuentaPostgres(session, RelojSimulado(AHORA), config(
+                registration_limit_per_origin=2, registration_limit_global=2))
+            await inicio.wait()
+            try:
+                await limite.admitir_registro(1, host, None)
+                return True
+            except LimiteSolicitudes:
+                return False
+
+    tareas = [asyncio.create_task(solicitar()) for _ in range(6)]
+    inicio.set()
+    resultados = await asyncio.gather(*tareas)
+    assert sum(resultados) == 2
+    async with sesiones() as session:
+        assert await session.scalar(select(func.count()).select_from(IntentoRegistroModel)) == 2
+
+
+@pytest.mark.parametrize('host', ['192.0.2.1', None])
+async def test_limite_correo_no_se_supera_con_solicitudes_simultaneas(sesiones, host):
+    from app.infrastructure.db.limites_cuenta import LimitesCuentaPostgres, LimiteSolicitudes
+
+    async with sesiones() as session:
+        session.add(crear_consultorio_ejemplo())
+        await session.commit()
+    inicio = asyncio.Event()
+
+    async def solicitar():
+        async with sesiones() as session:
+            limite = LimitesCuentaPostgres(session, RelojSimulado(AHORA), config(
+                account_request_limit_per_origin=2, account_request_limit_global=2))
+            await inicio.wait()
+            try:
+                await limite.admitir_solicitud_correo(1, host, None)
+                return True
+            except LimiteSolicitudes:
+                return False
+
+    tareas = [asyncio.create_task(solicitar()) for _ in range(6)]
+    inicio.set()
+    assert sum(await asyncio.gather(*tareas)) == 2
+    async with sesiones() as session:
+        assert await session.scalar(select(func.count()).select_from(IntentoCorreoCuentaModel)) == 2
 
 
 @pytest.mark.parametrize('host,forwarded,hops', [

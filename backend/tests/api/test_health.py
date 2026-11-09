@@ -26,6 +26,19 @@ async def test_health_endpoint_is_public_and_minimal():
     assert response.headers['content-type'] == 'application/json'
 
 
+@pytest.mark.parametrize('habilitado,esperado', [(True, 200), (False, 404)])
+async def test_documentacion_puede_deshabilitarse_sin_fallback_spa(monkeypatch, tmp_path, habilitado, esperado):
+    import app.main as main
+    (tmp_path / 'index.html').write_text('SPA de prueba', encoding='utf-8')
+    monkeypatch.setattr(main, 'SPA_DIR', tmp_path)
+    settings = Settings(database_url='postgresql+asyncpg://u:p@localhost/test',
+                        jwt_secret_key='x' * 32, origin_hash_secret='y' * 32,
+                        app_env='test', consultorio_activo_id=1, openapi_docs_enabled=habilitado)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.create_app(settings)), base_url='http://test') as client:
+        for ruta in ('/docs', '/redoc', '/openapi.json'):
+            assert (await client.get(ruta)).status_code == esperado
+
+
 async def test_health_disallows_post():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=configured_app()), base_url='http://test') as client:
         response = await client.post('/api/v1/health')

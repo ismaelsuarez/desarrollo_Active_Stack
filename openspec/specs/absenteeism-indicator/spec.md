@@ -48,3 +48,10 @@ La consulta SHALL rechazar períodos inválidos sin devolver agregados.
 #### Scenario: Fechas invertidas
 - **WHEN** desde es posterior a hasta
 - **THEN** la API responde 422 y la pantalla informa el error.
+
+### Requirement: Fechas iniciales según el consultorio
+La pantalla SHALL establecer el período inicial según la fecha de la zona horaria del consultorio y no la zona del navegador.
+
+#### Scenario: Zonas con días diferentes
+- **WHEN** la fecha local del navegador difiere de la del consultorio
+- **THEN** las fechas iniciales corresponden al día del consultorio.

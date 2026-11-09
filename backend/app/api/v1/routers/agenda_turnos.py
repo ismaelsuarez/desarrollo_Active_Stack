@@ -89,5 +89,7 @@ async def agenda_profesional(parametros: Annotated[ConsultaAgenda, Query()],
 
 
 @router.get("/pacientes/{paciente_id}/turnos", response_model=list[TurnoOperativo])
-async def turnos_de_paciente(paciente_id: int, principal: PersonalAgenda, consulta: Consulta):
-    return await consulta.de_paciente(principal, paciente_id)
+async def turnos_de_paciente(paciente_id: int, principal: PersonalAgenda, consulta: Consulta,
+                             limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+                             offset: Annotated[int, Query(ge=0)] = 0):
+    return await consulta.de_paciente(principal, paciente_id, limit=limit, offset=offset)

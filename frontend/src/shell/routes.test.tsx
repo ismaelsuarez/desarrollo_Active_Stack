@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from './routes';
@@ -20,6 +20,45 @@ vi.mock('../indicators/AbsenteeismPage', () => ({ AbsenteeismPage: () => <p>Info
 
 describe('rutas', () => {
   beforeEach(() => { mockSession.state = { loading: false, profile: null }; });
+  it('mantiene la navegación del equipo en inicio y mi cuenta sin exponer opciones de administrador a recepción', () => {
+    mockSession.state.profile = { rol: 'recepcion', nombre_usuario: 'ana' };
+    const home = render(<MemoryRouter initialEntries={['/recepcion']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByRole('navigation', {name: 'Navegación principal'})).toBeInTheDocument();
+    home.unmount();
+    render(<MemoryRouter initialEntries={['/cuenta']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByRole('navigation', {name: 'Navegación principal'})).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: 'Agenda'})).toHaveAttribute('href', '/agenda');
+    expect(screen.queryByRole('link', {name: 'Configuración'})).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Cerrar sesión'})).toBeInTheDocument();
+  });
+  it('permite cerrar sesión desde la navegación del equipo', () => {
+    mockSession.state.profile = {rol: 'administrador', nombre_usuario: 'ana'};
+    mockSession.session.logout.mockResolvedValueOnce(undefined);
+    render(<MemoryRouter initialEntries={['/cuenta']}><AppRoutes /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', {name: 'Cerrar sesión'}));
+    expect(mockSession.session.logout).toHaveBeenCalled();
+  });
+  it('muestra la portada en la raíz y conserva el ingreso por separado', () => {
+    const view = render(<MemoryRouter initialEntries={['/']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getAllByRole('link', { name: /ver turnos disponibles/i })[0]).toHaveAttribute('href', '/reservar');
+    expect(screen.getByRole('link', { name: /ingresar a mi cuenta/i })).toHaveAttribute('href', '/ingresar');
+    view.unmount();
+    render(<MemoryRouter initialEntries={['/ingresar']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByText('Formulario ingreso')).toBeInTheDocument();
+  });
+  it('espera la sesión y redirige la raíz de cada rol a su panel', () => {
+    mockSession.state.loading = true;
+    const loading = render(<MemoryRouter initialEntries={['/']}><AppRoutes /></MemoryRouter>);
+    expect(screen.getByRole('status')).toHaveTextContent('verificando tu sesión');
+    expect(screen.queryByRole('heading', {name: /cuidar tu sonrisa/i})).not.toBeInTheDocument();
+    loading.unmount(); mockSession.state.loading = false;
+    for (const rol of ['paciente', 'recepcion', 'profesional', 'administrador', 'administrativo']) {
+      mockSession.state.profile = {rol, nombre_usuario: 'ana'};
+      const view = render(<MemoryRouter initialEntries={['/']}><AppRoutes /></MemoryRouter>);
+      expect(screen.getByRole('heading', {name: /hola, ana/i})).toBeInTheDocument();
+      view.unmount();
+    }
+  });
   it('ofrece ausentismo solo al administrador', () => {
     mockSession.state.profile = { rol: 'administrador', nombre_usuario: 'ana' };
     const admin = render(<MemoryRouter initialEntries={['/administrador']}><AppRoutes /></MemoryRouter>);

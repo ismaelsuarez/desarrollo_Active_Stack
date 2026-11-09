@@ -3,11 +3,11 @@ import { Fragment, StrictMode } from 'react';
 import { describe, expect, it } from 'vitest';
 import App from './App';
 
-describe('Application heading', () => {
+describe('Application session restoration', () => {
   for (const Wrapper of [Fragment, StrictMode]) {
-    it(`shows the system name with ${Wrapper === StrictMode ? 'strict' : 'normal'} rendering`, () => {
+    it(`announces session restoration with ${Wrapper === StrictMode ? 'strict' : 'normal'} rendering`, () => {
       render(<Wrapper><App /></Wrapper>);
-      expect(screen.getByRole('heading', { level: 1, name: 'Sistema de Turnos y Agenda Odontológica' })).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('verificando tu sesión');
     });
   }
 });

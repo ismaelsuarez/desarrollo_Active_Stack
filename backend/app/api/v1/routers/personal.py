@@ -52,7 +52,7 @@ async def listar_personal(principal: Administrador, sesion: Sesion) -> list[Usua
     responses={
         401: {"description": "No autenticado"},
         403: {"description": "Permisos insuficientes"},
-        409: {"description": "El nombre de usuario o correo ya estÃ¡ registrado"},
+        409: {"description": "El nombre de usuario o correo ya está registrado"},
     },
 )
 async def crear_personal(
@@ -82,7 +82,7 @@ async def crear_personal(
     except IntegrityError as error:
         await sesion.rollback()
         if es_conflicto_unicidad(error):
-            raise HTTPException(409, "El nombre de usuario o correo ya estÃ¡ registrado") from None
+            raise HTTPException(409, "El nombre de usuario o correo ya está registrado") from None
         raise
     await sesion.refresh(usuario)
     return usuario
@@ -95,7 +95,7 @@ async def crear_personal(
         401: {"description": "No autenticado"},
         403: {"description": "Permisos insuficientes"},
         404: {"description": "Personal no encontrado"},
-        409: {"description": "El nombre de usuario o correo ya estÃ¡ registrado"},
+        409: {"description": "El nombre de usuario o correo ya está registrado"},
     },
 )
 async def actualizar_personal(
@@ -122,7 +122,7 @@ async def actualizar_personal(
     except IntegrityError as error:
         await sesion.rollback()
         if es_conflicto_unicidad(error):
-            raise HTTPException(409, "El nombre de usuario o correo ya estÃ¡ registrado") from None
+            raise HTTPException(409, "El nombre de usuario o correo ya está registrado") from None
         raise
     await sesion.refresh(usuario)
     return usuario

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, request } from '../api/client';
 import { useSession } from '../auth/provider';
-import { Button, Notice, PageTemplate, TextField } from '../components/ui';
+import { Button, Notice, PageTemplate } from '../components/ui';
+import { BookingForm } from './BookingForm';
 import { formatClinicDate, formatClinicTime } from './time';
 import '../pages/public.css';
 import './booking.css';
@@ -21,6 +22,10 @@ export function BookingPage() {
   const [service, setService] = useState(draft.service); const [professional, setProfessional] = useState(draft.professional); const [date, setDate] = useState(draft.date);
   const [slots, setSlots] = useState<Slot[] | null>(null); const [error, setError] = useState(''); const [waiting, setWaiting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
+  const [catalogFailed, setCatalogFailed] = useState(false);
+  const [retryDelay, setRetryDelay] = useState(0);
+  const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Slot | null>(null);
   const [alternatives, setAlternatives] = useState(false);
   const [booked, setBooked] = useState(''); const [busy, setBusy] = useState(false); const sending = useRef(false);
@@ -29,19 +34,31 @@ export function BookingPage() {
     let active = true;
     const options = { onWait: () => { if (active) setWaiting(true); } };
     Promise.all([request<Clinic>('/publico/consultorio', options), request<Service[]>('/publico/prestaciones', options), request<Professional[]>('/publico/profesionales', options)])
-      .then(([c, s, p]) => { if (active) { setClinic(c); setServices(s); setProfessionals(p); setWaiting(false); setLoading(false); } })
-      .catch((e: unknown) => { if (active) { setWaiting(false); setLoading(false); setError(e instanceof ApiError && e.status === 429 ? 'Demasiadas consultas. Intentá más tarde.' : 'No pudimos cargar los datos del consultorio.'); } });
+      .then(([c, s, p]) => { if (active) { setClinic(c); setServices(s); setProfessionals(p); setWaiting(false); setLoading(false); setCatalogFailed(false); } })
+      .catch((e: unknown) => { if (active) { setWaiting(false); setLoading(false); setCatalogFailed(true); setRetryDelay(e instanceof ApiError && e.status === 429 ? (e.retryAfterSeconds ?? 60) : 0); setError(e instanceof ApiError && e.status === 429 ? 'Demasiadas consultas. Intentá más tarde.' : 'No pudimos cargar los datos del consultorio.'); } });
     return () => { active = false; };
-  }, []);
-  function changed() { generation.current++; setSlots(null); setSelected(null); setError(''); setWaiting(false); }
+  }, [catalogAttempt]);
+  useEffect(() => {
+    if (retryDelay <= 0) return;
+    const deadline = Date.now() + retryDelay * 1000;
+    let timer: number;
+    const schedule = () => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) setRetryDelay(0);
+      else timer = window.setTimeout(schedule, Math.min(remaining, 2_147_483_647));
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, [retryDelay]);
+  function changed() { generation.current++; setSlots(null); setSelected(null); setError(''); setWaiting(false); setSearching(false); }
   async function search() {
-    const current = ++generation.current; setSlots(null); setSelected(null); setAlternatives(false); setBooked(''); setError('');
+    const current = ++generation.current; setSlots(null); setSelected(null); setAlternatives(false); setBooked(''); setError(''); setSearching(true);
     const params = new URLSearchParams({ profesional_id: professional, prestacion_id: service, fecha: date });
     try {
       const result = await request<Slot[]>(`/publico/disponibilidad?${params}`, { onWait: () => { if (current === generation.current) setWaiting(true); } });
       if (current === generation.current) setSlots(result);
     } catch (e) { if (current === generation.current) setError(e instanceof ApiError && e.status === 429 ? 'Demasiadas consultas. Intentá más tarde.' : 'No pudimos cargar los horarios. Intentá nuevamente.'); }
-    finally { if (current === generation.current) setWaiting(false); }
+    finally { if (current === generation.current) { setWaiting(false); setSearching(false); } }
   }
   async function reserve() {
     if (!selected || sending.current) return;
@@ -62,13 +79,12 @@ export function BookingPage() {
     {loading && !waiting && <Notice>Cargando datos del consultorio…</Notice>}
     {waiting && <Notice kind="warning">El servicio está iniciando. Estamos intentando cargar los datos.</Notice>}
     {error && <Notice kind="error">{error}</Notice>}
-    <div className="booking-grid"><div className="public-card booking-card"><h2>Elegí qué necesitás</h2><div className="public-form booking-form">
-      <label>Prestación<select disabled={busy} value={service} onChange={e => { changed(); draft.service = e.target.value; setService(e.target.value); }}><option value="">Elegí una prestación</option>{services.map(s => <option key={s.id} value={s.id}>{s.nombre} · {s.duracion_min} min</option>)}</select></label>
-      <label>Profesional<select disabled={busy} value={professional} onChange={e => { changed(); draft.professional = e.target.value; setProfessional(e.target.value); }}><option value="">Elegí un profesional</option>{professionals.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></label>
-      <TextField label="Fecha" type="date" disabled={busy} value={date} onChange={e => { changed(); draft.date = e.target.value; setDate(e.target.value); }} />
-      <Button variant="secondary" disabled={busy || !service || !professional || !date} onClick={() => void search()}>Buscar horarios</Button>
-    </div></div>
-    {slots && <div className="public-card booking-card"><h2>Elegí un horario</h2><p>Hora del consultorio</p>{slots.length ? <div className="booking-slots">{slots.map(slot => <Button disabled={busy} variant="secondary" key={slot.inicio} aria-pressed={selected?.inicio === slot.inicio} onClick={() => setSelected(slot)}>{alternatives && <>{formatClinicDate(slot.inicio, clinic?.zona_horaria ?? 'UTC')} · </>}{formatClinicTime(slot.inicio, clinic?.zona_horaria ?? 'UTC')}</Button>)}</div> : <p>{alternatives ? 'No encontramos alternativas disponibles.' : 'No encontramos horarios para esta fecha.'}</p>}</div>}</div>
+    {catalogFailed && <Button variant="secondary" disabled={retryDelay > 0} onClick={() => { setError(''); setCatalogFailed(false); setLoading(true); setCatalogAttempt(value => value + 1); }}>Volver a cargar</Button>}
+    {clinic && <div className="booking-grid"><BookingForm services={services} professionals={professionals} service={service} professional={professional} date={date} busy={busy} searching={searching}
+      onServiceChange={value => { changed(); draft.service = value; setService(value); }}
+      onProfessionalChange={value => { changed(); draft.professional = value; setProfessional(value); }}
+      onDateChange={value => { changed(); draft.date = value; setDate(value); }} onSearch={() => void search()} />
+    {slots && <div className="public-card booking-card"><h2>Elegí un horario</h2><p>Hora del consultorio</p>{slots.length ? <div className="booking-slots">{slots.map(slot => <Button disabled={busy} variant="secondary" key={slot.inicio} aria-pressed={selected?.inicio === slot.inicio} onClick={() => setSelected(slot)}>{alternatives && <>{formatClinicDate(slot.inicio, clinic.zona_horaria)} · </>}{formatClinicTime(slot.inicio, clinic.zona_horaria)}</Button>)}</div> : <p>{alternatives ? 'No encontramos alternativas disponibles.' : 'No encontramos horarios para esta fecha.'}</p>}</div>}</div>}
     {selected && !state.profile && <div className="public-card"><h2>Ingresá para reservar</h2><p>Necesitás una cuenta con correo verificado. Después de ingresar, volvé a elegir el horario antes de confirmar.</p><p><Link to="/ingresar">Ingresar</Link> · <Link to="/registro">Crear cuenta</Link></p></div>}
     {booked && <Notice kind="success">Tu turno está reservado. Estado: {booked}. <Link to="/mis-turnos">Ver mis turnos</Link></Notice>}
     {selected && state.profile?.rol === 'paciente' && <div className="public-card"><h2>Revisá tu reserva</h2><p>{services.find(s => String(s.id) === service)?.nombre} · {professionals.find(p => String(p.id) === professional)?.nombre}</p><p>{formatClinicDate(selected.inicio, clinic?.zona_horaria ?? 'UTC')} · {formatClinicTime(selected.inicio, clinic?.zona_horaria ?? 'UTC')}</p><Button disabled={busy || !state.profile.email_verificado} onClick={() => void reserve()}>Confirmar reserva</Button>{!state.profile.email_verificado && <p>Verificá tu correo antes de reservar. <Link to="/reenviar-verificacion">Reenviar enlace</Link></p>}</div>}

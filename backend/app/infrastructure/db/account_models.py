@@ -82,6 +82,18 @@ class IntentoRegistroModel(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class IntentoCorreoCuentaModel(Base):
+    __tablename__ = 'intento_correo_cuenta'
+    __table_args__ = (
+        Index('ix_intento_correo_cuenta_origen', 'consultorio_id', 'origen_hash', 'creado_en'),
+        Index('ix_intento_correo_cuenta_creado_en', 'creado_en'),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    consultorio_id: Mapped[int] = mapped_column(ForeignKey('consultorio.id'), index=True)
+    origen_hash: Mapped[str | None] = mapped_column(Text)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class BarridoEstadoModel(Base):
     """Última ejecución iniciada; metadatos técnicos sin datos personales."""
     __tablename__ = 'barrido_estado'

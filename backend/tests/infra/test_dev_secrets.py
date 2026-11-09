@@ -2,6 +2,7 @@ import os
 import subprocess
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
+import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = ROOT / 'scripts/dev_secrets.sh'
@@ -33,3 +34,23 @@ def test_uses_configured_database_identity_without_disclosing_values(tmp_path):
     assert url.username == 'local-test'
     assert url.hostname == 'db'
     assert url.path == '/test-agenda'
+
+
+@pytest.mark.parametrize('cambio', ['usuario', 'base', 'host'])
+def test_rechaza_url_existente_incompatible_sin_mostrar_secretos(tmp_path, cambio):
+    inicial = subprocess.run(['bash', str(SCRIPT), str(tmp_path)], capture_output=True, text=True)
+    assert inicial.returncode == 0
+    ruta = tmp_path / 'secrets' / 'database_url.txt'
+    original = ruta.read_text()
+    env = os.environ.copy()
+    if cambio == 'usuario':
+        env['POSTGRES_USER'] = 'otro'
+    elif cambio == 'base':
+        env['POSTGRES_DB'] = 'otra'
+    else:
+        ruta.write_text(original.replace('@db:5432/', '@otro:5432/'))
+    contenido = ruta.read_text()
+    result = subprocess.run(['bash', str(SCRIPT), str(tmp_path)], env=env, capture_output=True, text=True)
+    assert result.returncode != 0
+    assert ruta.read_text() == contenido
+    assert urlsplit(contenido).password not in result.stdout + result.stderr

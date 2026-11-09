@@ -56,6 +56,19 @@ async def admitir_registro(request: Request, consultorio: ConsultorioPublico,
         raise HTTPException(429, str(exc)) from None
 
 
+async def admitir_correo_cuenta(request: Request, consultorio: ConsultorioPublico,
+                                 sesion: Sesion, reloj: RelojActual, settings: Configuracion) -> None:
+    try:
+        await LimitesCuentaPostgres(sesion, reloj, settings).admitir_solicitud_correo(
+            consultorio.id, request.client.host if request.client else None,
+            request.headers.get('x-forwarded-for'),
+        )
+    except LimiteSolicitudes as exc:
+        raise HTTPException(429, str(exc), headers={
+            'Retry-After': str(settings.account_request_limit_window_minutes * 60),
+        }) from None
+
+
 async def validar_payload_registro(
         request: Request, admitido: Annotated[None, Depends(admitir_registro)]) -> RegistroRequest:
     # FastAPI parses automatic Body parameters before solving dependencies.
@@ -71,6 +84,9 @@ async def validar_payload_registro(
     except ValidationError as exc:
         detalles = [{'loc': ['body', *error['loc']], 'msg': error['msg'], 'type': error['type']}
                     for error in exc.errors(include_input=False, include_context=False)]
+        for detalle in detalles:
+            if detalle['type'] == 'extra_forbidden':
+                detalle['loc'][-1] = 'campo_no_permitido'
         raise HTTPException(422, detail=detalles) from None
 
 
@@ -119,7 +135,7 @@ async def verificar_email(payload: TokenRequest, servicio: Servicio) -> MensajeR
     return MensajeResponse(mensaje='Correo verificado')
 
 
-@router.post('/auth/reenviar-verificacion')
+@router.post('/auth/reenviar-verificacion', dependencies=[Depends(admitir_correo_cuenta)])
 async def reenviar_verificacion(payload: CorreoRequest, request: Request, tareas: BackgroundTasks,
                                consultorio: ConsultorioPublico, servicio: Servicio,
                                reloj: RelojActual, enviador: CorreoSalida,
@@ -134,7 +150,7 @@ async def reenviar_verificacion(payload: CorreoRequest, request: Request, tareas
     return MensajeResponse(mensaje='Si corresponde, recibirás un correo')
 
 
-@router.post('/auth/recuperar-password')
+@router.post('/auth/recuperar-password', dependencies=[Depends(admitir_correo_cuenta)])
 async def recuperar_password(payload: CorreoRequest, request: Request, tareas: BackgroundTasks,
                              consultorio: ConsultorioPublico, servicio: Servicio,
                              reloj: RelojActual, enviador: CorreoSalida,

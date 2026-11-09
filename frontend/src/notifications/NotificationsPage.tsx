@@ -42,7 +42,7 @@ export function NotificationsPage() {
       const opened = window.open(url.href, '_blank', 'noopener,noreferrer');
       if (!opened) { setFallback(url.href); setMessage('Si la ventana fue bloqueada, abrí el enlace seguro.'); }
       else setMessage('WhatsApp abierto. Marcá enviada solo después de enviarla.');
-    } catch { setActionError('No pudimos abrir WhatsApp o el enlace no válido.'); }
+    } catch { setActionError('No pudimos abrir WhatsApp o el enlace no es válido.'); }
     finally { inFlight.current = false; setBusy(null); }
   }
   async function markSent(id: number) {

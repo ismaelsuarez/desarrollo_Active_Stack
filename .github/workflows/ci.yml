@@ -64,6 +64,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test -- --run
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:keyboard
 
   images:
     runs-on: ubuntu-latest

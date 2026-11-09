@@ -44,6 +44,7 @@ class Settings(DatabaseSettings):
     login_lockout_minutes: int = Field(default=15, gt=0, le=1440, validation_alias='LOGIN_LOCKOUT_MINUTES')
     login_max_attempts_per_origin: int = Field(default=20, gt=0, validation_alias='LOGIN_MAX_ATTEMPTS_PER_ORIGIN')
     cookie_secure: bool | None = Field(default=None, validation_alias='COOKIE_SECURE')
+    openapi_docs_enabled: bool | None = Field(default=None, validation_alias='OPENAPI_DOCS_ENABLED')
     redis_url: str | None = None
     app_timezone: str = 'America/Argentina/Buenos_Aires'
 
@@ -55,6 +56,9 @@ class Settings(DatabaseSettings):
     registration_limit_per_origin: int = Field(default=10, gt=0, validation_alias='REGISTRATION_LIMIT_PER_ORIGIN')
     registration_limit_global: int = Field(default=50, gt=0, validation_alias='REGISTRATION_LIMIT_GLOBAL')
     registration_limit_window_minutes: int = Field(default=60, gt=0, le=1440, validation_alias='REGISTRATION_LIMIT_WINDOW_MINUTES')
+    account_request_limit_per_origin: int = Field(default=10, gt=0, validation_alias='ACCOUNT_REQUEST_LIMIT_PER_ORIGIN')
+    account_request_limit_global: int = Field(default=50, gt=0, validation_alias='ACCOUNT_REQUEST_LIMIT_GLOBAL')
+    account_request_limit_window_minutes: int = Field(default=60, gt=0, le=1440, validation_alias='ACCOUNT_REQUEST_LIMIT_WINDOW_MINUTES')
     account_email_limit: int = Field(default=3, gt=0, validation_alias='ACCOUNT_EMAIL_LIMIT')
     account_email_window_minutes: int = Field(default=15, gt=0, validation_alias='ACCOUNT_EMAIL_WINDOW_MINUTES')
     notification_max_attempts: int = Field(default=3, gt=0, validation_alias='NOTIFICATION_MAX_ATTEMPTS')
@@ -89,6 +93,14 @@ class Settings(DatabaseSettings):
     def set_default_cookie_secure(self) -> 'Settings':
         if self.cookie_secure is None:
             self.cookie_secure = self.app_env != 'development'
+        if self.app_env == 'production' and not self.cookie_secure:
+            raise ValueError('COOKIE_SECURE must be enabled in production')
+        return self
+
+    @model_validator(mode='after')
+    def set_default_openapi_docs(self) -> 'Settings':
+        if self.openapi_docs_enabled is None:
+            self.openapi_docs_enabled = self.app_env != 'production'
         return self
 
     @model_validator(mode='after')

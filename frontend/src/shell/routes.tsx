@@ -16,18 +16,31 @@ import { AdminPage } from '../admin/AdminPage';
 import { NotificationsPage, HealthPage } from '../notifications/NotificationsPage';
 import { Unconfirmed } from '../notifications/Unconfirmed';
 import { AbsenteeismPage } from '../indicators/AbsenteeismPage';
+import { RouteFocus } from './RouteFocus';
+import { LandingPage } from '../landing/LandingPage';
+import { AccountBack } from '../account/AccountBack';
 
-function Entry() {
+function Entry({ landing = false }: { landing?: boolean }) {
   const { state } = useSession();
   if (state.loading) return <main><p role="status">Estamos verificando tu sesión. Esperá un momento.</p></main>;
   if (state.profile) return <Navigate to={`/${state.profile.rol}`} replace />;
-  return <LoginPage />;
+  return landing ? <LandingPage /> : <LoginPage />;
+}
+
+function TeamNavIfNeeded() {
+  const { state } = useSession();
+  return state.profile && ['administrador', 'recepcion', 'profesional'].includes(state.profile.rol) ? <StaffNav /> : null;
+}
+
+function AccountScreen() {
+  const { state } = useSession();
+  return <><TeamNavIfNeeded />{state.profile && <AccountBack role={state.profile.rol} />}<AccountPage /></>;
 }
 
 export function AppRoutes() {
   const roles: Role[] = ['paciente', 'recepcion', 'profesional', 'administrador', 'administrativo'];
-  return <Routes>
-    <Route path="/" element={<Entry />} />
+  return <><RouteFocus /><Routes>
+    <Route path="/" element={<Entry landing />} />
     <Route path="/ingresar" element={<Entry />} />
     <Route path="/reservar" element={<BookingPage />} />
     <Route path="/mis-turnos" element={<Guard roles={['paciente']}><AppointmentsPage /></Guard>} />
@@ -47,8 +60,8 @@ export function AppRoutes() {
     <Route path="/restablecer" element={<ResetPasswordPage />} />
     <Route path="/confirmar-turno" element={<TokenActionPage action="confirm" />} />
     <Route path="/confirmar" element={<TokenActionPage action="confirm" />} />
-    <Route path="/cuenta" element={<Guard><AccountPage /></Guard>} />
-    {roles.map(role => <Route key={role} path={`/${role}`} element={<Guard roles={[role]}><RoleLayout /></Guard>} />)}
+    <Route path="/cuenta" element={<Guard><AccountScreen /></Guard>} />
+    {roles.map(role => <Route key={role} path={`/${role}`} element={<Guard roles={[role]}><TeamNavIfNeeded /><RoleLayout /></Guard>} />)}
     <Route path="*" element={<PageTemplate title="Página no encontrada"><p>No encontramos la página que buscabas.</p><Link to="/">Ir al inicio</Link></PageTemplate>} />
-  </Routes>;
+  </Routes></>;
 }

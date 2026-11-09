@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select, update
 
 from app.infrastructure.db.models import TurnoHistorialModel, TurnoModel
 from tests.integration.c07_support import AHORA, INICIO, preparar_escenario
@@ -95,6 +95,59 @@ async def test_lista_profesional_solo_devuelve_su_agenda(cliente, escenario, ses
     respuesta = await cliente.get("/api/v1/turnos", headers=escenario.headers("profesional"))
     assert respuesta.status_code == 200
     assert [turno["id"] for turno in respuesta.json()] == [propio]
+
+
+@pytest.mark.parametrize('rol', ['recepcion', 'profesional', 'paciente'])
+async def test_listado_no_multiplica_consultas_por_turno(cliente, escenario, sesiones, engine, rol):
+    if rol == 'paciente':
+        from app.infrastructure.db.models import PacienteModel
+        async with sesiones() as sesion:
+            await sesion.execute(update(PacienteModel).where(PacienteModel.id == escenario.pacientes[1]).values(
+                usuario_id=escenario.usuarios[1, 'paciente']))
+            await sesion.commit()
+    await registrar_turno(sesiones, escenario)
+    consultas = []
+
+    def registrar_sql(*args):
+        consultas.append(args[2])
+
+    async def contar_listado():
+        consultas.clear()
+        event.listen(engine.sync_engine, 'before_cursor_execute', registrar_sql)
+        try:
+            respuesta = await cliente.get('/api/v1/turnos', headers=escenario.headers(rol))
+            assert respuesta.status_code == 200
+            return len(consultas), respuesta.json()
+        finally:
+            event.remove(engine.sync_engine, 'before_cursor_execute', registrar_sql)
+
+    una, items = await contar_listado()
+    assert len(items) == 1
+    for numero in range(1, 20):
+        await registrar_turno(sesiones, escenario, inicio=INICIO + timedelta(minutes=30 * numero))
+    muchas, items = await contar_listado()
+    assert len(items) == 20
+    assert muchas == una
+
+
+async def test_historial_de_paciente_admite_paginas_sin_cambiar_el_contrato_anterior(cliente, escenario, sesiones):
+    ids = [await registrar_turno(sesiones, escenario, inicio=INICIO + timedelta(minutes=30 * n)) for n in range(5)]
+    ruta = f'/api/v1/pacientes/{escenario.pacientes[1]}/turnos'
+    cabeceras = escenario.headers()
+    completa = await cliente.get(ruta, headers=cabeceras)
+    primera = await cliente.get(ruta, params={'limit': 2, 'offset': 0}, headers=cabeceras)
+    segunda = await cliente.get(ruta, params={'limit': 2, 'offset': 2}, headers=cabeceras)
+    assert [item['id'] for item in completa.json()] == ids
+    assert [item['id'] for item in primera.json()] == ids[:2]
+    assert [item['id'] for item in segunda.json()] == ids[2:4]
+    ultima = await cliente.get(ruta, params={'limit': 2, 'offset': 4}, headers=cabeceras)
+    assert [item['id'] for item in ultima.json()] == ids[4:]
+    assert (await cliente.get(ruta, params={'limit': 2, 'offset': 9}, headers=cabeceras)).json() == []
+    assert (await cliente.get(ruta, params={'limit': 0}, headers=cabeceras)).status_code == 422
+    assert (await cliente.get(ruta, params={'limit': 101}, headers=cabeceras)).status_code == 422
+    assert (await cliente.get(ruta, params={'offset': -1}, headers=cabeceras)).status_code == 422
+    ajeno = f'/api/v1/pacientes/{escenario.pacientes[2]}/turnos'
+    assert (await cliente.get(ajeno, params={'limit': 2, 'offset': 0}, headers=cabeceras)).status_code == 404
 
 
 @pytest.mark.parametrize("rol", ["recepcion", "administrador"])

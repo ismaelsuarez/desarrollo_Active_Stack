@@ -46,7 +46,7 @@ class AuthTokenService:
 
         ahora_timestamp = int(self.reloj.ahora().timestamp())
         exp = payload.get("exp")
-        if exp is None or exp < ahora_timestamp:
+        if exp is None or exp <= ahora_timestamp:
             raise TokenError("Token expirado")
 
         sub = payload.get("sub")

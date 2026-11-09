@@ -10,6 +10,7 @@ test('presenta el indicador en móvil y escritorio sin desbordes ni errores', as
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/auth/refresh')) return route.fulfill({ json: { access_token: 'test' } });
     if (path.endsWith('/auth/me')) return route.fulfill({ json: { id: 1, consultorio_id: 1, nombre_usuario: 'admin', email: 'test@example.test', rol: 'administrador', email_verificado: true } });
+    if (path.endsWith('/publico/consultorio')) return route.fulfill({ json: { zona_horaria: 'America/Argentina/Buenos_Aires' } });
     if (path.endsWith('/profesionales')) return route.fulfill({ json: [{ id: 1, nombre: 'Ana', apellido: 'Pérez' }] });
     if (path.endsWith('/notificaciones/indicadores')) return route.fulfill({ json: { fallidas: 0, enviando: 0 } });
     if (path.endsWith('/turnos')) return route.fulfill({ json: [] });
@@ -25,22 +26,20 @@ test('presenta el indicador en móvil y escritorio sin desbordes ni errores', as
     await page.goto('/ausentismo');
     await expect(page.getByRole('cell', { name: 'Ana Pérez' })).toBeVisible();
     if (name === 'mobile') {
+      await page.getByRole('button', { name: '☰ Menú' }).click();
       const nav = page.getByRole('navigation', { name: 'Navegación principal' });
-      const links = nav.getByRole('link');
-      const positions = await links.evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top));
-      expect(new Set(positions).size).toBe(1);
       const current = nav.getByRole('link', { name: 'Ausentismo' });
       await expect(current).toHaveAttribute('aria-current', 'page');
-      const visible = await current.evaluate(element => { const a = element.getBoundingClientRect(); const b = element.parentElement!.getBoundingClientRect(); return a.left >= b.left - 1 && a.right <= b.right + 1; });
-      expect(visible).toBe(true);
+      await expect(current).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `../openspec/changes/c-19-absenteeism-indicator/mockups/verify/${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/absenteeism/${name}.png`, fullPage: true });
     if (name === 'mobile') {
       const nav = page.getByRole('navigation', { name: 'Navegación principal' });
-      await nav.getByRole('link', { name: 'Ausentismo' }).focus();
+      await nav.getByRole('link', { name: 'Inicio' }).focus();
       await page.keyboard.press('Tab');
       await expect(nav.getByRole('link', { name: 'Mi cuenta' })).toBeFocused();
+      await page.getByRole('button', { name: '☰ Menú' }).click();
     }
   }
   expect(errors).toEqual([]);
@@ -53,11 +52,11 @@ test('presenta el indicador en móvil y escritorio sin desbordes ni errores', as
     failed = false;
     await page.goto('/ausentismo');
     await expect(page.getByText('Sin datos para este período.')).toBeVisible();
-    await page.screenshot({ path: `../openspec/changes/c-19-absenteeism-indicator/mockups/verify/vacio-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/absenteeism/vacio-${name}.png`, fullPage: true });
     failed = true;
     await page.getByRole('button', { name: 'Consultar' }).click();
     await expect(page.getByRole('alert')).toHaveText(/No pudimos cargar el indicador/);
-    await page.screenshot({ path: `../openspec/changes/c-19-absenteeism-indicator/mockups/verify/error-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/absenteeism/error-${name}.png`, fullPage: true });
     failed = false;
     await page.getByRole('button', { name: 'Reintentar', exact: true }).click();
     await expect(page.getByText('Sin datos para este período.')).toBeVisible();
@@ -70,7 +69,7 @@ test('presenta el indicador en móvil y escritorio sin desbordes ni errores', as
     await page.setViewportSize({ width, height });
     await page.goto('/ausentismo');
     await expect(page.getByRole('status')).toHaveText('Cargando indicador…');
-    await page.screenshot({ path: `../openspec/changes/c-19-absenteeism-indicator/mockups/verify/carga-${name}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/absenteeism/carga-${name}.png`, fullPage: true });
     await expect(page.getByText('Sin datos para este período.')).toBeVisible();
   }
 });

@@ -145,7 +145,7 @@ async def test_legacy_upgrade_preserves_rows_without_inventing_cycles_and_dispos
             indexes = set((await connection.execute(text("SELECT indexname FROM pg_indexes WHERE tablename='notificacion'"))).scalars().all())
             assert previous_indexes <= indexes
             assert await connection.scalar(text("SELECT count(*) FROM barrido_estado")) == 0
-            assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "0011_overbooking_authorization"
+            assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "0012_account_request_limit"
         alembic(url, "downgrade", "0008_turnos_core")
         async with engine.connect() as connection:
             restored = (await connection.execute(text("SELECT row_to_json(n) FROM notificacion n ORDER BY id"))).scalars().all()

@@ -4,6 +4,16 @@ import { ApiError, request } from './client';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('cliente HTTP', () => {
+  it('conserva Retry-After numérico de un límite de solicitudes', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 429, headers: { 'Retry-After': '15' } })));
+    const error = await request('/publico/consultorio').catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 429, retryAfterSeconds: 15 });
+  });
+  it('no interpreta un Retry-After inválido como tiempo de espera', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 429, headers: { 'Retry-After': 'no-disponible' } })));
+    const error = await request('/publico/consultorio').catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 429, retryAfterSeconds: undefined });
+  });
   it('conserva solo identificadores válidos de turnos afectados por un bloqueo', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: { turnos_afectados: [12, 'dato privado', -1, 0, 13], secreto: 'privado' } }), { status: 409 })));
     const error = await request('/profesionales/1/bloqueos', { method: 'POST', body: {} }).catch((value: unknown) => value);

@@ -101,7 +101,7 @@ Convenciones:
 ## Dominio: Ausentismo
 
 - **RN-44**: Un turno solo puede marcarse `ausente` una vez que pasó su hora de inicio. Lo marcan el Profesional (en su propia agenda), Recepción o Administrador.
-- **RN-45 (Suposición)**: La tasa de ausentismo de un período es `ausentes / (atendidos + ausentes)`, sobre los turnos cuya hora ya llegó. Se presenta por profesional y por período, junto con la cantidad de turnos `liberado` y `cancelado` para no ocultar otras pérdidas. La definición exacta se valida con el Administrador.
+- **RN-45 (confirmada por el equipo, DD-35)**: La tasa de ausentismo de un período es `ausentes / (atendidos + ausentes)`, sobre los turnos cuya hora ya llegó. Se presenta por profesional y por período; los turnos `liberado`, `cancelado` y pasados sin cierre se informan por separado y no se cuentan en el denominador. Los períodos de reporte adicionales siguen pendientes en Q-15.
 - **RN-46**: El indicador de ausentismo lo ve el Administrador. El rol Administrativo tiene el permiso reservado.
 
 ## Dominio: Pacientes

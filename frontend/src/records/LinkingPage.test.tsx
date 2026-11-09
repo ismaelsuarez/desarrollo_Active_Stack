@@ -16,6 +16,8 @@ it('descarta respuestas de otra sesión aunque lleguen después', async () => {
   const view = render(<LinkingPage />);
   mock.id = 2; view.rerender(<LinkingPage />);
   expect(await screen.findByText('No hay solicitudes para mostrar.')).toBeInTheDocument();
+  expect(screen.getByRole('region', {name: 'Resultados de solicitudes'})).toHaveTextContent('No hay solicitudes para mostrar.');
+  expect(screen.getByRole('region', {name: 'Filtros y búsqueda'})).toBeInTheDocument();
   await act(async () => finish({ items: [{ id: 9, email: 'privado@example.com', estado: 'pendiente', email_verificado: true, dni_declarado: '1' }], total: 1 }));
   expect(screen.queryByText(/privado@example.com/)).not.toBeInTheDocument();
 });
